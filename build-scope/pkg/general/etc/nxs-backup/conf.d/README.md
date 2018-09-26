@@ -1,0 +1,1 @@
+Use 'nxs-backup generate' command to generate configuration files.

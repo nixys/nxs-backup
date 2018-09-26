@@ -1,0 +1,5 @@
+#PACKAGE# (#VERSION#-deb9u1) stretch; urgency=low
+
+  * New version nxs-backup
+
+ -- #USERNAME# <#EMAIL#>  #DATE#

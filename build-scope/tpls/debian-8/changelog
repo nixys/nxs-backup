@@ -1,0 +1,5 @@
+#PACKAGE# (#VERSION#-deb8u1) jessie; urgency=low
+
+  * New version nxs-backup
+
+ -- #USERNAME# <#EMAIL#>  #DATE#

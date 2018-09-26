@@ -1,0 +1,53 @@
+name: "nxs-backup"
+version:
+  major: 2
+  minor: 0
+  patch: 8
+builds:
+- name: "debian-7"
+  deb:
+    dh_make:
+    - "--copyright=gpl3"
+    - "--single"
+    - "--templates=../build-scope/tpls/debian-7"
+    - "--yes"
+    - "--createorig"
+    dpkg_buildpackage:
+    - "-us"
+    - "-uc"
+- name: "debian-8"
+  deb:
+    dh_make:
+    - "--copyright=gpl3"
+    - "--single"
+    - "--templates=../build-scope/tpls/debian-8"
+    - "--yes"
+    - "--createorig"
+    dpkg_buildpackage:
+    - "-us"
+    - "-uc"
+- name: "debian-9"
+  deb:
+    dh_make:
+    - "--copyright=gpl3"
+    - "--single"
+    - "--templates=../build-scope/tpls/debian-9"
+    - "--yes"
+    - "--createorig"
+    dpkg_buildpackage:
+    - "-us"
+    - "-uc"
+- name: "centos-6"
+  rpm:
+    cmake:
+    - "-DRPM=on"
+    - "."
+    make:
+    - "package"
+- name: "centos-7"
+  rpm:
+    cmake:
+    - "-DRPM=on"
+    - "."
+    make:
+    - "package"

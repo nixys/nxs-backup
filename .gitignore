@@ -1,0 +1,14 @@
+/builds
+/.project
+/.pydevproject
+/.settings
+/tmp
+/objs
+_CPack_Packages
+CMakeCache.txt
+CMakeFiles/
+Makefile
+CPackConfig.cmake
+CPackSourceConfig.cmake
+cmake_install.cmake
+/src/version.go

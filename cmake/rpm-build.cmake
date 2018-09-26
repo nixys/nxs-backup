@@ -1,0 +1,53 @@
+if(RPM OR SRPM)
+
+	if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
+		include(InstallRequiredSystemLibraries)
+
+		set(CPACK_GENERATOR "RPM")
+
+		#set(CPACK_RPM_PACKAGE_DEBUG "ON")
+
+		# Set the common CentOS directories to exclude them from rpm package
+		set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
+			"/etc/cron.d"
+			"/usr/sbin"
+			"/etc/cron.d"
+			"/etc/logrotate.d"
+			"/var"
+			"/var/log"
+			"/lib"
+			"/lib/systemd"
+			"/lib/systemd/system")
+
+		if(SRPM)
+			set(CPACK_RPM_PACKAGE_SOURCES "ON")
+		endif(SRPM)
+
+		set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-scope/tpls/centos/description")
+		set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Summary")
+		set(RPM_LICENSE "GPLv3")
+		set(RPM_CONTACT "https://nixys.ru")
+		set(RPM_VENDOR "Nixys Ltd.")
+		set(RPM_CONFLICTS "nxs-backup < 2.0.0")
+
+
+		set(CPACK_PACKAGE_VENDOR $ENV{RPM_VENDOR})
+		set(CPACK_PACKAGE_CONTACT $ENV{RPM_CONTACT})
+		set(CPACK_RPM_PACKAGE_LICENSE $ENV{RPM_LICENSE})
+		set(CPACK_PACKAGE_VERSION_MAJOR "${MAJOR_VERSION}")
+		set(CPACK_PACKAGE_VERSION_MINOR "${MINOR_VERSION}")
+		set(CPACK_PACKAGE_VERSION_PATCH "${PATCH_VERSION}")
+		set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${MAJOR_VERSION}.${MINOR_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
+		set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${MAJOR_VERSION}.${MINOR_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
+		set(CPACK_RPM_PACKAGE_REQUIRES "")
+		set(CPACK_RPM_PACKAGE_CONFLICTS $ENV{RPM_CONFLICTS})
+
+		set(CPACK_RPM_PRE_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-scope/tpls/centos/preinstall")
+		set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-scope/tpls/centos/postinstall")
+		set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-scope/tpls/centos/preuninstall")
+		set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-scope/tpls/centos/postuninstall")
+
+		set(CPACK_COMPONENTS_ALL Libraries ApplicationData)
+		include(CPack)
+	endif(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
+endif(RPM OR SRPM)
