@@ -99,6 +99,8 @@ file_env_input_data 'DB_PASSWORD'
 if [ -f "${INPUT_DATA_FILE}" ];
 then
 	jinja2 ${TPL_CONF_FILE_1} ${INPUT_DATA_FILE} > ${CONF_FILE_1}
+else
+	jinja2 ${TPL_CONF_FILE_1} > ${CONF_FILE_1}
 fi
 
 exec "$@"
