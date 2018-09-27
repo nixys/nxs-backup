@@ -46,39 +46,39 @@ function file_env_input_data()
 
 # Setup Ssmtp
 
-file_env 'MAILHUB_ADDR'
-file_env 'MAILHUB_PORT'
-file_env 'USE_TLS'
-file_env 'AUTH_USER'
-file_env 'AUTH_PASS'
-file_env 'FROM_LINE_OVERRIDE'
+file_env 'SMTP_MAILHUB_ADDR'
+file_env 'SMTP_MAILHUB_PORT'
+file_env 'SMTP_USE_TLS'
+file_env 'SMTP_AUTH_USER'
+file_env 'SMTP_AUTH_PASS'
+file_env 'SMTP_FROM_LINE_OVERRIDE'
 
-if [ -z "${USE_TLS}" ];
+if [ -z "${SMTP_USE_TLS}" ];
 then
-	USE_TLS="YES"
+	SMTP_USE_TLS="YES"
 fi
 
-if [ -z "${FROM_LINE_OVERRIDE}" ];
+if [ -z "${SMTP_FROM_LINE_OVERRIDE}" ];
 then
-	FROM_LINE_OVERRIDE="YES"
+	SMTP_FROM_LINE_OVERRIDE="YES"
 fi
 
-if [ ! -z "${MAILHUB_ADDR}" ] && \
-   [ ! -z "${MAILHUB_PORT}" ] && \
-   [ ! -z "${AUTH_USER}" ] && \
-   [ ! -z "${AUTH_PASS}" ];
+if [ ! -z "${SMTP_MAILHUB_ADDR}" ] && \
+   [ ! -z "${SMTP_MAILHUB_PORT}" ] && \
+   [ ! -z "${SMTP_AUTH_USER}" ] && \
+   [ ! -z "${SMTP_AUTH_PASS}" ];
 then
 	cat <<EOF > /etc/ssmtp/ssmtp.conf
-mailhub=${MAILHUB_ADDR}:${MAILHUB_PORT}
-UseTLS=${USE_TLS}
-AuthUser=${AUTH_USER}
-AuthPass=${AUTH_PASS}
-FromLineOverride=${FROM_LINE_OVERRIDE}
+mailhub=${SMTP_MAILHUB_ADDR}:${SMTP_MAILHUB_PORT}
+UseTLS=${SMTP_USE_TLS}
+AuthUser=${SMTP_AUTH_USER}
+AuthPass=${SMTP_AUTH_PASS}
+FromLineOverride=${SMTP_FROM_LINE_OVERRIDE}
 EOF
 
 	if [ ! -z "${IMAGE_USER}" ];
 	then
-		echo "${IMAGE_USER}:${AUTH_USER}:${MAILHUB_ADDR}:${MAILHUB_PORT}" > /etc/ssmtp/revaliases
+		echo "${IMAGE_USER}:${SMTP_AUTH_USER}:${SMTP_MAILHUB_ADDR}:${SMTP_MAILHUB_PORT}" > /etc/ssmtp/revaliases
 	fi
 
 fi
