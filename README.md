@@ -91,7 +91,7 @@ backup: !include [conf.d/*.conf]
     * `socket`:  DB socket.
     * `db_user`: DB user.
     * `db_password`: DB password.
-    * `auth_file`: DB auth file.
+    * `auth_file`: DB auth file. You may use either `auth_file` or `db_host` or `socket` options. Options priority follows: `auth_file` → `db_host` → `socket`.
     * `path_to_conf`(**only for *mysql_xtradb* type**): path to the main mysql configuration file with *client* section.
   * `special_keys`(**Only for *databases* types**): special parameters for the collection of database backups 
   * `target`: list of databases or directory/files to be backed up. For *databases types* you can use the keyword **all** (all db). For *files types* you can use glob patterns.
