@@ -100,7 +100,10 @@ if [ -f "${INPUT_DATA_FILE}" ];
 then
 	jinja2 ${TPL_CONF_FILE_1} ${INPUT_DATA_FILE} > ${CONF_FILE_1}
 else
-	jinja2 ${TPL_CONF_FILE_1} > ${CONF_FILE_1}
+	if [ -f "${TPL_CONF_FILE_1}" ];
+	then
+		jinja2 ${TPL_CONF_FILE_1} > ${CONF_FILE_1}
+	fi
 fi
 
 exec "$@"
