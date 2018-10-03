@@ -40,7 +40,7 @@ nxs-backup: The configuration file '/etc/nxs-backup/nxs-backup.conf' syntax is o
 
 ### Start your jobs
  You cat start your jobs by running the script with the command ***start*** and optional *-c*/*--config* (path to main conf file). The script will execute the job passed by the argument. It should be noted that there are several reserved job names:
- + `all` - simulates the sequential exectuion of *files*, *databases*, *external* job (default value)
+ + `all` - simulates the sequential execution of *files*, *databases*, *external* job (default value)
  + `files` - random execution of all jobs with the types *desc_files*, *inc_files*
  + `databases` - random execution of all jobs with the types *mysql*, *mysql_xtradb*, *postgresql*, *postgresql_hot*, *mongodb*, *redis*
  + `external` - random execution of all jobs with the type *external*
