@@ -74,7 +74,7 @@ Nxs-backup main settings block description.
 Nxs-backup jobs settings block description. Allows you to connect additional configuration files  by specifying the following (you can use glob patterns):
 
 ```yaml
-backup: !include [conf.d/*.conf]
+jobs: !include [conf.d/*.conf]
 ```
 
 * `job`: job name. This value is used to run the required job.
