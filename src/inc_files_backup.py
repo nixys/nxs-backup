@@ -101,7 +101,7 @@ def inc_files_backup(job_data):
                                     try:
                                         mount_fuse.unmount()
                                     except general_function.MyError as err:
-                                        log_and_mail.writelog('ERROR', "Can't umount remote '%s' storage :%s" %(current_storage_data.get('storage'), err),
+                                        log_and_mail.writelog('ERROR', "Can't umount remote '%s' storage :%s" %(storage, err),
                                                               config.filelog_fd, job_name)
                                         continue
                         else:

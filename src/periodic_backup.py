@@ -239,7 +239,15 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
                         general_local_dst_path = os.path.join(local_dst_dirname,  backup_dir.lstrip('/'), part_of_dir_path)
 
                     periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count, job_name, host, share)
-                    mount_fuse.unmount()
+
+                    try:
+                        mount_fuse.unmount()
+                    except general_function.MyError as err:
+                        log_and_mail.writelog('ERROR', "Can't umount remote '%s' storage :%s" %(storage, err),
+                                              config.filelog_fd, job_name)
+                        continue
+        else:
+            continue
 
 
 def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count, job_name, host, share):
