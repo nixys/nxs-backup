@@ -2,7 +2,7 @@
 
 Nxs-backup is an open source backup software for most popular GNU/Linux distributions. Features of Nxs-backup include amongst others:
 * Support of the most popular storages: local, ssh, ftp, cifs(smb), nfs, webdav, s3
-* Database backups, such as MySQL(hot/cold), PostgreSQL(hot/cold), MongoDB, Redis
+* Database backups, such as MySQL(logical/physical), PostgreSQL(logical/physical), MongoDB, Redis
 * Possibility to specify extra options for collecting database dumps to fine-tune backup process and minimize load on the server
 * Incremental files backups
 * Easy to read and maintain configuration files with clear transparent structure
@@ -17,7 +17,7 @@ The source code of Nxs-backup is available at https://github.com/nixys/nxs-backu
 
 ### Understanding Jobs, Type, Sources and Storages
  In order to make nxs-backup as ﬂexible as possible, the directions given to nxs-backup are speciﬁed in several pieces. The main instruction is the job resource, which deﬁnes a job. A backup job generally consists of a Type, a Sources and Storages. 
- The Type deﬁnes what type of backup shall run (e.g. MySQL "hot" backups), the Sources defines the target and exceptions (for each job at least one target must be specified), the Storages define storages where to store backups and at what quantity (for each job at least one storage must be specified). Work with remote storage is performed by local mounting of the FS with special tools.
+ The Type deﬁnes what type of backup shall run (e.g. MySQL "physical" backups), the Sources defines the target and exceptions (for each job at least one target must be specified), the Storages define storages where to store backups and at what quantity (for each job at least one storage must be specified). Work with remote storage is performed by local mounting of the FS with special tools.
 
 ### Setting Up Nxs-backup Conﬁguration Files
  Nxs-backup conﬁguration ﬁles are usually located in the */etc/nxs-backup/* directory. The default configuration has only one configuration file *nxs-backup.conf* and the *conf.d* subdirectory that stores files with descriptions of jobs (one file per job). Config files are in YAML format. For details, see Settings.
@@ -79,7 +79,7 @@ backup: !include [conf.d/*.conf]
 
 * `job`: job name. This value is used to run the required job.
 * `type`: type of backup. It can take the following values:
-  * *mysql*(MySQL cold backups), *mysql_xtradb* (MySQL hot backups), *postgresql*(PostgreSQL cold backups), *postgresql_hot*(PostgreSQL hot backups), *mongodb*, *redis*
+  * *mysql*(MySQL logical backups), *mysql_xtradb* (MySQL physical backups), *postgresql*(PostgreSQL logical backups), *postgresql_hot*(PostgreSQL physical backups), *mongodb*, *redis*
   * *desc_files*, *inc_files*
   * *external*
 * `tmp_dir`: local path to the temporary directory for backups.
@@ -141,19 +141,19 @@ tar xf PATH_TO_FULL_BACKUP
 tar xGf PATH_TO_INCREMENTAL_BACKUP
 ```
 
-### MySQL(cold) nxs-backup module
+### MySQL(logical) nxs-backup module
 
 Under the hood is the work of the `mysqldump`, so for the correct work of the module you must first install **mysql-client** on the server.
 
-### MySQL(hot) nxs-backup module
+### MySQL(physical) nxs-backup module
 
 Under the hood is the work of the `innobackupex`, so for the correct work of the module you must first install **percona-xtrabackup** on the server. *Supports only backup of local instance*.
 
-### PostgreSQL(cold) nxs-backup module
+### PostgreSQL(logical) nxs-backup module
 
 The work is based on `pg_dump`, so for the correct work of the module you must first install **postgresql-client** on the server.
 
-### PostgreSQL(hot) nxs-backup module
+### PostgreSQL(physical) nxs-backup module
 
 The work is based on `pg_basebackup`, so for the correct work of the module you must first install **postgresql-client** on the server.
 
