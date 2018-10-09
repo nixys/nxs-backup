@@ -201,16 +201,16 @@ def get_mount_data(current_storage_data):
     elif storage == 's3':
         packets = ['']
         mount_point = '/mnt/s3'
-        mount_cmd = 's3fs %s %s -o multipart_size=50' % (bucket_name, mount_point)
-        if s3fs_opts:
-            mount_cmd = '{mount_cmd} {s3fs_opts}'.format(**locals())
+        mount_cmd = 's3fs %s %s %s' % (bucket_name, mount_point, s3fs_opts)
+
         if s3fs_access_key_id and s3fs_secret_access_key:
-            pre_mount['check_s3fs_secrets'] = '{bucket_name}:{s3fs_access_key_id}:{s3fs_secret_access_key}'.format(**locals())
+            pre_mount['check_s3fs_secrets'] = '%s:%s:%s\n' % (bucket_name, s3fs_access_key_id, s3fs_secret_access_key)
     else:
         mount_point = ''
         return [dict_mount_data, pre_mount]
 
     packets.append('fuse')
+    dict_mount_data['type_storage'] = storage
     dict_mount_data['packets'] = packets
     dict_mount_data['update_cmd'] = general_update_cmd
     dict_mount_data['check_cmd'] = general_check_packet_cmd
@@ -236,6 +236,7 @@ def mount(current_storage_data):
         # if local storage
         return 0
     else:
+        type_storage = data_mount.get('type_storage')
         packets = data_mount.get('packets')
         update_cmd = data_mount.get('update_cmd')
         check_cmd = data_mount.get('check_cmd')
@@ -297,8 +298,16 @@ def mount(current_storage_data):
 
             if stderr_mounting:
                 raise general_function.MyError(stderr_mounting)
+
             if code != 0:
                 raise general_function.MyError("Bad result code external process '%s':'%s'" % (mount_cmd, code))
+
+            if type_storage == 's3':
+                try:
+                    os.chdir('/mnt/s3')
+                except ConnectionAbortedError:
+                    raise general_function.MyError("incorrect authentification data!")
+
     return 1
 
 
@@ -317,10 +326,11 @@ def unmount():
             general_function.del_file_objects('', mount_point)
     return 1
 
+
 def check_secrets(str_auth):
     conf_path = '/etc/davfs2/secrets'
 
-    if not os.path.isfile('/etc/davfs2/secrets'):
+    if not os.path.isfile(conf_path):
         raise MountError("Can't record the authentication information for 'webdav' resource: /etc/davfs2/secrets is not found")
 
     try:
