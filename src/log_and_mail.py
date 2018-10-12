@@ -93,6 +93,7 @@ def writelog(log_level, log_message, fd, type_message=''):
 
     try:
         fd.write(log_str)
+        fd.flush()
     except (OSError, PermissionError, FileNotFoundError) as err:
         messange_info = "Couldn't write to log file:%s" %(err)
         general_function.print_info(messange_info)
