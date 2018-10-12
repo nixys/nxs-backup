@@ -238,14 +238,18 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    if args.test_conf:
-        test_config(args.path_to_config)
-    elif args.cmd == 'start':
-        do_backup(args.path_to_config, args.jobs_name)
-    elif args.cmd == 'generate':
-        generate_config.generate(args.backup_type, args.storages, args.path_to_generate_file)
-    else:
-        parser.print_help()
+    try:
+        if args.test_conf:
+            test_config(args.path_to_config)
+        elif args.cmd == 'start':
+            do_backup(args.path_to_config, args.jobs_name)
+        elif args.cmd == 'generate':
+            generate_config.generate(args.backup_type, args.storages, args.path_to_generate_file)
+        else:
+            parser.print_help()
+    finally:
+        if config.filelog_fd:
+            config.filelog_fd.close()        
 
 
 if __name__ == '__main__':
