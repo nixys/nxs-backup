@@ -7,6 +7,7 @@ import datetime
 import shutil
 import platform
 import psutil
+import fcntl
 import sys
 
 import config
@@ -57,21 +58,20 @@ def print_info(*message):
                            file=sys.stderr)
 
 
-def is_running_script():
-    ''' The function checks whether the back-up process is already running.
+def get_lock():
 
-    '''
+    create_files('', config.path_to_lock_file)
+    config.lock_file_fd = open(config.path_to_lock_file, 'a')
+    fcntl.flock(config.lock_file_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
-    process = 0
-    for pid in psutil.pids():
-        p = psutil.Process(pid)
-        if p.name() == "nxs-backup" and len(p.cmdline()) > 1 and "start" in p.cmdline()[1]:
-            process += 1
+    return 1
 
-    if process > 2:
-        return True
-    else:
-        return False
+
+def get_unlock():
+
+    fcntl.flock(config.lock_file_fd, fcntl.LOCK_UN)
+
+    return 1
 
 
 def get_time_now(unit):

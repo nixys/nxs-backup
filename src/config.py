@@ -5,6 +5,8 @@ import sys
 
 import general_function
 
+lock_file_fd = ''
+path_to_lock_file = '/tmp/nxs-backup.lock'
 
 supported_db_backup_type = [
                     'mysql',

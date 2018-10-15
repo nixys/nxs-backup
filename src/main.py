@@ -66,10 +66,12 @@ def do_backup(path_to_config, jobs_name):
         log_and_mail.send_report(messange_info)
         sys.exit(1)
 
-    if general_function.is_running_script():
-        log_and_mail.writelog('ERROR', "Script already is running!", config.filelog_fd, '')
-        config.filelog_fd.close()
-        general_function.print_info("Script already is running!")
+    try:
+        general_function.get_lock()
+    except BlockingIOError:
+        msg = "Script already is running!"
+        log_and_mail.writelog('ERROR', "%s" %(msg), config.filelog_fd, '')
+        general_function.print_info("%s" %(msg))
         sys.exit(1)
 
     log_and_mail.writelog('INFO', "Starting script.\n", config.filelog_fd)
@@ -246,8 +248,11 @@ def main():
             full_traceback = traceback.format_exc()
             log_and_mail.writelog('ERROR', "An unexpected error occurred: %s" %(full_traceback), config.filelog_fd)
         finally:
-            log_and_mail.send_report()
-            config.filelog_fd.close()
+            if config.filelog_fd:
+                log_and_mail.send_report()
+                config.filelog_fd.close()
+            if config.lock_file_fd:
+                general_function.get_unlock()
     elif args.cmd == 'generate':
         generate_config.generate(args.backup_type, args.storages, args.path_to_generate_file)
     else:
