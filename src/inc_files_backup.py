@@ -259,17 +259,27 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
                                                             gzip)
 
         # Define the list of files that need to be included in the archive
-        target_change_list = get_change_list(diff_json, target)
+        target_change_list = diff_json['modify']
 
         # Form GNU.dumpdir headers
         dict_directory = {}  # Dict to store pairs like dir:GNU.dumpdir
 
         excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
-        for y in [x[0] for x in os.walk(target) if not re.match(excludes, x[0])]:
-            first_level_subdirs = [z for z in next(os.walk(y))[1] if not re.match(excludes, os.path.join(y, z))]
-            first_level_files = [os.path.join(y, z) for z in next(os.walk(y))[2] if not re.match(excludes, os.path.join(y, z))]
-            dict_directory[y] = get_gnu_dumpdir_format(diff_json, y, target, excludes, first_level_subdirs, first_level_files)
+        for dir_name, dirs, files in os.walk(target):
+            first_level_files = []
+
+            if re.match(excludes, dir_name):
+                continue
+
+            for file in files:
+                if re.match(excludes, os.path.join(dir_name, file)):
+                    continue
+
+                first_level_files.append(file)
+
+            first_level_subdirs = dirs
+            dict_directory[dir_name] = get_gnu_dumpdir_format(diff_json, dir_name, target, excludes, first_level_subdirs, first_level_files)
 
         create_inc_tar(inc_backup_path, remote_dir, dict_directory, target_change_list, gzip, job_name, storage, host, share)
 
@@ -311,24 +321,14 @@ def del_old_inc_file(old_year_dir, old_month_dir):
         general_function.del_file_objects('inc_files', old_year_dir)
 
 
-def get_change_list(diff_json, target):
-    result = []
-    for i in diff_json.get('updated'):
-        result.append(os.path.join(target,i))
-    for i in diff_json.get('created'):
-        result.append(os.path.join(target,i))
-
-    return result
-
-
-def get_gnu_dumpdir_format(diff_json, y, backup_dir, excludes, first_level_subdirs, first_level_files):
+def get_gnu_dumpdir_format(diff_json, dir_name, backup_dir, excludes, first_level_subdirs, first_level_files):
     ''' The function on the input receives a dictionary with modified files.
 
     '''
 
     delimiter = '\0'
     not_modify_special_symbol = 'N'
-    modify_special_symbol = create_special_symbol = 'Y'
+    modify_special_symbol = 'Y'
     directory_special_symbol = 'D'
 
     general_dict = {}
@@ -337,17 +337,12 @@ def get_gnu_dumpdir_format(diff_json, y, backup_dir, excludes, first_level_subdi
         for i in first_level_subdirs:
             general_dict[i] = directory_special_symbol
 
-    for i in list(set(diff_json.get('updated')).intersection(set(first_level_files))):
-        element = os.path.split(i)[1]
-        general_dict[element] = modify_special_symbol
-
-    for i in list(set(diff_json.get('created')).intersection(set(first_level_files))):
-        element = os.path.split(i)[1]
-        general_dict[element] = create_special_symbol
-
-    for i in list(set(diff_json.get('not_modify')).intersection(set(first_level_files))):
-        element = os.path.split(i)[1]
-        general_dict[element] = not_modify_special_symbol
+    if first_level_files:
+        for file in first_level_files:
+            if os.path.join(dir_name, file) in diff_json['modify']:
+                general_dict[file] = modify_special_symbol
+            else:
+                general_dict[file] = not_modify_special_symbol
 
     keys = list(general_dict.keys())
     keys.sort()
@@ -363,13 +358,10 @@ def get_gnu_dumpdir_format(diff_json, y, backup_dir, excludes, first_level_subdi
 
 def get_index(backup_dir, exclude_list):
     """ Return a tuple containing:
-    - list of files (relative to path)
-    - lisf of subdirs (relative to path)
-    - a dict: filepath => last 
+    - a dict: filepath => ctime
     """
 
-    files = []
-    index = {}
+    file_index = {}
 
     excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
@@ -379,32 +371,33 @@ def get_index(backup_dir, exclude_list):
         filenames = [f for f in filenames if not re.match(excludes, f)]
 
         for f in filenames:
-            files.append(f)
             if os.path.isfile(f):
-                index[f] = os.path.getmtime(f)
+                file_index[f] = os.path.getmtime(f)
 
-    result = dict(files=files, index=index)
-
-    return result
+    return file_index
 
 
 def compute_diff(new_meta_info, old_meta_info):
     data = {}
-    data['deleted'] = list(set(old_meta_info['files']) - set(new_meta_info['files']))
-    data['created'] = list(set(new_meta_info['files']) - set(old_meta_info['files']))
-    data['updated'] = []
+
+    created_files = list(set(new_meta_info.keys()) - set(old_meta_info.keys()))
+    updated_files = []
+    
+    data['modify'] = []
     data['not_modify'] = []
 
-    for f in set(old_meta_info['files']).intersection(set(new_meta_info['files'])):
+    for f in set(old_meta_info.keys()).intersection(set(new_meta_info.keys())):
             try:
-                if new_meta_info['index'][f] != old_meta_info['index'][f]:
-                    data['updated'].append(f)
+                if new_meta_info[f] != old_meta_info[f]:
+                    updated_files.append(f)
                 else:
                     data['not_modify'].append(f)
             except KeyError:
                 # Occurs when in one of the states (old or new) one and the same path
                 # are located both the broken and normal file
-                data['updated'].append(f)
+                updated_files.append(f)
+
+    data['modify'] = created_files + updated_files
 
     return data
 
@@ -432,7 +425,8 @@ def create_inc_tar(path_to_tarfile, remote_dir, dict_directory, target_change_li
             out_tarfile.addfile(meta_file)
 
         for i in target_change_list:
-            out_tarfile.add(i)
+            if os.path.exists(i):
+                out_tarfile.add(i)
 
         out_tarfile.close()
     except tarfile.TarError as err:
