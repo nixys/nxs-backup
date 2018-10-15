@@ -11,6 +11,16 @@ if [ "$1" = "configure" ]; then
 	chmod 0640 /etc/nxs-backup/nxs-backup.conf
 
 	chmod 750 /var/log/nxs-backup
+	
+    PRELINK_PATH="/etc/prelink.conf"
+    PRELINK_BLOCK_STR="-b /usr/sbin/nxs-backup"
+    
+    if [ -e $PRELINK_PATH ]; then
+        if ! grep -q "^$PRELINK_BLOCK_STR$" $PRELINK_PATH; then
+            echo "$PRELINK_BLOCK_STR" >> $PRELINK_PATH
+        fi
+    fi
+
 fi
 
 db_stop
