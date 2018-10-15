@@ -9,7 +9,7 @@ import general_function
 import periodic_backup
 
 
-def postgresql_hot_backup(job_data):
+def postgresql_basebackup(job_data):
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -86,7 +86,7 @@ def is_success_pgbasebackup(extra_keys, str_auth, backup_full_path, gzip, job_na
     code = command['code']
 
     if stderr:
-        log_and_mail.writelog('ERROR', "Can't create postgresql_hot backup in tmp directory:%s" %(stderr),
+        log_and_mail.writelog('ERROR', "Can't create postgresql_basebackup in tmp directory:%s" %(stderr),
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
@@ -94,6 +94,6 @@ def is_success_pgbasebackup(extra_keys, str_auth, backup_full_path, gzip, job_na
                               config.filelog_fd, job_name)
         return False
     else:
-        log_and_mail.writelog('INFO', "Successfully created postgresql_hot backup in tmp directory.",
+        log_and_mail.writelog('INFO', "Successfully created postgresql_basebackup in tmp directory.",
                               config.filelog_fd, job_name)
         return True

@@ -8,9 +8,9 @@ import general_function
 
 supported_db_backup_type = [
                     'mysql',
-                    'mysql_xtradb',
+                    'mysql_xtrabackup',
                     'postgresql',
-                    'postgresql_hot',
+                    'postgresql_basebackup',
                     'mongodb',
                     'redis'
     ]

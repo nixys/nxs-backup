@@ -42,7 +42,7 @@ nxs-backup: The configuration file '/etc/nxs-backup/nxs-backup.conf' syntax is o
  You cat start your jobs by running the script with the command ***start*** and optional *-c*/*--config* (path to main conf file). The script will execute the job passed by the argument. It should be noted that there are several reserved job names:
  + `all` - simulates the sequential execution of *files*, *databases*, *external* job (default value)
  + `files` - random execution of all jobs with the types *desc_files*, *inc_files*
- + `databases` - random execution of all jobs with the types *mysql*, *mysql_xtradb*, *postgresql*, *postgresql_hot*, *mongodb*, *redis*
+ + `databases` - random execution of all jobs with the types *mysql*, *mysql_xtrabackup*, *postgresql*, *postgresql_basebackup*, *mongodb*, *redis*
  + `external` - random execution of all jobs with the type *external*
  
 ```bash
@@ -79,7 +79,7 @@ jobs: !include [conf.d/*.conf]
 
 * `job`: job name. This value is used to run the required job.
 * `type`: type of backup. It can take the following values:
-  * *mysql*(MySQL logical backups), *mysql_xtradb* (MySQL physical backups), *postgresql*(PostgreSQL logical backups), *postgresql_hot*(PostgreSQL physical backups), *mongodb*, *redis*
+  * *mysql*(MySQL logical backups), *mysql_xtrabackup* (MySQL physical backups), *postgresql*(PostgreSQL logical backups), *postgresql_basebackup*(PostgreSQL physical backups), *mongodb*, *redis*
   * *desc_files*, *inc_files*
   * *external*
 * `tmp_dir`: local path to the temporary directory for backups.
@@ -92,7 +92,7 @@ jobs: !include [conf.d/*.conf]
     * `db_user`: DB user.
     * `db_password`: DB password.
     * `auth_file`: DB auth file. You may use either `auth_file` or `db_host` or `socket` options. Options priority follows: `auth_file` → `db_host` → `socket`.
-    * `path_to_conf`(**only for *mysql_xtradb* type**): path to the main mysql configuration file with *client* section.
+    * `path_to_conf`(**only for *mysql_xtrabackup* type**): path to the main mysql configuration file with *client* section.
   * `special_keys`(**Only for *databases* types**): special parameters for the collection of database backups 
   * `target`: list of databases or directory/files to be backed up. For *databases types* you can use the keyword **all** (all db). For *files types* you can use glob patterns.
   * `target_dbs`(**Only for *mongodb* type**): list of mongodb databases to be backed up.  

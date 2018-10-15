@@ -12,7 +12,7 @@ import general_function
 import periodic_backup
 
 
-def mysql_xtradb_backup(job_data):
+def mysql_xtrabackup(job_data):
     try:
         job_name = job_data['job']
         backup_type = job_data['type']

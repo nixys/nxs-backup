@@ -11,9 +11,9 @@ import specific_function
 import log_and_mail
 import resource_constraint
 import mysql_backup
-import mysql_xtradb_backup
+import mysql_xtrabackup
 import postgresql_backup
-import postgresql_hot_backup
+import postgresql_basebackup
 import mongodb_backup
 import redis_backup
 import desc_files_backup
@@ -144,14 +144,14 @@ def execute_job(jobs_name, jobs_data):
     if backup_type == 'mysql':
         mysql_backup.mysql_backup(jobs_data)
 
-    elif backup_type == 'mysql_xtradb':
-        mysql_xtradb_backup.mysql_xtradb_backup(jobs_data)
+    elif backup_type == 'mysql_xtrabackup':
+        mysql_xtrabackup.mysql_xtrabackup(jobs_data)
 
     elif backup_type == 'postgresql':
         postgresql_backup.postgresql_backup(jobs_data)
 
-    elif backup_type == 'postgresql_hot':
-        postgresql_hot_backup.postgresql_hot_backup(jobs_data)
+    elif backup_type == 'postgresql_basebackup':
+        postgresql_basebackup.postgresql_basebackup(jobs_data)
 
     elif backup_type == 'mongodb':
         mongodb_backup.mongodb_backup(jobs_data)
