@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+import traceback
 
 import config
 import general_function
@@ -125,8 +126,6 @@ def do_backup(path_to_config, jobs_name):
             log_and_mail.writelog('INFO', "Finishing external block backup.\n", config.filelog_fd)
 
     log_and_mail.writelog('INFO', "Stopping script.", config.filelog_fd)
-    log_and_mail.send_report()
-    config.filelog_fd.close()
 
 
 def execute_job(jobs_name, jobs_data):
@@ -238,18 +237,21 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    try:
-        if args.test_conf:
-            test_config(args.path_to_config)
-        elif args.cmd == 'start':
+    if args.test_conf:
+        test_config(args.path_to_config)
+    elif args.cmd == 'start':
+        try:
             do_backup(args.path_to_config, args.jobs_name)
-        elif args.cmd == 'generate':
-            generate_config.generate(args.backup_type, args.storages, args.path_to_generate_file)
-        else:
-            parser.print_help()
-    finally:
-        if config.filelog_fd:
-            config.filelog_fd.close()        
+        except Exception:
+            full_traceback = traceback.format_exc()
+            log_and_mail.writelog('ERROR', "An unexpected error occurred: %s" %(full_traceback), config.filelog_fd)
+        finally:
+            log_and_mail.send_report()
+            config.filelog_fd.close()
+    elif args.cmd == 'generate':
+        generate_config.generate(args.backup_type, args.storages, args.path_to_generate_file)
+    else:
+        parser.print_help()
 
 
 if __name__ == '__main__':
