@@ -33,8 +33,6 @@ else:
 
 def do_backup(path_to_config, jobs_name):
 
-    resource_constraint.set_limitations()
-
     try:
         parsed_string = specific_function.get_parsed_string(path_to_config)
     except general_function.MyError as e:
@@ -43,6 +41,8 @@ def do_backup(path_to_config, jobs_name):
         sys.exit(1)
 
     (db_jobs_dict, file_jobs_dict, external_jobs_dict) = config.get_conf_value(parsed_string)
+
+    resource_constraint.set_limitations()
 
     general_function.create_files('', config.log_file)
 
