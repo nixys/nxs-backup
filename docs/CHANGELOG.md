@@ -3,20 +3,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.1] - 2018-10-18
+### Fixes
+- Fixed database jobs processing
+- Removed packages installation from code
+
 ## [2.1.0] - 2018-10-17
-### Added
-- Download backup on custom S3 server
-- External SMTP send
+### Adds
+- Ability to upload backup on custom S3 server
+- Ability to use external SMTP servers
 - Handling unexpected exceptions
 
-### Changed
-- Rpm backages build
-- Improved algorihtm for collecting incremental files backups
-- Improved control of the number of processes in the system via flock()
-- No buffering for log file
-- Renamed type mysql_xtradb with mysql_xtrabackup
+### Changes
+- Improved algorihtm for create incremental files backups
+- Improved control for duplicated nxs-backup processes
+- Disabled log messages bufferization
+- Renamed type `mysql_xtradb` to `mysql_xtrabackup`
 
-### Fixed
+### Fixes
+- Rpm packages build
 - Unexpected program termination due to umount error
-- Prelink breaks binaries
-- Closing the log file when the program ends
+- Prelink breaks nxs-backup binary
+- Closing log-file after nxs-backup termination
