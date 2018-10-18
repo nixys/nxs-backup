@@ -107,9 +107,7 @@ def get_mount_data(current_storage_data):
     Returns an array of two dictionaries:
         dict_mount_data - data to mount:
         - list of packages required to mount storage
-        - command to update the repositories (actual for debian)
         - command to check if the system has the necessary packages to mount
-        - command to install packages
         - command to mount storage
         pre_mount - contains information about the need for additional manipulations
             in the system before the packages are installed (required to install packages that are
@@ -121,20 +119,15 @@ def get_mount_data(current_storage_data):
 
     global mount_point
     dist = general_function.get_dist()
-    pre_install_cmd = ''
     pre_mount = {}
 
     dict_mount_data = {}
 
     if re.match('(debian|ubuntu)', dist, re.I):
         family_os = 'deb'
-        general_update_cmd = 'apt-get update -y 2>&1 1>/dev/null'
-        general_install_cmd = 'apt-get install -y'
         general_check_packet_cmd = 'dpkg -s'
     elif re.match('centos', dist, re.I):
         family_os = 'rpm'
-        general_update_cmd = ''
-        general_install_cmd = 'yum install -y'
         general_check_packet_cmd = 'rpm -q'
     else:
         raise MountError("This distribution of Linux:'%s' is not supported." % (dist))
@@ -192,9 +185,6 @@ def get_mount_data(current_storage_data):
 
         str_auth = "%s:%s %s %s\n" % (host, port, user, password)
 
-        if family_os == 'deb':
-            pre_install_cmd = 'debconf-set-selections <<< "davfs2  davfs2/suid_file        boolean false"'
-
         pre_mount['check_secrets'] = '%s' % (str_auth)
 
         mount_cmd = "mount -t davfs %s:%s %s" % (host, port, mount_point)
@@ -212,11 +202,8 @@ def get_mount_data(current_storage_data):
     packets.append('fuse')
     dict_mount_data['type_storage'] = storage
     dict_mount_data['packets'] = packets
-    dict_mount_data['update_cmd'] = general_update_cmd
     dict_mount_data['check_cmd'] = general_check_packet_cmd
-    dict_mount_data['install_cmd'] = general_install_cmd
     dict_mount_data['mount_cmd'] = mount_cmd
-    dict_mount_data['pre_install_cmd'] = pre_install_cmd
 
     return [dict_mount_data, pre_mount]
 
@@ -238,42 +225,18 @@ def mount(current_storage_data):
     else:
         type_storage = data_mount.get('type_storage')
         packets = data_mount.get('packets')
-        update_cmd = data_mount.get('update_cmd')
         check_cmd = data_mount.get('check_cmd')
-        install_cmd = data_mount.get('install_cmd')
         mount_cmd = data_mount.get('mount_cmd')
-        pre_install_cmd = data_mount.get('pre_install_cmd')
-
-        command = general_function.exec_cmd(update_cmd)
-        code = command['code']
-
-        if code != 0:
-            raise general_function.MyError("Bad result code external process '%s':'%s'" % (update_cmd, code))
 
         for i in packets:
-            check_packet = general_function.exec_cmd("%s %s" % (check_cmd, i))
-            stdout_check = check_packet['stdout']
+            if i:
+                check_packet = general_function.exec_cmd("%s %s" % (check_cmd, i))
+                stdout_check = check_packet['stdout']
 
-            if not stdout_check:
-                if pre_install_cmd:
-                    pre_install = general_function.exec_cmd(pre_install_cmd)
-                    stderr_pre_install = pre_install['stderr']
-                    code = pre_install['code']
-
-                    if stderr_pre_install:
-                        raise general_function.MyError("Package '%s' can't installed:%s" % (i, stderr_pre_install))
-                    if code != 0:
-                        raise general_function.MyError("Bad result code external process '%s':'%s'" % (pre_install_cmd, code))
-
-                install_packet = general_function.exec_cmd("%s %s" % (install_cmd, i))
-                stderr_install = install_packet['stderr']
-                code = install_packet['code']
-
-                if stderr_install:
-                    raise general_function.MyError("Package '%s' can't installed:%s" % (i, stderr_install))
-
-                if code != 0:
-                    raise general_function.MyError("Bad result code external process '%s':'%s'" % (install_cmd, code))
+                if not stdout_check:
+                    raise general_function.MyError("Required package '%s' not installed!" % (i))
+            else:
+                continue
 
         if pre_mount:
             for key in pre_mount:
@@ -282,7 +245,7 @@ def mount(current_storage_data):
                     args = pre_mount[key]
                     f(args)
                 except Exception as err:
-                    raise general_function.MyError("Impossible perform pre-mount operations for storage '%s': %s" % (current_storage_data.get('storage'), err))
+                    raise general_function.MyError("Impossible perform pre-mount operations for storage '%s': %s" % (type_storage, err))
 
         check_mount_cmd = "mount | grep %s" % (mount_point)
         check_mount = general_function.exec_cmd(check_mount_cmd)
