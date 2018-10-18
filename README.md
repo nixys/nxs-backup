@@ -195,9 +195,29 @@ In this case, the keys basename, extension, gzip are necessary only for the form
 * *gzip* is a parameter that tells the script whether the file is compressed along the path specified in full_path or not, but does not indicate the need for compression at the nxs-backup
 * successfully completed program must exit with 0
 
+### SSH storage nxs-backup module
+
+For correct work of the software you must install *openssh-client*, *sshfs*, *sshpass*, *fuse*  packages.
+
+### FTP storage nxs-backup module
+
+For correct work of the software you must install *curlftpfs*, *fuse* packages.
+
+### SMB storage nxs-backup module
+
+For correct work of the software, you must install *cifs-utils*, *fuse* packages.
+
+### NFS storage nxs-backup module
+
+For correct work of the software, you must install *nfs-common*/*nfs-utils*, *fuse* packages.
+
+### WebDAV storage nxs-backup module
+
+For correct work of the software, you must install *davfs2*, *fuse* packages.
+
 ### S3 storage nxs-backup module
 
-For the correct work of the software, you must install and configure the [s3fs](https://github.com/s3fs-fuse/s3fs-fuse) package yourself.
+For correct work of the software, you must install [s3fs](https://github.com/s3fs-fuse/s3fs-fuse)  and *fuse* package.
 
 ## Install nxs-backup
 
