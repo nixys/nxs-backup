@@ -118,7 +118,7 @@ def do_backup(path_to_config, jobs_name):
             log_and_mail.writelog('INFO', "Starting databases block backup.", config.filelog_fd)
             execute_job(jobs_name, db_jobs_dict[jobs_name])
             log_and_mail.writelog('INFO', "Finishing databases block backup.\n", config.filelog_fd)
-        if jobs_name in list(file_jobs_dict.keys()):
+        elif jobs_name in list(file_jobs_dict.keys()):
             log_and_mail.writelog('INFO', "Starting files block backup.", config.filelog_fd)
             execute_job(jobs_name, file_jobs_dict[jobs_name])
             log_and_mail.writelog('INFO', "Finishing files block backup.\n", config.filelog_fd)
