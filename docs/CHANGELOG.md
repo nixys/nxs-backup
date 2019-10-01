@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.2] - 2019-11-01
+### Fixes
+- Fixed a problem with the desc-backup module, when an object deleted after listing files and archive collection process was completed. Now the desc-backup module checks for the presence of a file on disk before adding it to the archive.
+
 ## [2.1.1] - 2018-10-18
 ### Fixes
 - Fixed database jobs processing
