@@ -6,6 +6,8 @@ import tarfile
 import gzip
 import os
 import shutil
+import re
+import fnmatch
 
 import log_and_mail
 import config
@@ -88,31 +90,6 @@ def get_name_files_backup(regex, target):
     return name
 
 
-def filter_function(tarinfo):
-    ''' The function determines whether the object falls under the exception rules.
-    The input receives a TarInfo class object. Returns:
-       tarinfo - if the object does not fall into the exclusion rules;
-       None - otherwise.
-
-    '''
-
-    ofs_name = tarinfo.name
-
-    # Since tar removes all the initial '/' from the archive objects
-    #  for correct comparison it falls under the exceptions it is necessary to add '/'
-    if not ofs_name.startswith('/'):
-        ofs_name = '/%s' %ofs_name
-
-    if not ofs_name.endswith('/') and os.path.isdir(ofs_name):
-        ofs_name_alternative = '%s/' %ofs_name
-    else:
-        ofs_name_alternative = ofs_name
-
-    if (ofs_name in EXCLUDE_FILES) or (ofs_name_alternative in EXCLUDE_FILES):
-        return None
-    else:
-        return tarinfo
-
 
 def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
                remote_dir='', storage='', host='', share=''):
@@ -133,7 +110,22 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             out_tarfile = tarfile.open(backup_full_path, mode='w:')
 
         if job_type == 'files':
-            out_tarfile.add(target, filter=filter_function)
+            excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in EXCLUDE_FILES]) or r'$.'
+                
+            for dir_name, dirs, files in os.walk(target):
+                if re.match(excludes, dir_name):
+                    continue
+                    
+                if os.path.exists(dir_name):
+                    out_tarfile.add(dir_name, recursive=False)
+                    
+                for file in files:
+                    file_full_path = os.path.join(dir_name, file)
+                    if re.match(excludes, file_full_path):
+                        continue
+                        
+                    if os.path.exists(file_full_path):
+                        out_tarfile.add(file_full_path)
         elif job_type == 'databases':
             out_tarfile.add(target)
 
