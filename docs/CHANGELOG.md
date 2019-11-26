@@ -3,10 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.4] - 2019-11-26
+### Change
+- Change Python version to 3.6 for CentOS 7
+
 ## [2.1.3] - 2019-11-01
 ### Change
 - Change version for build
-
 
 ## [2.1.2] - 2019-11-01
 ### Fixes
