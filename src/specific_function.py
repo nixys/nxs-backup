@@ -59,21 +59,21 @@ def is_save_to_storage(job_name, storage_data):
         backup_dir = storage_data['backup_dir']
 
         if not storage in config.supported_storages:
-            log_and_mail.writelog('ERROR', "For '%s' job set incorrect type of storage." %(job_name) +\
-                                  "Only one of this type storage is allowed:%s" %(config.supported_storages), 
+            log_and_mail.writelog('ERROR', f"For '{job_name}' job set incorrect type of storage." +\
+                                  f"Only one of this type storage is allowed:{config.supported_storages}",
                                   config.filelog_fd, job_name)
             result = False
 
         elif not enable_storage:
             result = False
         elif not backup_dir:
-            log_and_mail.writelog('ERROR', "Field 'backup_dir' in job '%s' for storage '%s' can't be empty!" %(job_name, storage_data['storage']),
+            log_and_mail.writelog('ERROR', f"Field 'backup_dir' in job '{job_name}' for storage '{storage_data['storage']}' can't be empty!",
                                       config.filelog_fd, job_name)
             result = False
         else:
             result = True
     except KeyError as err:
-            log_and_mail.writelog('ERROR', "Missing required key '%s' in '%s' job storages block." %(err, job_name),
+            log_and_mail.writelog('ERROR', f"Missing required key '{err}' in '{job_name}' job storages block.",
                                   config.filelog_fd, job_name)
             result = False
 
@@ -96,7 +96,7 @@ def validation_storage_data(job_data):
             break
 
     if not flag:
-        log_and_mail.writelog('ERROR', 'There are no active storages in the job %s!' %job_name,
+        log_and_mail.writelog('ERROR', f'There are no active storages in the job {job_name}!',
                               config.filelog_fd, job_name)
         result = False
     else:
@@ -138,7 +138,7 @@ def is_time_to_backup(job_data):
                 if int(storages[i]['store']['month']) > 0:
                     month_flag = True
             else:
-                log_and_mail.writelog('ERROR', 'There are no stores data for storage %s in the job %s!' %(job_type, job_name),
+                log_and_mail.writelog('ERROR', f'There are no stores data for storage {job_type} in the job {job_name}!',
                                       config.filelog_fd, job_name)
                 continue
     if not day_flag:
@@ -175,12 +175,12 @@ def get_parsed_string(path_to_config):
                 raise general_function.MyError(str(e))
             except (RuntimeError) as e:
                 if "maximum recursion depth exceeded while calling" in str(e):
-                    error_msg = " error in include value - '%s'" %(e)
+                    error_msg = f" error in include value - '{e}'"
                 else:
                     error_msg = str (e)
                 raise general_function.MyError(error_msg)
     except (FileNotFoundError, PermissionError) as e:
-        general_function.print_info("No such file '%s' or permission denied!" %(path_to_config))
+        general_function.print_info(f"No such file '{path_to_config}' or permission denied!")
         sys.exit(1)
     else:
         return yaml_str

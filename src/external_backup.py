@@ -23,7 +23,7 @@ def external_backup(job_data):
         dump_cmd = job_data['dump_cmd']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e),
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                               config.filelog_fd, job_name)
         return 1
 
@@ -35,7 +35,7 @@ def external_backup(job_data):
     code = command['code']
 
     if code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s': %s'" %(dump_cmd, code),
+        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}': '{code}'",
                               config.filelog_fd, job_name)
         return 1
 
@@ -71,14 +71,14 @@ def get_value_from_stdout(stderr, stdout, job_name):
     '''
 
     if stderr:
-        log_and_mail.writelog('ERROR', "Can't create external backup in tmp directory:%s" %(stderr),
+        log_and_mail.writelog('ERROR', f"Can't create external backup in tmp directory:{stderr}",
                               config.filelog_fd, job_name)
         return None
     else:
         try:
             source_dict = json.loads(stdout)
         except (ValueError) as err:
-            log_and_mail.writelog('ERROR', "Can't parse output str: %s" %(err),
+            log_and_mail.writelog('ERROR', f"Can't parse output str: {err}",
                               config.filelog_fd, job_name)
             return None
         else:
@@ -88,12 +88,12 @@ def get_value_from_stdout(stderr, stdout, job_name):
                 source_dict['extension']
                 source_dict['gzip']
             except (KeyError) as err:
-                log_and_mail.writelog('ERROR', "Can't find required key: %s" %(err),
+                log_and_mail.writelog('ERROR', f"Can't find required key: {err}",
                                       config.filelog_fd, job_name)
                 return None
             else:
                 if not os.path.isfile(full_path):
-                    log_and_mail.writelog('ERROR', "File '%s' not found!" %(full_path),
+                    log_and_mail.writelog('ERROR', f"File '{full_path}' not found!",
                               config.filelog_fd, job_name)
                     return None
                 else:

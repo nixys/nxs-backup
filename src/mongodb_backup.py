@@ -39,7 +39,7 @@ def mongodb_backup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
@@ -54,7 +54,7 @@ def mongodb_backup(job_data):
             gzip =  sources[i]['gzip']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
-            log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+            log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
 
         db_host = connect.get('db_host')
@@ -80,11 +80,11 @@ def mongodb_backup(job_data):
 
 
         if db_user:
-            uri = "mongodb://%s:%s@%s:%s/" % (db_user, db_password, db_host, db_port)  # for pymongo
-            str_auth = " --host %s --port %s --username %s --password %s " %(db_host, db_port, db_user, db_password)  # for mongodump
+            uri = f"mongodb://{db_user}:{db_password}@{db_host}:{db_port}/"  # for pymongo
+            str_auth = f" --host {db_host} --port {db_port} --username {db_user} --password {db_password} " # for mongodump
         else:
-            uri = "mongodb://%s:%s/" % (db_host, db_port)
-            str_auth = " --host %s --port %s " %(db_host, db_port)
+            uri = f"mongodb://{db_host}:{db_port}/"
+            str_auth = f" --host {db_host} --port {db_port} "
 
 
         if is_all_flag_db:
@@ -92,7 +92,7 @@ def mongodb_backup(job_data):
                 client = pymongo.MongoClient(uri)
                 target_db_list = client.database_names()
             except pymongo.errors.PyMongoError as err:
-                log_and_mail.writelog('ERROR', "Can't connect to MongoDB instances with the following data host='%s', port='%s', user='%s', passwd='%s':%s" %(db_host, db_port, db_user, db_password, err),
+                log_and_mail.writelog('ERROR', f"Can't connect to MongoDB instances with the following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                     config.filelog_fd, job_name)
                 continue
             finally:
@@ -105,7 +105,7 @@ def mongodb_backup(job_data):
                     current_db = client[db]
                     collection_list = current_db.collection_names()
                 except pymongo.errors.PyMongoError as err:
-                    log_and_mail.writelog('ERROR', "Can't connect to MongoDB instances with the following data host='%s', port='%s', user='%s', passwd='%s':%s" %(db_host, db_port, db_user, db_password, err),
+                    log_and_mail.writelog('ERROR', f"Can't connect to MongoDB instances with the following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                           config.filelog_fd, job_name)
                     continue
                 finally:
@@ -116,11 +116,11 @@ def mongodb_backup(job_data):
 
                 for collection in target_collection_list:
                     if not collection in exclude_collections_list and collection in collection_list:
-                        str_auth_finally = "%s --collection %s " %(str_auth, collection)
+                        str_auth_finally = f"{str_auth} --collection {collection} "
 
                         backup_full_tmp_path = general_function.get_full_path(
                                                                             full_path_tmp_dir,
-                                                                            collection, 
+                                                                            collection,
                                                                             'mongodump',
                                                                             gzip)
 
@@ -141,9 +141,9 @@ def mongodb_backup(job_data):
 def is_success_mongodump(collection, db, extra_keys, str_auth, backup_full_path, gzip, job_name):
 
     if gzip:
-        dump_cmd = "mongodump --db %s %s %s  --out -| gzip > %s" %(db, extra_keys, str_auth, backup_full_path)
+        dump_cmd = f"mongodump --db {db} {extra_keys} {str_auth}  --out -| gzip > {backup_full_path}"
     else:
-        dump_cmd = "mongodump --db %s %s %s --out - > %s" %(db, extra_keys, str_auth, backup_full_path)
+        dump_cmd = f"mongodump --db {db} {extra_keys} {str_auth} --out - > {backup_full_path}"
 
     command = general_function.exec_cmd(dump_cmd)
 
@@ -151,14 +151,14 @@ def is_success_mongodump(collection, db, extra_keys, str_auth, backup_full_path,
     code = command['code']
 
     if stderr and is_real_mongo_err(stderr):
-        log_and_mail.writelog('ERROR', "Can't create collection '%s' in %s' database dump in tmp directory:%s" %(collection, db, stderr),
+        log_and_mail.writelog('ERROR', f"Can't create collection '{collection}' in '{db}' database dump in tmp directory:{stderr}",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s':'%s'" %(dump_cmd, code),
+        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
                               config.filelog_fd, job_name)
         return False
     else:
-        log_and_mail.writelog('INFO', "Successfully created collection '%s' in '%s' database dump in tmp directory." %(collection, db),
+        log_and_mail.writelog('INFO', f"Successfully created collection '{collection}' in '{db}' database dump in tmp directory.",
                               config.filelog_fd, job_name)
         return True

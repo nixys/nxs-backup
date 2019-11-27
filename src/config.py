@@ -133,7 +133,7 @@ def get_conf_value(parsed_str):
             a = parsed_str['jobs'][i]['job']
             b = parsed_str['jobs'][j]['job']
             if (i != j and a == b):
-                general_function.print_info("Duplicate job name '%s'. You must use a unique name for the job's name." %(a))
+                general_function.print_info(f"Duplicate job name '{a}'. You must use a unique name for the job's name.")
                 sys.exit(1)
 
     db_job_dict = {}
@@ -151,7 +151,7 @@ def get_conf_value(parsed_str):
         elif backup_type in supported_external_backup_type:
             external_job_dict[job_name] = job_data
         else:
-            general_function.print_info("Backup type '%s' in job '%s' does not supported, so this job was ignored! Only one of this type backup is allowed:%s!" %(backup_type, job_name, supported_backup_type))
+            general_function.print_info(f"Backup type '{backup_type}' in job '{job_name}' does not supported, so this job was ignored! Only one of this type backup is allowed:{supported_backup_type}!")
 
     all_jobs_name = (list(db_job_dict.keys()) + list(file_job_dict.keys()) + 
                         list(external_job_dict.keys()) + supported_general_job)

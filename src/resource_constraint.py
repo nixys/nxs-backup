@@ -30,10 +30,10 @@ def set_cgroup(group, *args):
 
     PID = os.getpid()
 
-    data_1 = general_function.exec_cmd("cat /proc/cgroups | grep %s" %(group))
+    data_1 = general_function.exec_cmd(f"cat /proc/cgroups | grep {group}")
     stdout_1 = data_1['stdout']
     if not stdout_1:
-        log_and_mail.writelog('WARNING', "Your kernel doesn't support cgroup '%s'." %(group),
+        log_and_mail.writelog('WARNING', f"Your kernel doesn't support cgroup '{group}'.",
                  config.filelog_fd)
         return False
 
@@ -42,21 +42,21 @@ def set_cgroup(group, *args):
 
     if not stdout_2:
         general_function.exec_cmd('mount -t tmpfs -o rw,nosuid,nodev,noexec,relatime,size=0k cgroup_root /sys/fs/cgroup/')
-    _dir = '/sys/fs/cgroup/%s' %(group)
+    _dir = f'/sys/fs/cgroup/{group}'
 
-    data_3 = general_function.exec_cmd('mount | grep "%s"' %(_dir))
+    data_3 = general_function.exec_cmd(f'mount | grep "{_dir}"')
     stdout_3 = data_3['stdout']
 
     if not (os.path.isdir(_dir) or not stdout_3):
         general_function.create_dirs(job_name='', dirs_pairs={_dir:''})
-        general_function.exec_cmd('mount -t cgroup -o rw,nosuid,nodev,noexec,relatime,%s cgroup_%s %s/' %(group, group, _dir))
+        general_function.exec_cmd(f'mount -t cgroup -o rw,nosuid,nodev,noexec,relatime,{group} cgroup_{group} {_dir}/')
 
-    general_function.create_dirs(job_name='', dirs_pairs={'%s/nixys_backup' %(_dir):''})
+    general_function.create_dirs(job_name='', dirs_pairs={f'{_dir}/nixys_backup':''})
 
     l = list(args)
     for index in l:
         if not os.path.isfile(os.path.join(_dir, index)):
-            log_and_mail.writelog('WARNING',"Your kernel does not support option '%s' in subsystem '%s'." %(index, group),
+            log_and_mail.writelog('WARNING', f"Your kernel does not support option '{index}' in subsystem '{group}'.",
                      config.filelog_fd)
             return False
         _parametr = -100
@@ -67,11 +67,11 @@ def set_cgroup(group, *args):
 
             general_function.create_dirs(job_name='', dirs_pairs={DIRECTORY_FOR_TMP_FILE:''})
 
-            data_4 = general_function.exec_cmd("df %s | tail -1 | awk '{{print $1}}'" %(DIRECTORY_FOR_TMP_FILE))
+            data_4 = general_function.exec_cmd(f"df {DIRECTORY_FOR_TMP_FILE} | tail -1 | awk '{{print $1}}'")
             stdout_4 = data_4['stdout']
 
             if re.match("/dev/disk/(by-id|by-path|by-uuid)", stdout_4):
-                data_5 = general_function.exec_cmd("ls -l %s | awk '{{print $11}}'" %(stdout_4))
+                data_5 = general_function.exec_cmd(f"ls -l {stdout_4} | awk '{{print $11}}'")
                 stdout_5 = data_5['stdout']
                 device = os.path.basename(stdout_5)
             else:
@@ -83,11 +83,11 @@ def set_cgroup(group, *args):
                 while re.match("^[0-9]$", str(device[len(device)-1])):
                     device = device[0:-1]
 
-            data_6 = general_function.exec_cmd("ls -l %s | awk '{{print $5}}'" %(device))
+            data_6 = general_function.exec_cmd(f"ls -l {device} | awk '{{print $5}}'")
             stdout_6 = data_6['stdout']
             major_device = stdout_6[0:-1]
 
-            data_7 = general_function.exec_cmd("ls -l %s | awk '{{print $6}}'" %(device))
+            data_7 = general_function.exec_cmd(f"ls -l {device} | awk '{{print $6}}'")
             stdout_7 = data_7['stdout']
             minor_device = stdout_7
 
@@ -119,14 +119,14 @@ def set_cgroup(group, *args):
                               config.filelog_fd)
                     return False
 
-            general_function.exec_cmd('echo %s:%s %s > %s/nixys_backup/%s' %(major_device, minor_device, _parametr, _dir, index))
+            general_function.exec_cmd(f'echo {major_device}:{minor_device} {_parametr} > {_dir}/nixys_backup/{index}')
 
-            data_8 = general_function.exec_cmd("cat %s/nixys_backup/%s" %(_dir, index))
+            data_8 = general_function.exec_cmd(f"cat {_dir}/nixys_backup/{index}")
             stdout_8 = data_8['stdout']
             _flag = stdout_8
 
             if len(_flag) < 3:
-                log_and_mail.writelog('WARNING',"Incorrect data in file '%s/nixys_backup/%s'!" %(_dir, index),
+                log_and_mail.writelog('WARNING', f"Incorrect data in file '{_dir}/nixys_backup/{index}'!",
                          config.filelog_fd)
                 return False
 
@@ -139,16 +139,16 @@ def set_cgroup(group, *args):
 
                 _parametr = int(config.cpu_shares)
 
-                general_function.exec_cmd("echo %s > %s/nixys_backup/%s" %(_parametr, _dir, index))
+                general_function.exec_cmd(f"echo {_parametr} > {_dir}/nixys_backup/{index}")
 
-                data_9 = general_function.exec_cmd("cat %s/nixys_backup/%s" %(_dir, index))
+                data_9 = general_function.exec_cmd(f"cat {_dir}/nixys_backup/{index}")
                 stdout_9 = data_9['stdout']
                 _flag = stdout_9 
 
                 if not _flag:
-                    log_and_mail.writelog('WARNING',"Incorrect data in file '%s/nixys_backup/%s'!" %(_dir, index),
+                    log_and_mail.writelog('WARNING', f"Incorrect data in file '{_dir}/nixys_backup/{index}'!",
                              config.filelog_fd)
                     return False
 
-    general_function.exec_cmd("echo %s > %s/nixys_backup/tasks" %(PID, _dir))
+    general_function.exec_cmd(f"echo {PID} > {_dir}/nixys_backup/tasks")
     return True

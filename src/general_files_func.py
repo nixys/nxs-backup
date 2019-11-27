@@ -110,20 +110,20 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             out_tarfile = tarfile.open(backup_full_path, mode='w:')
 
         if job_type == 'files':
-            excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in EXCLUDE_FILES]) or r'$.'
-                
+            excludes = r'|'.join([fnmatch.translate(x) for x in EXCLUDE_FILES]) or r'$.'
+
             for dir_name, dirs, files in os.walk(target):
                 if re.match(excludes, dir_name):
                     continue
-                    
+
                 if os.path.exists(dir_name):
                     out_tarfile.add(dir_name, recursive=False)
-                    
+
                 for file in files:
                     file_full_path = os.path.join(dir_name, file)
                     if re.match(excludes, file_full_path):
                         continue
-                        
+
                     if os.path.exists(file_full_path):
                         out_tarfile.add(file_full_path)
         elif job_type == 'databases':
@@ -137,17 +137,13 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             file_for_log = os.path.join(dirs_for_log, os.path.basename(backup_full_path))
 
             if storage == 'local':
-                str_message = "Can't create full-backup '%s' on '%s' storage: %s" %(file_for_log,
-                                                                                    storage, err)
+                str_message = f"Can't create full-backup '{file_for_log}' on '{storage}' storage: {err}"
             elif storage == 'smb':
-                str_message = "Can't create full-backup '%s' in '%s' share on '%s' storage(%s): %s" %(file_for_log,
-                                                                                                      share, storage,
-                                                                                                      host, err)
+                str_message = f"Can't create full-backup '{file_for_log}' in '{share}' share on '{storage}' storage({host}): {err}"
             else:
-                str_message = "Can't create full-backup '%s' on '%s' storage(%s): %s" %(file_for_log, storage,
-                                                                                        host, err)
+                str_message = f"Can't create full-backup '{file_for_log}' on '{storage}' storage({host}): {err}"
         else:
-            str_message = "Can't create archive '%s' in tmp directory:%s" %(backup_full_path, err)
+            str_message = f"Can't create archive '{backup_full_path}' in tmp directory:{err}"
 
         log_and_mail.writelog('ERROR', str_message, config.filelog_fd, job_name)
         return False
@@ -158,16 +154,13 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             file_for_log = os.path.join(dirs_for_log, os.path.basename(backup_full_path))
 
             if storage == 'local':
-                str_message = "Successfully created full-backup '%s' on '%s' storage." %(file_for_log,
-                                                                                         storage)
+                str_message = f"Successfully created full-backup '{file_for_log}' on '{storage}' storage."
             elif storage == 'smb':
-                str_message = "Successfully created full-backup '%s' in '%s' share on '%s' storage(%s)." %(file_for_log,
-                                                                                                           share, storage,
-                                                                                                           host)
+                str_message = f"Successfully created full-backup '{file_for_log}' in '{share}' share on '{storage}' storage({host})."
             else:
-                str_message = "Successfully created full-backup '%s' on '%s' storage(%s)." %(file_for_log, storage, host)
+                str_message = f"Successfully created full-backup '{file_for_log}' on '{storage}' storage({host})."
         else:
-            str_message = "Successfully created '%s' file in tmp directory." %(backup_full_path)
+            str_message = f"Successfully created '{backup_full_path}' file in tmp directory."
 
         log_and_mail.writelog('INFO', str_message, config.filelog_fd, job_name)
         return True
@@ -198,7 +191,7 @@ def is_excluded_ofs(ofs):
 
     if os.path.isdir(ofs):
         if not ofs.endswith('/'):
-            alternative_name = '%s/' %(ofs)
+            alternative_name = f'{ofs}/'
         else:
             alternative_name = ofs[:-1]
 

@@ -27,27 +27,27 @@ def get_connection(db_host, db_port, db_user, db_password, auth_file, socket, jo
         try:
             connection = MySQLdb.connect(read_default_file=auth_file)
         except MySQLdb.Error as err:
-            log_and_mail.writelog('ERROR', "Can't connect to MySQL instances with '%s' auth file:%s" %(auth_file, err),
+            log_and_mail.writelog('ERROR', f"Can't connect to MySQL instances with '{auth_file}' auth file:{err}",
                                       config.filelog_fd, job_name)
             return 1
-        str_auth = ' --defaults-extra-file=%s ' %( auth_file)
+        str_auth = f' --defaults-extra-file={auth_file} '
     else:
         if db_host:
             try:
                 connection = MySQLdb.connect(host=db_host, port=int(db_port), user=db_user, passwd=db_password)
             except MySQLdb.Error as err:
-                log_and_mail.writelog('ERROR', "Can't connect to MySQL instances with following data host='%s', port='%s', user='%s', passwd='%s':%s" %(db_host, db_port, db_user, db_password, err),
+                log_and_mail.writelog('ERROR', f"Can't connect to MySQL instances with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
                 return 1
-            str_auth = ' --host=%s --port=%s --user=%s --password=%s ' %(db_host, db_port, db_user, db_password)
+            str_auth = f' --host={db_host} --port={db_port} --user={db_user} --password={db_password} '
         else:
             try:
                 connection = MySQLdb.connect(unix_socket=socket, user=db_user, passwd=db_password)
             except MySQLdb.Error as err:
-                log_and_mail.writelog('ERROR', "Can't connect to MySQL instances with following data: socket='%s', user='%s', passwd='%s':%s" %(socket, db_user, db_password, err),
+                log_and_mail.writelog('ERROR', f"Can't connect to MySQL instances with following data: socket='{socket}', user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
                 return 1
-            str_auth = ' --socket=%s --user=%s --password=%s ' %(socket, db_user, db_password)
+            str_auth = f' --socket={socket} --user={db_user} --password={db_password} '
 
     return (connection, str_auth)
 
@@ -60,7 +60,7 @@ def mysql_backup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
@@ -74,7 +74,7 @@ def mysql_backup(job_data):
             is_slave = sources[i]['is_slave']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
-            log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+            log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
 
         db_host = connect.get('db_host')
@@ -112,7 +112,7 @@ def mysql_backup(job_data):
             try:
                 cur_1.execute("STOP SLAVE")
             except MySQLdb.Error as err:
-                log_and_mail.writelog('ERROR', "Can't stop slave: %s "%(err),
+                log_and_mail.writelog('ERROR', f"Can't stop slave: {err}",
                                       config.filelog_fd, job_name)
 
         connection_1.close()
@@ -138,7 +138,7 @@ def mysql_backup(job_data):
                 cur_2 = connection_2.cursor()
                 cur_2.execute("START SLAVE")
             except MySQLdb.Error as err:
-                log_and_mail.writelog('ERROR', "Can't start slave: %s "%(err),
+                log_and_mail.writelog('ERROR', f"Can't start slave: {err} ",
                                       config.filelog_fd, job_name)
             finally:
                 connection_2.close()
@@ -152,9 +152,9 @@ def mysql_backup(job_data):
 def is_success_mysqldump(db, extra_keys, str_auth, backup_full_path, gzip, job_name):
 
     if gzip:
-        dump_cmd = "mysqldump %s %s %s | gzip > %s" %(str_auth, extra_keys, db, backup_full_path)
+        dump_cmd = f"mysqldump {str_auth} {extra_keys} {db} | gzip > {backup_full_path}"
     else:
-        dump_cmd = "mysqldump %s %s %s > %s" %(str_auth, extra_keys, db, backup_full_path)
+        dump_cmd = f"mysqldump {str_auth} {extra_keys} {db} > {backup_full_path}"
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']
@@ -163,14 +163,14 @@ def is_success_mysqldump(db, extra_keys, str_auth, backup_full_path, gzip, job_n
 
 
     if stderr and is_real_mysql_err(stderr):
-        log_and_mail.writelog('ERROR', "Can't create '%s' database dump in tmp directory:%s" %(db, stderr),
+        log_and_mail.writelog('ERROR', f"Can't create '{db}' database dump in tmp directory:{stderr}",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s':'%s'" %(dump_cmd, code),
+        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
                               config.filelog_fd, job_name)
         return False
     else:
-        log_and_mail.writelog('INFO', "Successfully created '%s' database dump in tmp directory." %(db),
+        log_and_mail.writelog('INFO', f"Successfully created '{db}' database dump in tmp directory.",
                               config.filelog_fd, job_name)
         return True

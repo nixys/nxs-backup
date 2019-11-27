@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.6] - 2019-11-27
+### Change
+- Support for Centos 6 has been stopped
+
 ## [2.1.5] - 2019-11-26
 ### Change
 - Support for Centos 6 has been stopped

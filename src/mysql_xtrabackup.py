@@ -20,7 +20,7 @@ def mysql_xtrabackup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
@@ -31,7 +31,7 @@ def mysql_xtrabackup(job_data):
             gzip =  sources[i]['gzip']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
-            log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+            log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
 
         db_user = connect.get('db_user')
@@ -39,16 +39,16 @@ def mysql_xtrabackup(job_data):
         path_to_conf = connect.get('path_to_conf')
 
         if  not (path_to_conf and db_user and db_password):
-            log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill the required fields", 
+            log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill the required fields",
                                   config.filelog_fd, job_name) 
             continue
 
         if not os.path.isfile(path_to_conf):
-            log_and_mail.writelog('ERROR', "Configuration file '%s' not found!", 
+            log_and_mail.writelog('ERROR', f"Configuration file '{path_to_conf}' not found!",
                                   config.filelog_fd, job_name) 
             continue
 
-        str_auth = '--defaults-file=%s --user=%s --password=%s' %(path_to_conf, db_user, db_password)
+        str_auth = f'--defaults-file={path_to_conf} --user={db_user} --password={db_password}'
 
         backup_full_tmp_path = general_function.get_full_path(
                                                             full_path_tmp_dir,
@@ -72,7 +72,7 @@ def mysql_xtrabackup(job_data):
 def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, job_name):
 
     date_now = general_function.get_time_now('backup')
-    tmp_status_file = '/tmp/xtrabackup_status/%s.log' %(date_now)
+    tmp_status_file = f'/tmp/xtrabackup_status/{date_now}.log'
 
     dom = int(general_function.get_time_now('dom'))
     if dom == 1:
@@ -84,24 +84,19 @@ def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, jo
     general_function.create_files(job_name, tmp_status_file)
 
     if gzip:
-        dump_cmd = "innobackupex %s %s 2>%s | gzip > %s" %(str_auth, extra_keys, tmp_status_file, backup_full_path)
+        dump_cmd = f"innobackupex {str_auth} {extra_keys} 2>{tmp_status_file} | gzip > {backup_full_path}"
     else:
-        dump_cmd = "innobackupex %s %s > %s 2>%s " %(str_auth, extra_keys,  backup_full_path, tmp_status_file)
+        dump_cmd = f"innobackupex {str_auth} {extra_keys} > {backup_full_path} 2>{tmp_status_file} "
 
     command = general_function.exec_cmd(dump_cmd)
     code = command['code']
 
-    if code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s':'%s'" %(dump_cmd, code),
-                              config.filelog_fd, job_name)
-        return False
-
     if not is_success_status_xtrabackup(tmp_status_file, job_name):
-        log_and_mail.writelog('ERROR', "Can't create xtrabackup in tmp directory! More information in status file %s." %( tmp_status_file),
+        log_and_mail.writelog('ERROR', f"Can't create xtrabackup in tmp directory! More information in status file {tmp_status_file}.",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s':'%s'" %(dump_cmd, code),
+        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
                               config.filelog_fd, job_name)
         return False
     else:
@@ -116,7 +111,7 @@ def is_success_status_xtrabackup(status_file, job_name):
         with open(status_file) as f:
             status = list(deque(f, 1))[0]
     except Exception as e:
-        log_and_mail.writelog('ERROR', "Can't read status file '%s':%s" %(status_file, str(e)),
+        log_and_mail.writelog('ERROR', f"Can't read status file '{status_file}':{e}",
                               config.filelog_fd, job_name)
         return False
 

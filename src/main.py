@@ -25,7 +25,7 @@ import generate_config
 try:
     import version
 except ImportError as err:
-    general_function.print_info("Can't get version from file version.py: %s" %(err))
+    general_function.print_info(f"Can't get version from file version.py: {err}")
     VERSION = 'unknown'
 else:
     VERSION = ''
@@ -36,8 +36,7 @@ def do_backup(path_to_config, jobs_name):
     try:
         parsed_string = specific_function.get_parsed_string(path_to_config)
     except general_function.MyError as e:
-        general_function.print_info("An error in the parse of the configuration file %s:%s!"
-                                    %(path_to_config, e))
+        general_function.print_info(f"An error in the parse of the configuration file {path_to_config}:{e}!")
         sys.exit(1)
 
     (db_jobs_dict, file_jobs_dict, external_jobs_dict) = config.get_conf_value(parsed_string)
@@ -47,7 +46,7 @@ def do_backup(path_to_config, jobs_name):
     general_function.create_files('', config.log_file)
 
     if not jobs_name in config.all_jobs_name:
-        general_function.print_info("Only one of this job's name is allowed: %s" %(config.general_str))
+        general_function.print_info(f"Only one of this job's name is allowed: {config.general_str}")
         sys.exit(1)
 
     try:
@@ -56,12 +55,12 @@ def do_backup(path_to_config, jobs_name):
         try:
             config.filelog_fd = open(config.log_file, 'w')
         except (OSError, PermissionError, FileNotFoundError) as e:
-            messange_info = "Couldn't open file %s:%s!" %(config.log_file, e)
+            messange_info = f"Couldn't open file {config.log_file}:{e}!"
             general_function.print_info(messange_info)
             log_and_mail.send_report(messange_info)
             sys.exit(1)
     except (PermissionError, FileNotFoundError) as e:
-        messange_info = "Couldn't open file %s:%s!" %(config.log_file, e)
+        messange_info = f"Couldn't open file {config.log_file}:{e}!"
         general_function.print_info(messange_info)
         log_and_mail.send_report(messange_info)
         sys.exit(1)
@@ -70,8 +69,8 @@ def do_backup(path_to_config, jobs_name):
         general_function.get_lock()
     except BlockingIOError:
         msg = "Script already is running!"
-        log_and_mail.writelog('ERROR', "%s" %(msg), config.filelog_fd, '')
-        general_function.print_info("%s" %(msg))
+        log_and_mail.writelog('ERROR', f"{msg}", config.filelog_fd, '')
+        general_function.print_info(f"{msg}")
         sys.exit(1)
 
     log_and_mail.writelog('INFO', "Starting script.\n", config.filelog_fd)
@@ -136,7 +135,7 @@ def execute_job(jobs_name, jobs_data):
 
     '''
 
-    log_and_mail.writelog('INFO', "Starting backup for job '%s'." %jobs_name, config.filelog_fd, jobs_name)
+    log_and_mail.writelog('INFO', f"Starting backup for job '{jobs_name}'.", config.filelog_fd, jobs_name)
 
     if not specific_function.validation_storage_data(jobs_data):
         return 1
@@ -170,7 +169,7 @@ def execute_job(jobs_name, jobs_data):
     else:
         external_backup.external_backup(jobs_data)
 
-    log_and_mail.writelog('INFO', "Finishing backup for job '%s'." %jobs_name, config.filelog_fd, jobs_name)
+    log_and_mail.writelog('INFO', f"Finishing backup for job '{jobs_name}'.", config.filelog_fd, jobs_name)
 
     return 0
 
@@ -179,10 +178,9 @@ def test_config(path_to_config):
     try:
         specific_function.get_parsed_string(path_to_config)
     except general_function.MyError as e:
-        general_function.print_info("The configuration file '%s' syntax is bad: %s! "
-                                    %(path_to_config, e))
+        general_function.print_info(f"The configuration file '{path_to_config}' syntax is bad: {e}!")
     else:
-        general_function.print_info("The configuration file '%s' syntax is ok!" %(path_to_config))
+        general_function.print_info(f"The configuration file '{path_to_config}' syntax is ok!")
     finally:
         sys.exit()
 
@@ -193,7 +191,7 @@ def get_parser():
         try:
             VERSION = version.VERSION
         except AttributeError as err:
-            general_function.print_info('Can\'t get version from file version.py: %s' %(err))
+            general_function.print_info(f'Can\'t get version from file version.py: {err}')
             VERSION = 'unknown'
 
     # Parent parsers
@@ -246,7 +244,7 @@ def main():
             do_backup(args.path_to_config, args.jobs_name)
         except Exception:
             full_traceback = traceback.format_exc()
-            log_and_mail.writelog('ERROR', "An unexpected error occurred: %s" %(full_traceback), config.filelog_fd)
+            log_and_mail.writelog('ERROR', f"An unexpected error occurred: {full_traceback}", config.filelog_fd)
         finally:
             if config.filelog_fd:
                 log_and_mail.send_report()

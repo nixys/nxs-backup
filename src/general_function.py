@@ -130,7 +130,7 @@ def create_dirs (**kwargs):
                 if dirs_pairs[i]:  # Means create on the remote storage and the way it is necessary to specify this
                     i = dirs_pairs[i]
 
-                    log_and_mail.writelog('ERROR', "Can't create directory %s:%s!" %(i, err),
+                    log_and_mail.writelog('ERROR', f"Can't create directory {i}:{err}!",
                                           config.filelog_fd, job_name)
 
 
@@ -147,7 +147,7 @@ def create_files(backup_type, *files):
                 with open(i, 'tw', encoding='utf-8'):
                     pass
             except (PermissionError) as err:
-                log_and_mail.writelog('ERROR', "Can't create file %s:%s!" %(i, err),
+                log_and_mail.writelog('ERROR', f"Can't create file {i}:{err}!",
                                       config.filelog_fd)
 
 
@@ -209,9 +209,9 @@ def get_full_path(path_dir, base_name, base_extension, gzip):
     date_now = get_time_now('backup')
 
     if gzip:
-        backup_base_name = '%s_%s.%s.gz' %(base_name, date_now, base_extension)
+        backup_base_name = f'{base_name}_{date_now}.{base_extension}.gz'
     else:
-        backup_base_name = '%s_%s.%s' %(base_name, date_now, base_extension)
+        backup_base_name = f'{base_name}_{date_now}.{base_extension}'
 
     full_path = os.path.join(path_dir, backup_base_name)
 
@@ -228,7 +228,7 @@ def get_tmp_dir(tmp_dir, backup_type):
 
     date_now = get_time_now('backup')
 
-    tmp_dir_name = '%s_%s' %(backup_type, date_now)
+    tmp_dir_name = f'{backup_type}_{date_now}'
     full_path_tmp_dir = os.path.join(tmp_dir, tmp_dir_name)
     create_dirs(job_name=backup_type, dirs_pairs={full_path_tmp_dir:''})
 

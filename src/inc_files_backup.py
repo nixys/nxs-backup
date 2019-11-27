@@ -25,7 +25,7 @@ def inc_files_backup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e),
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                               config.filelog_fd, job_name)
         return 1
 
@@ -63,7 +63,7 @@ def inc_files_backup(job_data):
                                 current_storage_data = mount_fuse.get_storage_data(job_name,
                                                                                    storages[j])
                             except general_function.MyError as err:
-                                log_and_mail.writelog('ERROR', '%s' %(err),
+                                log_and_mail.writelog('ERROR', f'{err}',
                                                       config.filelog_fd, job_name)
                                 continue
                             else:
@@ -73,7 +73,7 @@ def inc_files_backup(job_data):
                                 try:
                                     mount_fuse.mount(current_storage_data)
                                 except general_function.MyError as err:
-                                    log_and_mail.writelog('ERROR', "Can't mount remote '%s' storage :%s" %(storage, err),
+                                    log_and_mail.writelog('ERROR', f"Can't mount remote '{storage}' storage :{err}",
                                                           config.filelog_fd, job_name)
                                     continue
                                 else:
@@ -101,7 +101,7 @@ def inc_files_backup(job_data):
                                     try:
                                         mount_fuse.unmount()
                                     except general_function.MyError as err:
-                                        log_and_mail.writelog('ERROR', "Can't umount remote '%s' storage :%s" %(storage, err),
+                                        log_and_mail.writelog('ERROR', f"Can't umount remote '{storage}' storage :{err}",
                                                               config.filelog_fd, job_name)
                                         continue
                         else:
@@ -130,12 +130,12 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
 
     year_dir = os.path.join(local_dst_dirname, part_of_dir_path, date_year)
     initial_dir = os.path.join(year_dir, 'year')  # Path to full backup
-    month_dir = os.path.join(year_dir, 'month_%s' %(date_month), 'monthly')
-    daily_dir = os.path.join(year_dir, 'month_%s' %(date_month), 'daily', daily_prefix)
+    month_dir = os.path.join(year_dir, f'month_{date_month}', 'monthly')
+    daily_dir = os.path.join(year_dir, f'month_{date_month}', 'daily', daily_prefix)
 
     year_inc_file  =  os.path.join(initial_dir, 'year.inc')
     month_inc_file =  os.path.join(month_dir, 'month.inc')
-    daily_inc_file =  os.path.join(daily_dir, 'daily.inc') 
+    daily_inc_file =  os.path.join(daily_dir, 'daily.inc')
 
     link_dict = {}  # dict for symlink with pairs like dst: src
     copy_dict = {}  # dict for copy with pairs like dst: src
@@ -146,7 +146,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
     old_year = int(date_year) - 1
     old_year_dir = os.path.join(local_dst_dirname, part_of_dir_path, str(old_year))
     if os.path.isdir(old_year_dir):
-        old_month_dir = os.path.join(old_year_dir, 'month_%s' %(date_month))  
+        old_month_dir = os.path.join(old_year_dir, f'month_{date_month}')
         del_old_inc_file(old_year_dir, old_month_dir)
 
     if not os.path.isfile(year_inc_file):
@@ -158,8 +158,8 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             general_function.del_file_objects(job_name, year_dir)
             dirs_for_log = general_function.get_dirs_for_log(year_dir, remote_dir, storage)
             file_for_log = os.path.join(dirs_for_log, os.path.basename(year_inc_file))
-            log_and_mail.writelog('ERROR', "The file %s not found, so the directory %s is cleared." +\
-                                  "Incremental backup will be reinitialized " %(file_for_log, dirs_for_log), 
+            log_and_mail.writelog('ERROR', f"The file {file_for_log} not found, so the directory {dirs_for_log} is cleared." +\
+                                  "Incremental backup will be reinitialized ",
                                   config.filelog_fd, job_name)
 
         # Initialize the incremental backup, i.e. collect a full copy
@@ -222,7 +222,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             try:
                 old_meta_info = specific_function.parser_json(month_inc_file)
             except general_function.MyError as e:
-                log_and_mail.writelog('ERROR', "Couldn't open old month meta info file '%s': %s!" %(month_inc_file, e),
+                log_and_mail.writelog('ERROR', f"Couldn't open old month meta info file '{month_inc_file}': {e}!",
                                      config.filelog_fd, job_name)
                 return 2
 
@@ -239,7 +239,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             try:
                 old_meta_info = specific_function.parser_json(daily_inc_file)
             except general_function.MyError as e:
-                log_and_mail.writelog('ERROR', "Couldn't open old decade meta info file '%s': %s!" %(daily_inc_file, e),
+                log_and_mail.writelog('ERROR', f"Couldn't open old decade meta info file '{daily_inc_file}': {e}!",
                                      config.filelog_fd, job_name)
                 return 2
 
@@ -264,7 +264,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
         # Form GNU.dumpdir headers
         dict_directory = {}  # Dict to store pairs like dir:GNU.dumpdir
 
-        excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
+        excludes = r'|'.join([fnmatch.translate(x) for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
         for dir_name, dirs, files in os.walk(target):
             first_level_files = []
@@ -297,7 +297,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             try:
                 general_function.create_symlink(src, dst)
             except general_function.MyError as err:
-                log_and_mail.writelog('ERROR', "Can't create symlink %s -> %s: %s" %(src, dst, err),
+                log_and_mail.writelog('ERROR', f"Can't create symlink {src} -> {dst}: {err}",
                                           config.filelog_fd, job_name)
 
     if copy_dict:
@@ -308,7 +308,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             try:
                 general_function.copy_ofs(src, dst)
             except general_function.MyError as err:
-                log_and_mail.writelog('ERROR', "Can't copy %s -> %s: %s" %(src, dst, err),
+                log_and_mail.writelog('ERROR', f"Can't copy {src} -> {dst}: {err}",
                                       config.filelog_fd, job_name)
 
 
@@ -363,7 +363,7 @@ def get_index(backup_dir, exclude_list):
 
     file_index = {}
 
-    excludes = r'|'.join([fnmatch.translate(x)[:-7] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
+    excludes = r'|'.join([fnmatch.translate(x) for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
     for root, dirs, filenames in os.walk(backup_dir):
 
@@ -431,23 +431,23 @@ def create_inc_tar(path_to_tarfile, remote_dir, dict_directory, target_change_li
         out_tarfile.close()
     except tarfile.TarError as err:
         if storage == 'local':
-            log_and_mail.writelog('ERROR', "Can't create incremental '%s' archive on '%s' storage: %s" %(file_for_log, storage, err),
+            log_and_mail.writelog('ERROR', f"Can't create incremental '{file_for_log}' archive on '{storage}' storage: {err}",
                                 config.filelog_fd, job_name)
         elif storage == 'smb':
-            log_and_mail.writelog('ERROR', "Can't create incremental '%s' archive in '%s' share on '%s' storage(%s): %s" %(file_for_log, share, storage, host, err),
+            log_and_mail.writelog('ERROR', f"Can't create incremental '{file_for_log}' archive in '{share}' share on '{storage}' storage({host}): {err}",
                                 config.filelog_fd, job_name)
         else:
-            log_and_mail.writelog('ERROR', "Can't create incremental '%s' archive on '%s' storage(%s): %s" %(file_for_log, storage, host, err),
+            log_and_mail.writelog('ERROR', f"Can't create incremental '{file_for_log}' archive on '{storage}' storage({host}): {err}",
                                   config.filelog_fd, job_name)
         return False
     else:
         if storage == 'local':
-            log_and_mail.writelog('INFO', "Successfully created incremental '%s' archive on '%s' storage." %(file_for_log, storage),
+            log_and_mail.writelog('INFO', f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage.",
                                 config.filelog_fd, job_name)
         elif storage == 'smb':
-            log_and_mail.writelog('INFO', "Successfully created incremental '%s' archive in '%s' share on '%s' storage(%s)." %(file_for_log, share, storage, host),
+            log_and_mail.writelog('INFO', f"Successfully created incremental '{file_for_log}' archive in '{share}' share on '{storage}' storage({host}).",
                                 config.filelog_fd, job_name)
         else:
-            log_and_mail.writelog('INFO', "Successfully created incremental '%s' archive on '%s' storage(%s)." %(file_for_log, storage, host),
+            log_and_mail.writelog('INFO', f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage({host}).",
                                 config.filelog_fd, job_name)
         return True

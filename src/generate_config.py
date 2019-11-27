@@ -19,7 +19,7 @@ def generate(backup_type, storages, path_to_file):
     backup_type = backup_type[0]
     path_to_file = path_to_file[0]
 
-    template_path = '%s/backup_type/%s.conf' %(TEMPLATES_DIR, backup_type)
+    template_path = f'{TEMPLATES_DIR}/backup_type/{backup_type}.conf'
 
     if path_to_file.startswith('/'):
         general_function.create_dirs(job_name=backup_type,
@@ -30,7 +30,7 @@ def generate(backup_type, storages, path_to_file):
     try:
         fd = open(path_to_file, 'a')
     except (OSError, PermissionError, FileNotFoundError) as e:
-        messange_info = "Couldn't open file %s:%s!" %(path_to_file, e)
+        messange_info = f"Couldn't open file {path_to_file}:{e}!"
         general_function.print_info(messange_info)
         sys.exit(1)
 
@@ -43,7 +43,7 @@ def generate(backup_type, storages, path_to_file):
 
 
     for storage in storages:
-        storage_template_path = '%s/storages/%s.conf' %(TEMPLATES_DIR, storage)
+        storage_template_path = f'{TEMPLATES_DIR}/storages/{storage}.conf'
 
         with open(storage_template_path, 'r', encoding='utf-8') as f:
             str_storage = f.read()
@@ -68,5 +68,4 @@ def generate(backup_type, storages, path_to_file):
 
     os.chmod(path_to_file, 0o600)
 
-    general_function.print_info("Successfully generated '%s' configuration file!"
-                                %(path_to_file))
+    general_function.print_info("Successfully generated '{path_to_file}' configuration file!")

@@ -17,7 +17,7 @@ def postgresql_backup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
@@ -30,7 +30,7 @@ def postgresql_backup(job_data):
             gzip =  sources[i]['gzip']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
-            log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e), config.filelog_fd, job_name)
+            log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
 
         db_host = connect.get('db_host')
@@ -55,7 +55,7 @@ def postgresql_backup(job_data):
             try:
                 connection = psycopg2.connect(dbname="postgres", user=db_user, password=db_password, host=db_host, port=db_port)
             except psycopg2.Error as err:
-                log_and_mail.writelog('ERROR', "Can't connect to PostgreSQL instances with with following data host='%s', port='%s', user='%s', passwd='%s':%s" %(db_host, db_port, db_user, db_password, err),
+                log_and_mail.writelog('ERROR', f"Can't connect to PostgreSQL instances with with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                     config.filelog_fd, job_name)
                 continue
 
@@ -74,7 +74,7 @@ def postgresql_backup(job_data):
 
                 periodic_backup.remove_old_local_file(storages, db, job_name)
 
-                str_auth = ' --dbname=postgresql://%s:%s@%s:%s/%s ' %(db_user, db_password, db_host, db_port, db)
+                str_auth = f' --dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db} '
 
                 if is_success_pgdump(db, extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
                     periodic_backup.general_desc_iteration(backup_full_tmp_path, 
@@ -91,23 +91,23 @@ def postgresql_backup(job_data):
 def is_success_pgdump(db, extra_keys, str_auth, backup_full_path, gzip, job_name):
 
     if gzip:
-        dump_cmd = "pg_dump %s %s | gzip > %s" %(extra_keys, str_auth, backup_full_path)
+        dump_cmd = f"pg_dump {extra_keys} {str_auth} | gzip > {backup_full_path}"
     else:
-        dump_cmd = "pg_dump %s %s > %s" %(extra_keys, str_auth, backup_full_path)
+        dump_cmd = f"pg_dump {extra_keys} {str_auth} > {backup_full_path}"
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']
     code = command['code']
 
     if stderr:
-        log_and_mail.writelog('ERROR', "Can't create '%s' database dump in tmp directory:%s" %(db, stderr),
+        log_and_mail.writelog('ERROR', f"Can't create '{db}' database dump in tmp directory:{stderr}",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
-        log_and_mail.writelog('ERROR', "Bad result code external process '%s':'%s'" %(dump_cmd, code),
+        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
                               config.filelog_fd, job_name)
         return False
     else:
-        log_and_mail.writelog('INFO', "Successfully created '%s' database dump in tmp directory." %(db),
+        log_and_mail.writelog('INFO', f"Successfully created '{db}' database dump in tmp directory.",
                               config.filelog_fd, job_name)
         return True

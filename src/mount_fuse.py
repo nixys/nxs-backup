@@ -41,7 +41,7 @@ def get_storage_data(job_name, storage_data):
         host = storage_data.get('host')
 
         if not host:
-            err_message = "Field 'host' in job '%s' for storage '%s' can't be empty!" % (job_name, storage)
+            err_message = f"Field 'host' in job '{job_name}' for storage '{job_name}' can't be empty!"
         else:
             data_dict['host'] = host
 
@@ -54,7 +54,7 @@ def get_storage_data(job_name, storage_data):
             data_dict['port'] = port
 
         if not user:
-            err_message = "Field 'user' in job '%s' for storage '%s' can't be empty!" % (job_name, storage)
+            err_message = f"Field 'user' in job '{job_name}' for storage '{storage}' can't be empty!"
         else:
             data_dict['user'] = user
 
@@ -62,7 +62,7 @@ def get_storage_data(job_name, storage_data):
             path_to_key = storage_data.get('path_to_key', '')
             if not (password or path_to_key):
                 err_message = "At least one of the fields 'path_to_key' or 'password' must be filled in" + \
-                              " job '%s' for storage '%s'!" % (job_name, storage)
+                              f" job '{job_name}' for storage '{storage}'!"
             else:
                 if password:
                     data_dict['password'] = password
@@ -71,7 +71,7 @@ def get_storage_data(job_name, storage_data):
                     data_dict['path_to_key'] = path_to_key
         else:
             if not password:
-                err_message = "Field 'password' in job '%s' for storage '%s' can't be empty!" % (job_name, storage)
+                err_message = f"Field 'password' in job '{job_name}' for storage '{storage}' can't be empty!"
             else:
                 data_dict['password'] = password
 
@@ -81,7 +81,7 @@ def get_storage_data(job_name, storage_data):
     if storage == 'smb':
         share = storage_data.get('share', '')
         if not share:
-            err_message = "Field 'share' in job '%s' for storage '%s' can't be empty!" % (job_name, storage)
+            err_message = f"Field 'share' in job '{job_name}' for storage '{storage}' can't be empty!"
         else:
             data_dict['share'] = share
 
@@ -89,7 +89,7 @@ def get_storage_data(job_name, storage_data):
         bucketname = storage_data.get('bucket_name', '')
 
         if not bucketname:
-            err_message = "Field 'bucketname' in job '%s' for storage '%s' can't be empty!" % (job_name, storage)
+            err_message = f"Field 'bucketname' in job '{job_name}' for storage '{storage}' can't be empty!"
         else:
             data_dict['bucket_name'] = bucketname
         data_dict['s3fs_opts'] = storage_data.get('s3fs_opts', '')
@@ -130,7 +130,7 @@ def get_mount_data(current_storage_data):
         family_os = 'rpm'
         general_check_packet_cmd = 'rpm -q'
     else:
-        raise MountError("This distribution of Linux:'%s' is not supported." % (dist))
+        raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
 
     storage = current_storage_data.get('storage', '')
     backup_dir = current_storage_data.get('backup_dir', '')
@@ -154,14 +154,14 @@ def get_mount_data(current_storage_data):
             port = '22'
 
         if not path_to_key:
-            mount_cmd = 'echo "%s" | sshfs -o StrictHostKeyChecking=no,password_stdin -p %s %s@%s:%s %s ' % (password, port, user, host, backup_dir, mount_point)
+            mount_cmd = f'echo "{password}" | sshfs -o StrictHostKeyChecking=no,password_stdin -p {port} {user}@{host}:{backup_dir} {mount_point} '
         else:
-            mount_cmd = 'sshfs -o StrictHostKeyChecking=no,IdentityFile=%s -p %s %s@%s:%s %s' % (path_to_key, port, user, host, backup_dir, mount_point)
+            mount_cmd = f'sshfs -o StrictHostKeyChecking=no,IdentityFile={path_to_key} -p {port} {user}@{host}:{backup_dir} {mount_point}'
 
     elif storage == 'ftp':
         packets = ['curlftpfs']
         mount_point = '/mnt/curlftpfs'
-        mount_cmd = 'curlftpfs -o nonempty ftp://%s:%s@%s %s' % (user, password, host, mount_point)
+        mount_cmd = f'curlftpfs -o nonempty ftp://{user}:{password}@{host} {mount_point}'
     elif storage == 'smb':
         packets = ['cifs-utils']
         mount_point = '/mnt/smbfs'
@@ -169,32 +169,32 @@ def get_mount_data(current_storage_data):
         if not port:
             port = '445'
 
-        mount_cmd = 'mount -t cifs -o port=%s,noperm,username=%s,password=%s //%s/%s %s' % (port, user, password, host, share, mount_point)
+        mount_cmd = f'mount -t cifs -o port={port},noperm,username={user},password={password} //{host}/{share} {mount_point}'
     elif storage == 'nfs':
         if family_os == 'deb':
             packets = ['nfs-common']
         else:
             packets = ['nfs-utils']
         mount_point = '/mnt/nfs'
-        mount_cmd = 'mount -t nfs %s:%s %s %s' % (host, backup_dir, mount_point, extra_keys)
+        mount_cmd = f'mount -t nfs {host}:{backup_dir} {mount_point} {extra_keys}'
     elif storage == 'webdav':
         packets = ['davfs2']
         mount_point = '/mnt/davfs'
         if not port:
             port = '443'
 
-        str_auth = "%s:%s %s %s\n" % (host, port, user, password)
+        str_auth = f"{host}:{port} {user} {password}\n"
 
-        pre_mount['check_secrets'] = '%s' % (str_auth)
+        pre_mount['check_secrets'] = f'{str_auth}'
 
-        mount_cmd = "mount -t davfs %s:%s %s" % (host, port, mount_point)
+        mount_cmd = f"mount -t davfs {host}:{port} {mount_point}"
     elif storage == 's3':
         packets = ['']
         mount_point = '/mnt/s3'
-        mount_cmd = 's3fs %s %s %s' % (bucket_name, mount_point, s3fs_opts)
+        mount_cmd = f's3fs {bucket_name} {mount_point} {s3fs_opts}'
 
         if s3fs_access_key_id and s3fs_secret_access_key:
-            pre_mount['check_s3fs_secrets'] = '%s:%s:%s\n' % (bucket_name, s3fs_access_key_id, s3fs_secret_access_key)
+            pre_mount['check_s3fs_secrets'] = f'{bucket_name}:{s3fs_access_key_i}:{s3fs_secret_access_key}\n'
     else:
         mount_point = ''
         return [dict_mount_data, pre_mount]
@@ -217,7 +217,7 @@ def mount(current_storage_data):
     try:
         (data_mount, pre_mount) = get_mount_data(current_storage_data)
     except MountError as e:
-        raise general_function.MyError("%s" % e)
+        raise general_function.MyError(f"{e}")
 
     if not data_mount:
         # if local storage
@@ -230,11 +230,11 @@ def mount(current_storage_data):
 
         for i in packets:
             if i:
-                check_packet = general_function.exec_cmd("%s %s" % (check_cmd, i))
+                check_packet = general_function.exec_cmd(f"{check_cmd} {i}")
                 stdout_check = check_packet['stdout']
 
                 if not stdout_check:
-                    raise general_function.MyError("Required package '%s' not installed!" % (i))
+                    raise general_function.MyError(f"Required package '{i}' not installed!")
             else:
                 continue
 
@@ -245,17 +245,17 @@ def mount(current_storage_data):
                     args = pre_mount[key]
                     f(args)
                 except Exception as err:
-                    raise general_function.MyError("Impossible perform pre-mount operations for storage '%s': %s" % (type_storage, err))
+                    raise general_function.MyError(f"Impossible perform pre-mount operations for storage '{type_storage}': {err}")
 
-        check_mount_cmd = "mount | grep %s" % (mount_point)
+        check_mount_cmd = f"mount | grep {mount_point}"
         check_mount = general_function.exec_cmd(check_mount_cmd)
         stdout_mount = check_mount['stdout']
 
         if stdout_mount:
-            raise general_function.MyError("Mount point %s is busy!" % (mount_point))
+            raise general_function.MyError(f"Mount point {mount_point} is busy!")
         else:
             general_function.create_dirs(job_name='', dirs_pairs={mount_point: ''})
-            data_mounting = general_function.exec_cmd("%s" % (mount_cmd))
+            data_mounting = general_function.exec_cmd(f"{mount_cmd}")
             stderr_mounting = data_mounting['stderr']
             code = data_mounting['code']
 
@@ -263,7 +263,7 @@ def mount(current_storage_data):
                 raise general_function.MyError(stderr_mounting)
 
             if code != 0:
-                raise general_function.MyError("Bad result code external process '%s':'%s'" % (mount_cmd, code))
+                raise general_function.MyError(f"Bad result code external process '{mount_cmd}':'{code}'")
 
             if type_storage == 's3':
                 try:
@@ -276,7 +276,7 @@ def mount(current_storage_data):
 
 def unmount():
     if mount_point:
-        umount_cmd = "fusermount -uz %s" % (mount_point)
+        umount_cmd = f"fusermount -uz {mount_point}"
         umount = general_function.exec_cmd(umount_cmd)
         stderr_umount = umount['stderr']
         code = umount['code']
@@ -284,7 +284,7 @@ def unmount():
         if stderr_umount:
             raise general_function.MyError(stderr_umount)
         elif code != 0:
-            raise general_function.MyError("Bad result code external process '%s':'%s'" % (umount_cmd, code))
+            raise general_function.MyError(f"Bad result code external process '{umount_cmd}':'{code}'")
         else:
             general_function.del_file_objects('', mount_point)
     return 1
@@ -303,7 +303,7 @@ def check_secrets(str_auth):
                 f.write(str_auth)
 
     except (FileNotFoundError, IOError) as e:
-        raise MountError("Can't write authentication information for 'webdav' resource: %s" % (e))
+        raise MountError(f"Can't write authentication information for 'webdav' resource: {e}")
 
     return 1
 
@@ -320,7 +320,7 @@ def check_s3fs_secrets(str_auth):
             if conf.find(str_auth) == -1:
                 f.write(str_auth)
     except (FileNotFoundError, IOError) as e:
-        raise MountError("Can't write authentication information for 's3fs' resource: %s" % (e))
+        raise MountError(f"Can't write authentication information for 's3fs' resource: {e}")
     try:
         os.chmod(conf_path, 0o600)
     except OSError:

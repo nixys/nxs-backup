@@ -21,7 +21,7 @@ def desc_files_backup(job_data):
         sources = job_data['sources']
         storages = job_data['storages']
     except KeyError as e:
-        log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e),
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                               config.filelog_fd, job_name)
         return 1
 
@@ -34,7 +34,7 @@ def desc_files_backup(job_data):
             target_list = sources[i]['target']
             gzip =  sources[i]['gzip']
         except KeyError as e:
-            log_and_mail.writelog('ERROR', "Missing required key:'%s'!" %(e),
+            log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                                   config.filelog_fd, job_name)
             continue
 
@@ -50,7 +50,7 @@ def desc_files_backup(job_data):
 
             if not target_ofs_list:
                 log_and_mail.writelog('ERROR', "No file system objects found that" +\
-                                      "match the regular expression '%s'!" %(regex), 
+                                      f"match the regular expression '{regex}'!",
                                       config.filelog_fd, job_name)
                 continue
 
