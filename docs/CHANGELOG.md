@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.7] - 2019-12-03
+### Adds
+- Ability to recursively exclude files
+
 ## [2.1.6] - 2019-11-28
 ### Change
 - Support for Debian 7,8 has been stopped

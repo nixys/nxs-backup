@@ -264,7 +264,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
         # Form GNU.dumpdir headers
         dict_directory = {}  # Dict to store pairs like dir:GNU.dumpdir
 
-        excludes = r'|'.join([fnmatch.translate(x) for x in general_files_func.EXCLUDE_FILES]) or r'$.'
+        excludes = r'|'.join([fnmatch.translate(x)[:-2] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
         for dir_name, dirs, files in os.walk(target):
             first_level_files = []
@@ -363,7 +363,7 @@ def get_index(backup_dir, exclude_list):
 
     file_index = {}
 
-    excludes = r'|'.join([fnmatch.translate(x) for x in general_files_func.EXCLUDE_FILES]) or r'$.'
+    excludes = r'|'.join([fnmatch.translate(x)[:-2] for x in general_files_func.EXCLUDE_FILES]) or r'$.'
 
     for root, dirs, filenames in os.walk(backup_dir):
 

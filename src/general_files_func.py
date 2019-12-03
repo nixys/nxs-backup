@@ -29,7 +29,11 @@ def get_exclude_ofs(target_list, exclude_list):
 
         for i in exclude_list:
             if i:
-                if not i.startswith('/'):
+                if i.startswith('**'):
+                    for j in target_list:
+                        i = os.path.join(j, i)
+                        exclude_array.extend(get_ofs(i, True))
+                elif not i.startswith('/'):
                     for j in target_list:
                         i = os.path.join(j, i)
                         exclude_array.extend(get_ofs(i))
@@ -39,11 +43,11 @@ def get_exclude_ofs(target_list, exclude_list):
     return exclude_array
 
 
-def get_ofs(glob_wildcards):
+def get_ofs(glob_wildcards, recursive=False):
     ''' The function returns an array of object paths that correspond to regulars
     in the glob format. The input receives an array of these regulars.
 
-    '''''
+    '''
 
     array_parsed_files = []
 
@@ -51,8 +55,12 @@ def get_ofs(glob_wildcards):
         glob_wildcards = [glob_wildcards]
 
     for i in glob_wildcards:
-        for filename in glob.glob(i):
-            array_parsed_files.append(filename)
+        if recursive:
+            for filename in glob.glob(i, recursive=True):
+                array_parsed_files.append(filename)
+        else:
+            for filename in glob.glob(i):
+                array_parsed_files.append(filename)
 
     return array_parsed_files
 
@@ -90,7 +98,6 @@ def get_name_files_backup(regex, target):
     return name
 
 
-
 def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
                remote_dir='', storage='', host='', share=''):
     ''' The function creates a tarball. The input receives the following arguments:
@@ -110,7 +117,7 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             out_tarfile = tarfile.open(backup_full_path, mode='w:')
 
         if job_type == 'files':
-            excludes = r'|'.join([fnmatch.translate(x) for x in EXCLUDE_FILES]) or r'$.'
+            excludes = r'|'.join([fnmatch.translate(x)[:-2] for x in EXCLUDE_FILES]) or r'$.'
 
             for dir_name, dirs, files in os.walk(target):
                 if re.match(excludes, dir_name):
