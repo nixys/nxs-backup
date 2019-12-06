@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.8] - 2019-12-06
+### Fix
+- Fixed a problem with the desc-backup module, when an object deleted after checks for the presence of a file on disk and archive collection process was completed. Now this exception will be handled.
+
 ## [2.1.7] - 2019-12-03
 ### Adds
 - Ability to recursively exclude files

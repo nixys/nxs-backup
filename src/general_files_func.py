@@ -123,16 +123,21 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
                 if re.match(excludes, dir_name):
                     continue
 
-                if os.path.exists(dir_name):
+                try:
                     out_tarfile.add(dir_name, recursive=False)
+                except FileNotFoundError:
+                    continue
 
                 for file in files:
                     file_full_path = os.path.join(dir_name, file)
                     if re.match(excludes, file_full_path):
                         continue
 
-                    if os.path.exists(file_full_path):
+                    try:
                         out_tarfile.add(file_full_path)
+                    except FileNotFoundError:
+                        continue
+
         elif job_type == 'databases':
             out_tarfile.add(target)
 

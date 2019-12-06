@@ -412,21 +412,27 @@ def create_inc_tar(path_to_tarfile, remote_dir, dict_directory, target_change_li
 
     try:
         if gzip:
-            out_tarfile = tarfile.open(path_to_tarfile, mode='w:gz', format=tarfile.PAX_FORMAT) 
+            out_tarfile = tarfile.open(path_to_tarfile, mode='w:gz', format=tarfile.PAX_FORMAT)
         else:
             out_tarfile = tarfile.open(path_to_tarfile, mode='w:', format=tarfile.PAX_FORMAT)
 
         for i in dict_directory.keys():
-            meta_file = out_tarfile.gettarinfo(name=i)
-            pax_headers = {
-                            'GNU.dumpdir': dict_directory.get(i)
-                          }
-            meta_file.pax_headers = pax_headers
-            out_tarfile.addfile(meta_file)
+            try:
+                meta_file = out_tarfile.gettarinfo(name=i)
+                pax_headers = {
+                                'GNU.dumpdir': dict_directory.get(i)
+                              }
+                meta_file.pax_headers = pax_headers
+
+                out_tarfile.addfile(meta_file)
+            except FileNotFoundError:
+                continue
 
         for i in target_change_list:
-            if os.path.exists(i):
+            try:
                 out_tarfile.add(i)
+            except FileNotFoundError:
+                continue
 
         out_tarfile.close()
     except tarfile.TarError as err:
