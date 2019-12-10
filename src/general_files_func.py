@@ -7,13 +7,37 @@ import gzip
 import os
 import shutil
 import re
-import fnmatch
 
 import log_and_mail
 import config
 import general_function
 
 EXCLUDE_FILES = ''
+
+
+def filter_function(tarinfo):
+    ''' The function determines whether the object falls under the exception rules.
+    The input receives a TarInfo class object. Returns:
+       tarinfo - if the object does not fall into the exclusion rules;
+       None - otherwise.
+    '''
+
+    ofs_name = tarinfo.name
+
+    # Since tar removes all the initial '/' from the archive objects
+    #  for correct comparison it falls under the exceptions it is necessary to add '/'
+    if not ofs_name.startswith('/'):
+        ofs_name = '/%s' %ofs_name
+
+    if not ofs_name.endswith('/') and os.path.isdir(ofs_name):
+        ofs_name_alternative = '%s/' %ofs_name
+    else:
+        ofs_name_alternative = ofs_name
+
+    if (ofs_name in EXCLUDE_FILES) or (ofs_name_alternative in EXCLUDE_FILES):
+        return None
+    else:
+        return tarinfo
 
 
 def get_exclude_ofs(target_list, exclude_list):
@@ -29,16 +53,17 @@ def get_exclude_ofs(target_list, exclude_list):
 
         for i in exclude_list:
             if i:
-                if i.startswith('**'):
-                    for j in target_list:
-                        i = os.path.join(j, i)
-                        exclude_array.extend(get_ofs(i, True))
-                elif not i.startswith('/'):
-                    for j in target_list:
-                        i = os.path.join(j, i)
-                        exclude_array.extend(get_ofs(i))
+                if re.match('.*\*\*\/.*', i):
+                    recursive_global = True
                 else:
-                    exclude_array.extend(get_ofs(i))
+                    recursive_global = False
+
+                if not i.startswith('/'):
+                    for j in target_list:
+                        i = os.path.join(j, i)
+                        exclude_array.extend(get_ofs(i, recursive_global))
+                else:
+                    exclude_array.extend(get_ofs(i, recursive_global))
 
     return exclude_array
 
@@ -117,26 +142,10 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
             out_tarfile = tarfile.open(backup_full_path, mode='w:')
 
         if job_type == 'files':
-            excludes = r'|'.join([fnmatch.translate(x)[:-2] for x in EXCLUDE_FILES]) or r'$.'
-
-            for dir_name, dirs, files in os.walk(target):
-                if re.match(excludes, dir_name):
-                    continue
-
-                try:
-                    out_tarfile.add(dir_name, recursive=False)
-                except FileNotFoundError:
-                    continue
-
-                for file in files:
-                    file_full_path = os.path.join(dir_name, file)
-                    if re.match(excludes, file_full_path):
-                        continue
-
-                    try:
-                        out_tarfile.add(file_full_path)
-                    except FileNotFoundError:
-                        continue
+            try:
+                out_tarfile.add(target, filter=filter_function)
+            except FileNotFoundError:
+                pass
 
         elif job_type == 'databases':
             out_tarfile.add(target)
