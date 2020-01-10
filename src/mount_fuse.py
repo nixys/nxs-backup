@@ -194,7 +194,7 @@ def get_mount_data(current_storage_data):
         mount_cmd = f's3fs {bucket_name} {mount_point} {s3fs_opts}'
 
         if s3fs_access_key_id and s3fs_secret_access_key:
-            pre_mount['check_s3fs_secrets'] = f'{bucket_name}:{s3fs_access_key_i}:{s3fs_secret_access_key}\n'
+            pre_mount['check_s3fs_secrets'] = f'{bucket_name}:{s3fs_access_key_id}:{s3fs_secret_access_key}\n'
     else:
         mount_point = ''
         return [dict_mount_data, pre_mount]

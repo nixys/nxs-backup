@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.10] - 2020-01-10
+### Fix
+- Typo correction in the mount module
+
 ## [2.1.9] - 2019-12-10
 ### Fix
 - Improved algorihtm for exclude files in desc backups
