@@ -189,7 +189,7 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
 
                     if storage != 'local':
                         remote_dir = backup_dir
-                        local_dst_dirname = mount_fuse.mount_point
+                        local_dst_dirname = mount_fuse.mount_point + mount_fuse.mount_point_sub_dir
                     else:
                         local_dst_dirname = backup_dir
 
