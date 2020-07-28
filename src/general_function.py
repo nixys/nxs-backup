@@ -105,7 +105,7 @@ def get_dirs_for_log(local_dir, backup_dir, storage=''):
 
     if mount_fuse.mount_point:
         if storage in ('scp', 'nfs'):
-            local_part = os.path.relpath(local_dir, mount_fuse.mount_point)
+            local_part = os.path.relpath(local_dir, mount_fuse.mount_point + mount_fuse.mount_point_sub_dir)
             result_dir = os.path.join(backup_dir, local_part)
         else:
             local_part = os.path.relpath(local_dir, mount_fuse.mount_point)
