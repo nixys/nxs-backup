@@ -1,26 +1,25 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
 import argparse
+import sys
 import traceback
 
 import config
+import desc_files_backup
+import external_backup
 import general_function
-import specific_function
+import generate_config
+import inc_files_backup
 import log_and_mail
-import resource_constraint
+import mongodb_backup
 import mysql_backup
 import mysql_xtrabackup
 import postgresql_backup
 import postgresql_basebackup
-import mongodb_backup
 import redis_backup
-import desc_files_backup
-import inc_files_backup
-import external_backup
-import generate_config
-
+import resource_constraint
+import specific_function
 
 try:
     import version
@@ -32,7 +31,6 @@ else:
 
 
 def do_backup(path_to_config, jobs_name):
-
     try:
         parsed_string = specific_function.get_parsed_string(path_to_config)
     except general_function.MyError as e:
@@ -82,7 +80,6 @@ def do_backup(path_to_config, jobs_name):
             execute_job(current_jobs_name, file_jobs_dict[i])
         log_and_mail.writelog('INFO', "Finishing files block backup.", config.filelog_fd)
 
-
         log_and_mail.writelog('INFO', "Starting databases block backup.", config.filelog_fd)
         for i in list(db_jobs_dict.keys()):
             current_jobs_name = db_jobs_dict[i]['job']
@@ -130,17 +127,17 @@ def do_backup(path_to_config, jobs_name):
 
 
 def execute_job(jobs_name, jobs_data):
-    ''' The function makes a backup of a particular job.
+    """ The function makes a backup of a particular job.
     The input receives a dictionary with data of this job.
 
-    '''
+    """
 
     log_and_mail.writelog('INFO', f"Starting backup for job '{jobs_name}'.", config.filelog_fd, jobs_name)
 
     if not specific_function.validation_storage_data(jobs_data):
         return 1
 
-    backup_type = jobs_data['type'] 
+    backup_type = jobs_data['type']
 
     if backup_type == 'mysql':
         mysql_backup.mysql_backup(jobs_data)
@@ -199,9 +196,9 @@ def get_parser():
     version_parser.add_argument('-v', '--version', action='version', version=VERSION)
 
     config_parser = argparse.ArgumentParser(add_help=False)
-    config_parser.add_argument('-c', '--config',  dest='path_to_config', type=str,
-                              action='store', help='path to config',
-                              default=r'/etc/nxs-backup/nxs-backup.conf')
+    config_parser.add_argument('-c', '--config', dest='path_to_config', type=str,
+                               action='store', help='path to config',
+                               default=r'/etc/nxs-backup/nxs-backup.conf')
 
     # Main parser
     command_parser = argparse.ArgumentParser(parents=[config_parser, version_parser],
@@ -209,7 +206,7 @@ def get_parser():
                                              usage='%(prog)s [arguments]')
     # Optional argument
     command_parser.add_argument('-t', '--test', dest='test_conf', action='store_true',
-                                help="Check the syntax of the configuration file.", 
+                                help="Check the syntax of the configuration file.",
                                 )
 
     # Positional argument
@@ -223,7 +220,7 @@ def get_parser():
     # Generate command
     generate_parser = subparsers.add_parser('generate', help='Generate backup\'s config file.')
     generate_parser.add_argument('-T', '--type', dest='backup_type', type=str, help='One of the type backup.',
-                                  nargs=1, choices=config.supported_backup_type, required=True)
+                                 nargs=1, choices=config.supported_backup_type, required=True)
     generate_parser.add_argument('-S', '--storages', dest='storages', type=str, help='One or more storages.',
                                  nargs='+', choices=config.supported_storages, required=True)
     generate_parser.add_argument('-P', '--path', dest='path_to_generate_file', type=str,
@@ -233,7 +230,6 @@ def get_parser():
 
 
 def main():
-
     parser = get_parser()
     args = parser.parse_args()
 

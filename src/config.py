@@ -9,45 +9,44 @@ lock_file_fd = ''
 path_to_lock_file = '/tmp/nxs-backup.lock'
 
 supported_db_backup_type = [
-                    'mysql',
-                    'mysql_xtrabackup',
-                    'postgresql',
-                    'postgresql_basebackup',
-                    'mongodb',
-                    'redis'
-    ]
+    'mysql',
+    'mysql_xtrabackup',
+    'postgresql',
+    'postgresql_basebackup',
+    'mongodb',
+    'redis'
+]
 
 supported_file_backup_type = [
-                    'desc_files',
-                    'inc_files'
-    ]
+    'desc_files',
+    'inc_files'
+]
 
 supported_external_backup_type = [
-                    'external'
-    ]
-
+    'external'
+]
 
 supported_storages = [
-                    'local', 
-                    'scp', 
-                    'ftp', 
-                    'webdav', 
-                    'smb', 
-                    'nfs', 
-                    's3'
-    ]
+    'local',
+    'scp',
+    'ftp',
+    'webdav',
+    'smb',
+    'nfs',
+    's3'
+]
 
 backup_extenstion = [
-                    '*.sql',
-                    '*.sql.gz',
-                    '*.tar',
-                    '*.tar.gz',
-                    '*.pgdump',
-                    '*.pgdump.gz',
-                    '*.mongodump',
-                    '*.mongodump.gz',
-                    '*.rdb',
-                    '*.rdb.gz'
+    '*.sql',
+    '*.sql.gz',
+    '*.tar',
+    '*.tar.gz',
+    '*.pgdump',
+    '*.pgdump.gz',
+    '*.mongodump',
+    '*.mongodump.gz',
+    '*.rdb',
+    '*.rdb.gz'
 ]
 
 supported_general_job = ['external', 'databases', 'files', 'all']
@@ -56,11 +55,11 @@ dow_backup = '7'
 dom_backup = '01'
 
 default_port_dict = {
-        'mysql': '3306',
-        'postgresql': '5432',
-        'redis': '6379',
-        'mongodb': '27017'
-    }
+    'mysql': '3306',
+    'postgresql': '5432',
+    'redis': '6379',
+    'mongodb': '27017'
+}
 
 filelog_fd = ''
 error_log = ''
@@ -70,12 +69,39 @@ supported_backup_type = supported_db_backup_type + supported_file_backup_type + 
                         supported_external_backup_type
 
 client_mail = []
+all_jobs_name = []
+general_str = ''
+regular_str = ''
+regular_str_for_backup_type = ''
+general_str_for_backup_type = ''
+general_str_for_backup_type_db = ''
+general_str_for_backup_type_files = ''
+general_str_for_backup_type_external = ''
+regular_str_for_storage = ''
+general_str_for_storage = ''
+log_file = ''
+admin_mail = ''
+level_message = ''
+mail_from = ''
+server_name = ''
+block_io_write = ''
+block_io_read = ''
+block_io_weight = ''
+general_path_to_all_tmp_dir = ''
+cpu_shares = ''
+smtp_server = ''
+smtp_port = ''
+smtp_ssl = ''
+smtp_user = ''
+smtp_password = ''
+smtp_timeout = ''
+smtp_tls = ''
 
 
 def get_conf_value(parsed_str):
-    ''''' The function assigns a value to the key global program variables.
+    """ The function assigns a value to the key global program variables.
     At the input, the function takes a parsed line of the configuration file.
-    '''''
+    """
 
     global all_jobs_name
 
@@ -102,7 +128,7 @@ def get_conf_value(parsed_str):
 
     global block_io_write
     global block_io_read
-    global blkio_weight
+    global block_io_weight
     global general_path_to_all_tmp_dir
 
     global cpu_shares
@@ -116,15 +142,14 @@ def get_conf_value(parsed_str):
     global smtp_timeout
     global smtp_tls
 
-
     general_str_for_backup_type_db = ', '.join(supported_db_backup_type)
     general_str_for_backup_type_files = ', '.join(supported_file_backup_type)
     general_str_for_backup_type_external = ', '.join(supported_external_backup_type)
 
-    regular_str_for_backup_type = ''.join(['^'+item+'$|' for item in supported_backup_type])[0:-1]
+    regular_str_for_backup_type = ''.join(['^' + item + '$|' for item in supported_backup_type])[0:-1]
     general_str_for_backup_type = ', '.join(supported_backup_type)
 
-    regular_str_for_storage = ''.join(['^'+item+'$|' for item in supported_storages])[0:-1]
+    regular_str_for_storage = ''.join(['^' + item + '$|' for item in supported_storages])[0:-1]
     general_str_for_storage = ', '.join(supported_storages)
 
     count_of_jobs = len(parsed_str['jobs'])
@@ -132,7 +157,7 @@ def get_conf_value(parsed_str):
         for j in range(count_of_jobs):
             a = parsed_str['jobs'][i]['job']
             b = parsed_str['jobs'][j]['job']
-            if (i != j and a == b):
+            if i != j and a == b:
                 general_function.print_info(f"Duplicate job name '{a}'. You must use a unique name for the job's name.")
                 sys.exit(1)
 
@@ -151,13 +176,14 @@ def get_conf_value(parsed_str):
         elif backup_type in supported_external_backup_type:
             external_job_dict[job_name] = job_data
         else:
-            general_function.print_info(f"Backup type '{backup_type}' in job '{job_name}' does not supported, so this job was ignored! Only one of this type backup is allowed:{supported_backup_type}!")
+            general_function.print_info(
+                f"Backup type '{backup_type}' in job '{job_name}' does not supported, so this job was ignored! Only one of this type backup is allowed:{supported_backup_type}!")
 
-    all_jobs_name = (list(db_job_dict.keys()) + list(file_job_dict.keys()) + 
-                        list(external_job_dict.keys()) + supported_general_job)
+    all_jobs_name = (list(db_job_dict.keys()) + list(file_job_dict.keys()) +
+                     list(external_job_dict.keys()) + supported_general_job)
 
     general_str = ', '.join(all_jobs_name)
-    regular_str = ''.join(['^'+item+'$|' for item in all_jobs_name])[0:-1]
+    regular_str = ''.join(['^' + item + '$|' for item in all_jobs_name])[0:-1]
 
     log_file = parsed_str['main'].get('log_file', None)
     if not log_file:
@@ -167,7 +193,6 @@ def get_conf_value(parsed_str):
     if not admin_mail:
         general_function.print_info("Field 'admin_mail' in 'main' section can't be empty!")
         sys.exit(1)
-
 
     client_mail_array = parsed_str['main'].get('client_mail', [])
     for i in client_mail_array:
@@ -179,10 +204,9 @@ def get_conf_value(parsed_str):
 
     block_io_write = parsed_str['main'].get('block_io_write', None)
     block_io_read = parsed_str['main'].get('block_io_read', None)
-    blkio_weight = parsed_str['main'].get('blkio_weight', None)
+    block_io_weight = parsed_str['main'].get('blkio_weight', None)
     general_path_to_all_tmp_dir = parsed_str['main'].get('general_path_to_all_tmp_dir', None)
     cpu_shares = parsed_str['main'].get('cpu_shares', None)
-
 
     smtp_port = parsed_str['main'].get('smtp_port', None)
     smtp_ssl = parsed_str['main'].get('smtp_ssl', None)
@@ -192,4 +216,4 @@ def get_conf_value(parsed_str):
     smtp_timeout = parsed_str['main'].get('smtp_timeout', None)
     smtp_tls = parsed_str['main'].get('smtp_tls', None)
 
-    return (db_job_dict, file_job_dict, external_job_dict)
+    return db_job_dict, file_job_dict, external_job_dict

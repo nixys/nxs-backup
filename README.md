@@ -112,8 +112,10 @@ jobs: !include [conf.d/*.conf]
  * `storage`: type of storage. It can take the following values:
    * *local*, *scp*, *ftp*, *smb* (via cifs), *nfs*, *webdav*, *s3*
  * `enable`(logicals): enable or disable storage
- * `backup_dir`: directory for storing backups. **IMPORTANT** For the following storages - *scp*, *nfs*, the directory actually acts as a mount resource (used directly in the mount command), so you need to make sure it exists on the remote server, otherwise there will be an error. For other storages - *local*, *ftp*, *smb*, *webdav*, *s3* this directory is already inside the environment, where we get after mounting the resource, so it can be created by the program itself.
+ * `backup_dir`: directory for storing backups. **IMPORTANT** For the following storages - *scp*, *nfs*, the directory actually acts as a mount resource (used directly in the mount command), so you need to make sure it exists on the remote server or `remote_mount_point` is defined, otherwise there will be an error. For other storages - *local*, *ftp*, *smb*, *webdav*, *s3* this directory is already inside the environment, where we get after mounting the resource, so it can be created by the program itself.
+ * `remote_mount_point`(**Only for *scp* and *nfs* storages**)(optional): Remote mounting point directory. This directory will be used as the mount resource, so you need to make sure that it exists on the remote server and is user `user` owned, otherwise an error will occur.  The default is `backup_dir`.
  * `host`: storage host.
+ * `port`: storage port.
  * `user`: storage user.
  * `password`: storage password.
  * `extra_keys`(**Only for *nfs* storage**): extra keys for mount command.
@@ -186,7 +188,7 @@ In this module, an external script is executed passed to the program via the key
     "full_path": "ABS_PATH_TO_ARCHIVE",
     "basename": "BASENAME_ARCHIVE",
     "extension": "EXTERNSION_OF_ARCHIVE",
-    "gzip": true/false
+    "gzip": "true|false"
 }
 ```
 

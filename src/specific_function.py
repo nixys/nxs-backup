@@ -1,15 +1,16 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import yaml
 import json
 import os.path
 import sys
 
+import yaml
+
 import config
-import log_and_mail
-import general_function
 import general_files_func
+import general_function
+import log_and_mail
 
 
 class Loader(yaml.Loader):
@@ -17,7 +18,7 @@ class Loader(yaml.Loader):
         self._root = os.path.split(stream.name)[0]
         super(Loader, self).__init__(stream)
         Loader.add_constructor('!include', Loader.include)
-        Loader.add_constructor('!import',  Loader.include)
+        Loader.add_constructor('!import', Loader.include)
 
     def include(self, node):
         if isinstance(node, yaml.ScalarNode):
@@ -34,12 +35,12 @@ class Loader(yaml.Loader):
 
         elif isinstance(node, yaml.MappingNode):
             result = {}
-            for k,v in self.construct_mapping(node).iteritems():
+            for k, v in self.construct_mapping(node).iteritems():
                 result[k] = self.extractFile(v)
             return result
 
         else:
-            print ('Error:: unrecognised node type in !include statement')
+            print('Error:: unrecognised node type in !include statement')
             raise yaml.constructor.ConstructorError
 
     def extractFile(self, filename):
@@ -49,9 +50,9 @@ class Loader(yaml.Loader):
 
 
 def is_save_to_storage(job_name, storage_data):
-    ''' Checks the need for collection in a SPECIFIC storage.
+    """ Checks the need for collection in a SPECIFIC storage.
 
-    '''
+    """
 
     try:
         storage = storage_data['storage']
@@ -59,7 +60,7 @@ def is_save_to_storage(job_name, storage_data):
         backup_dir = storage_data['backup_dir']
 
         if not storage in config.supported_storages:
-            log_and_mail.writelog('ERROR', f"For '{job_name}' job set incorrect type of storage." +\
+            log_and_mail.writelog('ERROR', f"For '{job_name}' job set incorrect type of storage." + \
                                   f"Only one of this type storage is allowed:{config.supported_storages}",
                                   config.filelog_fd, job_name)
             result = False
@@ -67,24 +68,25 @@ def is_save_to_storage(job_name, storage_data):
         elif not enable_storage:
             result = False
         elif not backup_dir:
-            log_and_mail.writelog('ERROR', f"Field 'backup_dir' in job '{job_name}' for storage '{storage_data['storage']}' can't be empty!",
-                                      config.filelog_fd, job_name)
+            log_and_mail.writelog('ERROR',
+                                  f"Field 'backup_dir' in job '{job_name}' for storage '{storage_data['storage']}' can't be empty!",
+                                  config.filelog_fd, job_name)
             result = False
         else:
             result = True
     except KeyError as err:
-            log_and_mail.writelog('ERROR', f"Missing required key '{err}' in '{job_name}' job storages block.",
-                                  config.filelog_fd, job_name)
-            result = False
+        log_and_mail.writelog('ERROR', f"Missing required key '{err}' in '{job_name}' job storages block.",
+                              config.filelog_fd, job_name)
+        result = False
 
     return result
 
 
 def validation_storage_data(job_data):
-    ''' The function checks that in the job there is at least one active storage
+    """ The function checks that in the job there is at least one active storage
     according to the schedule of which, it is necessary to collect a backup.
 
-    '''
+    """
 
     result = True
     job_name = job_data['job']
@@ -109,17 +111,19 @@ def validation_storage_data(job_data):
 
 
 def is_time_to_backup(job_data):
-    ''''' Фукнция, которая определяет необходимо ли запускать на выполнение сбор копий согласно плану.
-    На вход получает словарь с данными для конкретной секции
+    """ A function that determines whether or not to run copy collection according to the plan.
+    It receives a dictionary with data for a particular section at the input.
 
-    '''''
+    """
 
     job_name = job_data['job']
     job_type = job_data['type']
     storages = job_data['storages']
 
+    result = True
+
     if job_type == 'inc_files':
-        return True
+        return result
 
     dow = general_function.get_time_now("dow")
     dom = general_function.get_time_now("dom")
@@ -138,7 +142,8 @@ def is_time_to_backup(job_data):
                 if int(storages[i]['store']['month']) > 0:
                     month_flag = True
             else:
-                log_and_mail.writelog('ERROR', f'There are no stores data for storage {job_type} in the job {job_name}!',
+                log_and_mail.writelog('ERROR',
+                                      f'There are no stores data for storage {job_type} in the job {job_name}!',
                                       config.filelog_fd, job_name)
                 continue
     if not day_flag:
@@ -166,7 +171,6 @@ def is_time_to_backup(job_data):
 
 
 def get_parsed_string(path_to_config):
-
     try:
         with open(path_to_config, 'r') as stream:
             try:
@@ -177,7 +181,7 @@ def get_parsed_string(path_to_config):
                 if "maximum recursion depth exceeded while calling" in str(e):
                     error_msg = f" error in include value - '{e}'"
                 else:
-                    error_msg = str (e)
+                    error_msg = str(e)
                 raise general_function.MyError(error_msg)
     except (FileNotFoundError, PermissionError) as e:
         general_function.print_info(f"No such file '{path_to_config}' or permission denied!")
@@ -187,7 +191,6 @@ def get_parsed_string(path_to_config):
 
 
 def parser_json(json_file):
-
     try:
         parsed_str = json.load(open(json_file))
     except (PermissionError, OSError) as e:
