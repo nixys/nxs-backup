@@ -7,6 +7,7 @@ import re
 import general_function
 
 mount_point = ''
+mount_point_sub_dir = ''
 
 
 class MountError(Exception):
@@ -118,6 +119,7 @@ def get_mount_data(current_storage_data):
     """
 
     global mount_point
+    global mount_point_sub_dir
     dist = general_function.get_dist()
     pre_mount = {}
 
@@ -150,13 +152,15 @@ def get_mount_data(current_storage_data):
     if storage == 'scp':
         packets = ['openssh-client', 'sshfs', 'sshpass']
         mount_point = '/mnt/sshfs'
+        if remote_mount_point != backup_dir:
+            mount_point_sub_dir = backup_dir.replace(remote_mount_point, '')
         if not port:
             port = '22'
         if not path_to_key:
-            mount_cmd = f'echo "{password}" | sshfs -o StrictHostKeyChecking=no,password_stdin -C ' \
+            mount_cmd = f'echo "{password}" | sshfs -o StrictHostKeyChecking=no,password_stdin,nonempty -C ' \
                         f'-p {port} {user}@{host}:{remote_mount_point} {mount_point} '
         else:
-            mount_cmd = f'sshfs -o StrictHostKeyChecking=no,IdentityFile={path_to_key} -C ' \
+            mount_cmd = f'sshfs -o StrictHostKeyChecking=no,IdentityFile={path_to_key},nonempty -C ' \
                         f'-p {port} {user}@{host}:{remote_mount_point} {mount_point}'
 
     elif storage == 'ftp':
@@ -178,6 +182,8 @@ def get_mount_data(current_storage_data):
         else:
             packets = ['nfs-utils']
         mount_point = '/mnt/nfs'
+        if remote_mount_point != backup_dir:
+            mount_point_sub_dir = backup_dir.replace(remote_mount_point, '')
         mount_cmd = f'mount -t nfs {host}:{remote_mount_point} {mount_point} {extra_keys}'
 
     elif storage == 'webdav':
