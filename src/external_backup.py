@@ -4,18 +4,17 @@
 import json
 import os.path
 
-import periodic_backup
-import general_function
-import general_files_func
-import log_and_mail
 import config
+import general_function
+import log_and_mail
+import periodic_backup
 
 
 def external_backup(job_data):
-    ''''' Function, creates a external backup.
+    """ Function, creates a external backup.
     At the entrance receives a dictionary with the data of the job.
 
-    '''''
+    """
 
     try:
         job_name = job_data['job']
@@ -54,21 +53,21 @@ def external_backup(job_data):
 
     general_function.move_ofs(full_tmp_path, new_full_tmp_path)
 
-    periodic_backup.general_desc_iteration(new_full_tmp_path, 
-                                            storages, '',
-                                            job_name)
+    periodic_backup.general_desc_iteration(new_full_tmp_path,
+                                           storages, '',
+                                           job_name)
 
-    # After all the manipulations, delete the created temporary directory and 
+    # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
     general_function.del_file_objects(backup_type,
                                       '/var/cache/davfs2/*')
 
 
 def get_value_from_stdout(stderr, stdout, job_name):
-    ''' On the input receives the data that the script sent to the stdout, stderr.
+    """ On the input receives the data that the script sent to the stdout, stderr.
     Analyzes them and if everything is OK, then it returns the dictionary from the stdout.
 
-    '''
+    """
 
     if stderr:
         log_and_mail.writelog('ERROR', f"Can't create external backup in tmp directory:{stderr}",
@@ -79,7 +78,7 @@ def get_value_from_stdout(stderr, stdout, job_name):
             source_dict = json.loads(stdout)
         except (ValueError) as err:
             log_and_mail.writelog('ERROR', f"Can't parse output str: {err}",
-                              config.filelog_fd, job_name)
+                                  config.filelog_fd, job_name)
             return None
         else:
             try:
@@ -94,9 +93,9 @@ def get_value_from_stdout(stderr, stdout, job_name):
             else:
                 if not os.path.isfile(full_path):
                     log_and_mail.writelog('ERROR', f"File '{full_path}' not found!",
-                              config.filelog_fd, job_name)
+                                          config.filelog_fd, job_name)
                     return None
                 else:
                     log_and_mail.writelog('INFO', "Successfully created external backup in tmp directory.",
-                                      config.filelog_fd, job_name)
+                                          config.filelog_fd, job_name)
                     return source_dict

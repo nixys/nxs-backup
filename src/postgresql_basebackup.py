@@ -4,8 +4,8 @@
 import psycopg2
 
 import config
-import log_and_mail
 import general_function
+import log_and_mail
 import periodic_backup
 
 
@@ -25,7 +25,7 @@ def postgresql_basebackup(job_data):
     for i in range(len(sources)):
         try:
             connect = sources[i]['connect']
-            gzip =  sources[i]['gzip']
+            gzip = sources[i]['gzip']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
             log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
@@ -37,36 +37,38 @@ def postgresql_basebackup(job_data):
         db_password = connect.get('db_password')
 
         if not (db_user and db_host and db_password):
-            log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill in the required fields", 
-                                  config.filelog_fd, job_name) 
+            log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill in the required fields",
+                                  config.filelog_fd, job_name)
             continue
 
         if not db_port:
             db_port = general_function.get_default_port('postgresql')
 
         try:
-            connection = psycopg2.connect(dbname="postgres", user=db_user, password=db_password, host=db_host, port=db_port)
+            connection = psycopg2.connect(dbname="postgres", user=db_user, password=db_password, host=db_host,
+                                          port=db_port)
         except psycopg2.Error as err:
-            log_and_mail.writelog('ERROR', f"Can't connect to PostgreSQL instances with with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
+            log_and_mail.writelog('ERROR',
+                                  f"Can't connect to PostgreSQL instances with with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                   config.filelog_fd, job_name)
             continue
         else:
             connection.close()
 
         backup_full_tmp_path = general_function.get_full_path(
-                                                            full_path_tmp_dir,
-                                                            'postgresq_hot',
-                                                            'tar',
-                                                            gzip)
+            full_path_tmp_dir,
+            'postgresq_hot',
+            'tar',
+            gzip)
 
         periodic_backup.remove_old_local_file(storages, '', job_name)
 
         str_auth = f' --dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/ '
 
         if is_success_pgbasebackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
-            periodic_backup.general_desc_iteration(backup_full_tmp_path, 
-                                                    storages, '',
-                                                    job_name)
+            periodic_backup.general_desc_iteration(backup_full_tmp_path,
+                                                   storages, '',
+                                                   job_name)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
@@ -75,12 +77,10 @@ def postgresql_basebackup(job_data):
 
 
 def is_success_pgbasebackup(extra_keys, str_auth, backup_full_path, gzip, job_name):
-
     if gzip:
         dump_cmd = f"pg_basebackup {str_auth} {extra_keys} | gzip > {backup_full_path}"
     else:
         dump_cmd = f"pg_basebackup {str_auth} {extra_keys} > {backup_full_path}"
-
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']

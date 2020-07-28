@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import re
+import sys
 
-import general_function
 import config
+import general_function
 
 TEMPLATES_DIR = '/usr/share/nxs-backup/templates'
 
 
 def generate(backup_type, storages, path_to_file):
-    ''' The function generate a configuration file job.
+    """ The function generate a configuration file job.
 
-    '''
+    """
 
     backup_type = backup_type[0]
     path_to_file = path_to_file[0]
@@ -23,7 +23,7 @@ def generate(backup_type, storages, path_to_file):
 
     if path_to_file.startswith('/'):
         general_function.create_dirs(job_name=backup_type,
-                                     dirs_pairs={os.path.dirname(path_to_file):''})
+                                     dirs_pairs={os.path.dirname(path_to_file): ''})
 
     general_function.copy_ofs(template_path, path_to_file)
 
@@ -40,7 +40,6 @@ def generate(backup_type, storages, path_to_file):
         job_type = 'files'
     else:
         job_type = 'external'
-
 
     for storage in storages:
         storage_template_path = f'{TEMPLATES_DIR}/storages/{storage}.conf'

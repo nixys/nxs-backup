@@ -4,8 +4,6 @@
 import os
 import re
 
-import config
-import log_and_mail
 import general_function
 
 mount_point = ''
@@ -20,12 +18,12 @@ class MountError(Exception):
 
 
 def get_storage_data(job_name, storage_data):
-    ''' The function on the input gets the name of the job, as well as the dictionary with this particular storage.
+    """ The function on the input gets the name of the job, as well as the dictionary with this particular storage.
     Then it checks all the necessary data for mounting this type of storage to the server. Returns:
         filtered dictionary - if successful
         Exception MyError with error text in case of problems.
 
-    '''
+    """
 
     data_dict = {}
 
@@ -59,6 +57,7 @@ def get_storage_data(job_name, storage_data):
             data_dict['user'] = user
 
         if storage == 'scp':
+            data_dict['remote_mount_point'] = storage_data.get('remote_mount_point')
             path_to_key = storage_data.get('path_to_key', '')
             if not (password or path_to_key):
                 err_message = "At least one of the fields 'path_to_key' or 'password' must be filled in" + \
@@ -76,6 +75,7 @@ def get_storage_data(job_name, storage_data):
                 data_dict['password'] = password
 
     if storage == 'nfs':
+        data_dict['remote_mount_point'] = storage_data.get('remote_mount_point')
         data_dict['extra_keys'] = storage_data.get('extra_keys', '')
 
     if storage == 'smb':
@@ -103,7 +103,7 @@ def get_storage_data(job_name, storage_data):
 
 
 def get_mount_data(current_storage_data):
-    ''' The function takes a dictionary with data from a specific storage. AT
+    """ The function takes a dictionary with data from a specific storage. AT
     Returns an array of two dictionaries:
         dict_mount_data - data to mount:
         - list of packages required to mount storage
@@ -115,7 +115,7 @@ def get_mount_data(current_storage_data):
             the ability to mount WebDAV resources to unprivileged users.
             Contains pairs of the form 'function name': 'function arguments'.
 
-    '''
+    """
 
     global mount_point
     dist = general_function.get_dist()
@@ -134,6 +134,7 @@ def get_mount_data(current_storage_data):
 
     storage = current_storage_data.get('storage', '')
     backup_dir = current_storage_data.get('backup_dir', '')
+    remote_mount_point = current_storage_data.get('remote_mount_point', backup_dir)
     user = current_storage_data.get('user', '')
     host = current_storage_data.get('host', '')
     port = current_storage_data.get('port', '')
@@ -149,50 +150,49 @@ def get_mount_data(current_storage_data):
     if storage == 'scp':
         packets = ['openssh-client', 'sshfs', 'sshpass']
         mount_point = '/mnt/sshfs'
-
         if not port:
             port = '22'
-
         if not path_to_key:
-            mount_cmd = f'echo "{password}" | sshfs -o StrictHostKeyChecking=no,password_stdin -p {port} {user}@{host}:{backup_dir} {mount_point} '
+            mount_cmd = f'echo "{password}" | sshfs -o StrictHostKeyChecking=no,password_stdin -C ' \
+                        f'-p {port} {user}@{host}:{remote_mount_point} {mount_point} '
         else:
-            mount_cmd = f'sshfs -o StrictHostKeyChecking=no,IdentityFile={path_to_key} -p {port} {user}@{host}:{backup_dir} {mount_point}'
+            mount_cmd = f'sshfs -o StrictHostKeyChecking=no,IdentityFile={path_to_key} -C ' \
+                        f'-p {port} {user}@{host}:{remote_mount_point} {mount_point}'
 
     elif storage == 'ftp':
         packets = ['curlftpfs']
         mount_point = '/mnt/curlftpfs'
         mount_cmd = f'curlftpfs -o nonempty ftp://{user}:{password}@{host} {mount_point}'
+
     elif storage == 'smb':
         packets = ['cifs-utils']
         mount_point = '/mnt/smbfs'
-
         if not port:
             port = '445'
+        mount_cmd = f'mount -t cifs -o port={port},noperm,username={user},password={password} ' \
+                    f'//{host}/{share} {mount_point}'
 
-        mount_cmd = f'mount -t cifs -o port={port},noperm,username={user},password={password} //{host}/{share} {mount_point}'
     elif storage == 'nfs':
         if family_os == 'deb':
             packets = ['nfs-common']
         else:
             packets = ['nfs-utils']
         mount_point = '/mnt/nfs'
-        mount_cmd = f'mount -t nfs {host}:{backup_dir} {mount_point} {extra_keys}'
+        mount_cmd = f'mount -t nfs {host}:{remote_mount_point} {mount_point} {extra_keys}'
+
     elif storage == 'webdav':
         packets = ['davfs2']
         mount_point = '/mnt/davfs'
         if not port:
             port = '443'
-
         str_auth = f"{host}:{port} {user} {password}\n"
-
         pre_mount['check_secrets'] = f'{str_auth}'
-
         mount_cmd = f"mount -t davfs {host}:{port} {mount_point}"
+
     elif storage == 's3':
         packets = ['']
         mount_point = '/mnt/s3'
         mount_cmd = f's3fs {bucket_name} {mount_point} {s3fs_opts}'
-
         if s3fs_access_key_id and s3fs_secret_access_key:
             pre_mount['check_s3fs_secrets'] = f'{bucket_name}:{s3fs_access_key_id}:{s3fs_secret_access_key}\n'
     else:
@@ -209,10 +209,10 @@ def get_mount_data(current_storage_data):
 
 
 def mount(current_storage_data):
-    ''' A function that is responsible for directly mounting a particular storage.
+    """ A function that is responsible for directly mounting a particular storage.
     The input receives a dictionary containing the necessary data for connecting storage.
 
-    '''
+    """
 
     try:
         (data_mount, pre_mount) = get_mount_data(current_storage_data)
@@ -245,7 +245,8 @@ def mount(current_storage_data):
                     args = pre_mount[key]
                     f(args)
                 except Exception as err:
-                    raise general_function.MyError(f"Impossible perform pre-mount operations for storage '{type_storage}': {err}")
+                    raise general_function.MyError(
+                        f"Impossible perform pre-mount operations for storage '{type_storage}': {err}")
 
         check_mount_cmd = f"mount | grep {mount_point}"
         check_mount = general_function.exec_cmd(check_mount_cmd)
@@ -294,7 +295,8 @@ def check_secrets(str_auth):
     conf_path = '/etc/davfs2/secrets'
 
     if not os.path.isfile(conf_path):
-        raise MountError("Can't record the authentication information for 'webdav' resource: /etc/davfs2/secrets is not found")
+        raise MountError(
+            "Can't record the authentication information for 'webdav' resource: /etc/davfs2/secrets is not found")
 
     try:
         with open(conf_path, 'r+') as f:

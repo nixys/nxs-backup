@@ -11,10 +11,10 @@ import general_function
 
 
 def send_report(*message):
-    ''' A function that sends a report about the operation of the backup tools to
+    """ A function that sends a report about the operation of the backup tools to
     administrators and clients.
 
-    '''
+    """
 
     local_message = ''.join(message)
 
@@ -33,14 +33,14 @@ def send_report(*message):
 
 
 def send_mail(sender, recipient_admin, recipient_client, server_name, body):
-    ''' The function sends a letter. The input receives the following arguments:
+    """ The function sends a letter. The input receives the following arguments:
      sender - the sender's mailing address;
      recipient_admin - postal technical address of project administrators;
      recipient_client - postal addresses of recipients (clients);
      server_name - the name of the server in our system of tasks;
      body is the body of the letter.
 
-    '''
+    """
 
     recipient_client.append(recipient_admin)
     itog_mail_addr = []
@@ -64,9 +64,11 @@ def send_mail(sender, recipient_admin, recipient_client, server_name, body):
 
         try:
             if config.smtp_ssl:
-                smtp = smtplib.SMTP_SSL(config.smtp_server, port=config.smtp_port if config.smtp_port else 465, timeout=config.smtp_timeout)
+                smtp = smtplib.SMTP_SSL(config.smtp_server, port=config.smtp_port if config.smtp_port else 465,
+                                        timeout=config.smtp_timeout)
             else:
-                smtp = smtplib.SMTP(config.smtp_server, port=config.smtp_port if config.smtp_port else 25, timeout=config.smtp_timeout)
+                smtp = smtplib.SMTP(config.smtp_server, port=config.smtp_port if config.smtp_port else 25,
+                                    timeout=config.smtp_timeout)
             if config.smtp_tls:
                 smtp.starttls()
             if config.smtp_user and config.smtp_password:
@@ -76,7 +78,7 @@ def send_mail(sender, recipient_admin, recipient_client, server_name, body):
             smtp.close()
         except Exception as e:
             writelog('ERROR', f"Some problem when sending a message via {config.smtp_server}: {e}",
-                    config.filelog_fd)
+                     config.filelog_fd)
     else:
         msg['From'] = sender
 
@@ -89,13 +91,13 @@ def send_mail(sender, recipient_admin, recipient_client, server_name, body):
 
 
 def get_log(log_level, log_message, type_message=''):
-    ''' The function of forming a string for writing to a log file.
+    """ The function of forming a string for writing to a log file.
     The input is given the following values:
      log_level - event level (error, info, warning);
      log_message - message;
      type_message is the section in the configuration file to which the event belongs.
 
-    '''
+    """
 
     time_now = general_function.get_time_now('log')
 
@@ -108,13 +110,13 @@ def get_log(log_level, log_message, type_message=''):
 
 
 def writelog(log_level, log_message, fd, type_message=''):
-    ''' The function of recording events in the log file. The input is given the following values:
+    """ The function of recording events in the log file. The input is given the following values:
      log_level - event level (error, info, warning);
      log_message - message;
      fd - file descriptor number of the log file;
      type_message is the section in the configuration file to which the event belongs.
 
-    '''
+    """
 
     log_str = get_log(log_level, log_message, type_message)
 
