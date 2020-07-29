@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.11] - 2020-07-29
+### Adds
+- Scp and nfs mount point option
+
 ## [2.1.10] - 2020-01-10
 ### Fix
 - Typo correction in the mount module
