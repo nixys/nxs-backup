@@ -2,35 +2,35 @@
 # -*- coding: utf-8 -*-
 
 import glob
-import tarfile
 import gzip
 import os
-import shutil
 import re
+import shutil
+import tarfile
 
-import log_and_mail
 import config
 import general_function
+import log_and_mail
 
 EXCLUDE_FILES = ''
 
 
 def filter_function(tarinfo):
-    ''' The function determines whether the object falls under the exception rules.
+    """ The function determines whether the object falls under the exception rules.
     The input receives a TarInfo class object. Returns:
        tarinfo - if the object does not fall into the exclusion rules;
        None - otherwise.
-    '''
+    """
 
     ofs_name = tarinfo.name
 
     # Since tar removes all the initial '/' from the archive objects
     #  for correct comparison it falls under the exceptions it is necessary to add '/'
     if not ofs_name.startswith('/'):
-        ofs_name = '/%s' %ofs_name
+        ofs_name = '/%s' % ofs_name
 
     if not ofs_name.endswith('/') and os.path.isdir(ofs_name):
-        ofs_name_alternative = '%s/' %ofs_name
+        ofs_name_alternative = '%s/' % ofs_name
     else:
         ofs_name_alternative = ofs_name
 
@@ -41,9 +41,9 @@ def filter_function(tarinfo):
 
 
 def get_exclude_ofs(target_list, exclude_list):
-    ''' The function returns an array of object paths that fall under the exception.
+    """ The function returns an array of object paths that fall under the exception.
 
-    '''
+    """
 
     exclude_array = []
 
@@ -69,10 +69,10 @@ def get_exclude_ofs(target_list, exclude_list):
 
 
 def get_ofs(glob_wildcards, recursive=False):
-    ''' The function returns an array of object paths that correspond to regulars
+    """ The function returns an array of object paths that correspond to regulars
     in the glob format. The input receives an array of these regulars.
 
-    '''
+    """
 
     array_parsed_files = []
 
@@ -91,13 +91,13 @@ def get_ofs(glob_wildcards, recursive=False):
 
 
 def get_name_files_backup(regex, target):
-    ''' A function that returns a basis for the name of the object's backup target
+    """ A function that returns a basis for the name of the object's backup target
     (actual for backup types desc_files, inc_files). The input receives the following arguments:
         regex - regular in the configuration file (which should be backed up);
         target - the specific path on the server that falls under this regular.
-    '''
+    """
 
-    part_of_regex = regex.split('/') 
+    part_of_regex = regex.split('/')
     part_of_target = target.split('/')
 
     # Since the lengths of the part_of_regex and part_of_target lists are always equal
@@ -112,7 +112,6 @@ def get_name_files_backup(regex, target):
 
     name = '___'.join(array_of_part_path)
 
-
     if not name:
         # If the path in the regular was set explicitly
         if part_of_target[-1]:
@@ -125,7 +124,7 @@ def get_name_files_backup(regex, target):
 
 def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
                remote_dir='', storage='', host='', share=''):
-    ''' The function creates a tarball. The input receives the following arguments:
+    """ The function creates a tarball. The input receives the following arguments:
       job_type - files / databases (necessary for the correct operation of tar exceptions for files);
       backup_full_path - the path to the archive file;
       target - the object to be archived;
@@ -133,7 +132,7 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
       gzip - True / False;
       remote_dir, storage, host, share - are needed for logging when creating a full backup for incremental backups.
 
-    '''
+    """
 
     try:
         if gzip:
@@ -188,9 +187,9 @@ def create_tar(job_type, backup_full_path, target, gzip, backup_type, job_name,
 
 
 def gzip_file(origfile, dstfile):
-    ''' The function compresses the file (used in redis backup).
+    """ The function compresses the file (used in redis backup).
 
-    '''
+    """
 
     gzip_tarfile = dstfile
 
@@ -203,10 +202,10 @@ def gzip_file(origfile, dstfile):
 
 
 def is_excluded_ofs(ofs):
-    ''' The function determines whether the FSO (file system object) falls under
+    """ The function determines whether the FSO (file system object) falls under
     the exception rules or not. It is necessary to exclude the creation of an empty backup.
 
-    '''
+    """
 
     alternative_name = None
 

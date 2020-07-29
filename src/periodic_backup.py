@@ -1,25 +1,22 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import glob
+import os
 
 import config
 import general_function
 import log_and_mail
 import mount_fuse
-import general_files_func
 import specific_function
 
 
-
 def remove_old_local_file(storages, part_of_dir_path, job_name):
-
     active_flag = False
     index = 0
 
     for i in range(len(storages)):
-        if (storages[i]['storage'] == 'local' and storages[i]['enable']):
+        if storages[i]['storage'] == 'local' and storages[i]['enable']:
             active_flag = True
             index = i
             break
@@ -51,7 +48,6 @@ def remove_old_local_file(storages, part_of_dir_path, job_name):
 
 
 def control_old_files(full_dir_path, store_backup_count, storage, job_name, host='', full_path_for_log='', share=''):
-
     dow = general_function.get_time_now("dow")
     dom = general_function.get_time_now("dom")
 
@@ -68,7 +64,7 @@ def control_old_files(full_dir_path, store_backup_count, storage, job_name, host
         delta_count_file = int(count_file) - int(store_backup_count)
 
         if ((time_period == 'weekly' and dow != config.dow_backup) or
-            (time_period == 'monthly' and dom != config.dom_backup)):
+                (time_period == 'monthly' and dom != config.dom_backup)):
             result_delete_count = delta_count_file
         else:
             result_delete_count = delta_count_file + 1
@@ -80,23 +76,29 @@ def control_old_files(full_dir_path, store_backup_count, storage, job_name, host
             delete_oldest_files(files_grabbed_list, result_delete_count, job_name)
         except general_function.MyError as err:
             if storage == 'local':
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage:{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage:{err}",
                                       config.filelog_fd, job_name)
             elif storage == 'smb':
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}):{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}):{err}",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}):{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}):{err}",
                                       config.filelog_fd, job_name)
         else:
             if storage == 'local':
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files  in directory '{full_dir_path}' on '{storage}' storage.",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files  in directory '{full_dir_path}' on '{storage}' storage.",
                                       config.filelog_fd, job_name)
             elif storage == 'smb':
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
     else:
         try:
@@ -104,28 +106,33 @@ def control_old_files(full_dir_path, store_backup_count, storage, job_name, host
                 general_function.del_file_objects(job_name, i)
         except general_function.MyError as err:
             if storage == 'local':
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage:{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage:{err}",
                                       config.filelog_fd, job_name)
             elif storage == 'smb':
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}):{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}):{err}",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('ERROR', f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}):{err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}):{err}",
                                       config.filelog_fd, job_name)
         else:
             if storage == 'local':
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage.",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files in directory '{full_dir_path}' on '{storage}' storage.",
                                       config.filelog_fd, job_name)
             elif storage == 'smb':
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' in '{share}' share on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('INFO', f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully deleted old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
 
 
 def delete_oldest_files(files_list, count, job_name):
-
     tmp_list = []
 
     for i in files_list:
@@ -138,7 +145,6 @@ def delete_oldest_files(files_list, count, job_name):
     time_sorted_list = sorted(tmp_list, key=os.path.getmtime)
     length_list = len(time_sorted_list)
 
-
     if count <= 0:
         return 0
     elif count > length_list:
@@ -149,7 +155,6 @@ def delete_oldest_files(files_list, count, job_name):
 
 
 def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
-
     dow = general_function.get_time_now("dow")
     dom = general_function.get_time_now("dom")
 
@@ -184,11 +189,11 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
 
                     if storage != 'local':
                         remote_dir = backup_dir
-                        local_dst_dirname = mount_fuse.mount_point
+                        local_dst_dirname = mount_fuse.mount_point + mount_fuse.mount_point_sub_dir
                     else:
                         local_dst_dirname = backup_dir
 
-                    days_count =  storages[i]['store']['days']
+                    days_count = storages[i]['store']['days']
                     weeks_count = storages[i]['store']['weeks']
                     month_count = storages[i]['store']['month']
 
@@ -206,8 +211,10 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
                             share = current_storage_data['share']
 
                         for j in list(store_dict.keys()):
-                            # For storage: sshfs, nfs backup_dir is the mount point and must already be created before mounting.
-                            # For storage: ftp, smb, webdav, s3 is NOT a mount point, but actually a relative path relative to the mount point
+                            # For storage: sshfs, nfs backup_dir is the mount point and must already be created before
+                            # mounting. It'll be created if remote_mount_point is defined.
+                            # For storage: ftp, smb, webdav, s3 is NOT a mount point, but actually a relative path
+                            # relative to the mount point.
                             if storage in ('scp', 'nfs'):
                                 full_path = os.path.join(local_dst_dirname, part_of_dir_path, j)
                                 remote_path_to_backup_dir = os.path.join(backup_dir, part_of_dir_path, j)
@@ -217,11 +224,11 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
 
                             store_backup_count = store_dict[j]
 
-                            control_old_files(full_path, store_backup_count, storage, job_name, host, remote_path_to_backup_dir, share)
+                            control_old_files(full_path, store_backup_count, storage, job_name, host,
+                                              remote_path_to_backup_dir, share)
                     else:
                         host = ''
                         share = ''
-
 
                     if int(month_count) and dom == config.dom_backup:
                         subdir_name = 'monthly'
@@ -230,15 +237,18 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
                     elif int(days_count):
                         subdir_name = 'daily'
 
-
                     # For storage: sshfs, nfs backup_dir is the mount point and must already be created before mounting.
-                    # For storage: ftp, smb, webdav, s3 is NOT a mount point, but actually a relative path relative to the mount point
+                    # It'll be created if remote_mount_point is defined.
+                    # For storage: ftp, smb, webdav, s3 is NOT a mount point, but actually a relative path relative
+                    # to the mount point
                     if storage in ('local', 'scp', 'nfs'):
                         general_local_dst_path = os.path.join(local_dst_dirname, part_of_dir_path)
                     else:
-                        general_local_dst_path = os.path.join(local_dst_dirname,  backup_dir.lstrip('/'), part_of_dir_path)
+                        general_local_dst_path = os.path.join(local_dst_dirname, backup_dir.lstrip('/'),
+                                                              part_of_dir_path)
 
-                    periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count, job_name, host, share)
+                    periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count,
+                                    weeks_count, job_name, host, share)
 
                     try:
                         mount_fuse.unmount()
@@ -250,8 +260,8 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name):
             continue
 
 
-def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count, job_name, host, share):
-
+def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count,
+                    job_name, host, share):
     daily_subdir_name = "daily"
     weekly_subdir_name = "weekly"
     monthly_subdir_name = "monthly"
@@ -267,7 +277,6 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
     weekly_dir = os.path.join(general_local_dst_path, weekly_subdir_name)
     monthly_dir = os.path.join(general_local_dst_path, monthly_subdir_name)
 
-
     if storage == 'local':
         if subdir_name == monthly_subdir_name:
             dst_dirs.append(monthly_dir)
@@ -278,7 +287,7 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
                 dst_dirs.append(weekly_dir)
                 link_dict[dst_link] = src_link
 
-            if int(days_count): 
+            if int(days_count):
                 src_link = os.path.join(general_local_dst_path, monthly_subdir_name, backup_file_name)
                 dst_link = os.path.join(general_local_dst_path, daily_subdir_name, backup_file_name)
                 dst_dirs.append(daily_dir)
@@ -287,7 +296,7 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
 
             dst_dirs.append(weekly_dir)
 
-            if int(days_count): 
+            if int(days_count):
                 src_link = os.path.join(general_local_dst_path, weekly_subdir_name, backup_file_name)
                 dst_link = os.path.join(general_local_dst_path, daily_subdir_name, backup_file_name)
                 dst_dirs.append(daily_dir)
@@ -299,16 +308,18 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
 
     for dst_dir in set(dst_dirs):
         dirs_for_log = general_function.get_dirs_for_log(dst_dir, remote_dir, storage)
-        general_function.create_dirs(job_name='', dirs_pairs={dst_dir:dirs_for_log})
+        general_function.create_dirs(job_name='', dirs_pairs={dst_dir: dirs_for_log})
 
     if storage == 'local':
         try:
             general_function.move_ofs(full_tmp_path, full_dst_path)
         except general_function.MyError as err:
-            log_and_mail.writelog('ERROR', f"Can't move '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage: {err}",
+            log_and_mail.writelog('ERROR',
+                                  f"Can't move '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage: {err}",
                                   config.filelog_fd, job_name)
         else:
-            log_and_mail.writelog('INFO', f"Successfully moved '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage.",
+            log_and_mail.writelog('INFO',
+                                  f"Successfully moved '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage.",
                                   config.filelog_fd, job_name)
 
         if link_dict:
@@ -328,16 +339,19 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
 
         except general_function.MyError as err:
             if storage != 'smb':
-                log_and_mail.writelog('ERROR', f"Can't copy '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory on '{storage}' storage({host}): {err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't copy '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory on '{storage}' storage({host}): {err}",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('ERROR', f"Can't copy '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory in '{share}' share on '{storage}' storage({host}): {err}",
+                log_and_mail.writelog('ERROR',
+                                      f"Can't copy '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory in '{share}' share on '{storage}' storage({host}): {err}",
                                       config.filelog_fd, job_name)
         else:
             if storage != 'smb':
-                log_and_mail.writelog('INFO', f"Successfully copied '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully copied '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
             else:
-                log_and_mail.writelog('INFO', f"Successfully copied '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory in '{share}' share on '{storage}' storage({host}).",
+                log_and_mail.writelog('INFO',
+                                      f"Successfully copied '{subdir_name}' file '{full_tmp_path}' -> '{dirs_for_log}' directory in '{share}' share on '{storage}' storage({host}).",
                                       config.filelog_fd, job_name)
-

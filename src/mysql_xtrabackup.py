@@ -1,14 +1,14 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import glob
 import os.path
 import re
-import glob
 from collections import deque
 
-import log_and_mail
 import config
 import general_function
+import log_and_mail
 import periodic_backup
 
 
@@ -28,7 +28,7 @@ def mysql_xtrabackup(job_data):
     for i in range(len(sources)):
         try:
             connect = sources[i]['connect']
-            gzip =  sources[i]['gzip']
+            gzip = sources[i]['gzip']
             extra_keys = sources[i]['extra_keys']
         except KeyError as e:
             log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
@@ -38,30 +38,30 @@ def mysql_xtrabackup(job_data):
         db_password = connect.get('db_password')
         path_to_conf = connect.get('path_to_conf')
 
-        if  not (path_to_conf and db_user and db_password):
+        if not (path_to_conf and db_user and db_password):
             log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill the required fields",
-                                  config.filelog_fd, job_name) 
+                                  config.filelog_fd, job_name)
             continue
 
         if not os.path.isfile(path_to_conf):
             log_and_mail.writelog('ERROR', f"Configuration file '{path_to_conf}' not found!",
-                                  config.filelog_fd, job_name) 
+                                  config.filelog_fd, job_name)
             continue
 
         str_auth = f'--defaults-file={path_to_conf} --user={db_user} --password={db_password}'
 
         backup_full_tmp_path = general_function.get_full_path(
-                                                            full_path_tmp_dir,
-                                                            'xtrabackup', 
-                                                            'tar',
-                                                            gzip)
+            full_path_tmp_dir,
+            'xtrabackup',
+            'tar',
+            gzip)
 
         periodic_backup.remove_old_local_file(storages, '', job_name)
 
         if is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
-            periodic_backup.general_desc_iteration(backup_full_tmp_path, 
-                                                    storages, '',
-                                                    job_name)
+            periodic_backup.general_desc_iteration(backup_full_tmp_path,
+                                                   storages, '',
+                                                   job_name)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
@@ -70,7 +70,6 @@ def mysql_xtrabackup(job_data):
 
 
 def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, job_name):
-
     date_now = general_function.get_time_now('backup')
     tmp_status_file = f'/tmp/xtrabackup_status/{date_now}.log'
 
@@ -92,7 +91,8 @@ def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, jo
     code = command['code']
 
     if not is_success_status_xtrabackup(tmp_status_file, job_name):
-        log_and_mail.writelog('ERROR', f"Can't create xtrabackup in tmp directory! More information in status file {tmp_status_file}.",
+        log_and_mail.writelog('ERROR',
+                              f"Can't create xtrabackup in tmp directory! More information in status file {tmp_status_file}.",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
@@ -106,7 +106,6 @@ def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, jo
 
 
 def is_success_status_xtrabackup(status_file, job_name):
-
     try:
         with open(status_file) as f:
             status = list(deque(f, 1))[0]
