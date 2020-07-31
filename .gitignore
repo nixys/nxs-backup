@@ -12,3 +12,5 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 cmake_install.cmake
 /src/version.go
+nxs-backup.code-workspace
+/.vscode
