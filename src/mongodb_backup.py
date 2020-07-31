@@ -33,6 +33,7 @@ def mongodb_backup(job_data):
 
     """
 
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -43,6 +44,7 @@ def mongodb_backup(job_data):
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
+    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -92,14 +94,15 @@ def mongodb_backup(job_data):
                 target_db_list = client.database_names()
             except pymongo.errors.PyMongoError as err:
                 log_and_mail.writelog('ERROR',
-                                      f"Can't connect to MongoDB instances with the following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
+                                      f"Can't connect to MongoDB instances with the following data host='{db_host}', "
+                                      f"port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
                 continue
             finally:
                 client.close()
 
         for db in target_db_list:
-            if not db in exclude_dbs_list:
+            if db not in exclude_dbs_list:
                 try:
                     client = pymongo.MongoClient(uri)
                     current_db = client[db]
@@ -116,7 +119,7 @@ def mongodb_backup(job_data):
                     target_collection_list = collection_list
 
                 for collection in target_collection_list:
-                    if not collection in exclude_collections_list and collection in collection_list:
+                    if collection not in exclude_collections_list and collection in collection_list:
                         str_auth_finally = f"{str_auth} --collection {collection} "
 
                         backup_full_tmp_path = general_function.get_full_path(
@@ -126,13 +129,16 @@ def mongodb_backup(job_data):
                             gzip)
 
                         part_of_dir_path = os.path.join(db, collection)
-                        periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                        if not safety_backup:
+                            periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
                         if is_success_mongodump(collection, db, extra_keys, str_auth_finally, backup_full_tmp_path,
                                                 gzip, job_name):
                             periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                                    storages, part_of_dir_path,
                                                                    job_name)
+                            if safety_backup:
+                                periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

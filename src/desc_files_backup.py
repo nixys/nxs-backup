@@ -14,6 +14,7 @@ def desc_files_backup(job_data):
 
     """
 
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -25,6 +26,7 @@ def desc_files_backup(job_data):
                               config.filelog_fd, job_name)
         return 1
 
+    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -48,7 +50,7 @@ def desc_files_backup(job_data):
             target_ofs_list = general_files_func.get_ofs(regex)
 
             if not target_ofs_list:
-                log_and_mail.writelog('ERROR', "No file system objects found that" + \
+                log_and_mail.writelog('ERROR', "No file system objects found that" +
                                       f"match the regular expression '{regex}'!",
                                       config.filelog_fd, job_name)
                 continue
@@ -70,7 +72,8 @@ def desc_files_backup(job_data):
                         'tar',
                         gzip)
 
-                    periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                    if not safety_backup:
+                        periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
                     if general_files_func.create_tar('files', backup_full_tmp_path, i,
                                                      gzip, backup_type, job_name):
@@ -79,6 +82,8 @@ def desc_files_backup(job_data):
                         periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                                storages, part_of_dir_path,
                                                                job_name)
+                        if safety_backup:
+                            periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
                 else:
                     continue
 

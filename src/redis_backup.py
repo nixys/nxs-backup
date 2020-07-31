@@ -11,6 +11,7 @@ import periodic_backup
 
 
 def redis_backup(job_data):
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -21,6 +22,7 @@ def redis_backup(job_data):
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
+    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -61,7 +63,8 @@ def redis_backup(job_data):
                     str_auth = f" -s {socket} "
         except (redis.exceptions.ConnectionError, ConnectionRefusedError) as err:
             log_and_mail.writelog('ERROR',
-                                  f"Can't connect to Redis instances with with following data host='{db_host}', port='{db_port}', passwd='{db_password}', socket='{socket}': {err}",
+                                  f"Can't connect to Redis instances with with following data host='{db_host}', "
+                                  f"port='{db_port}', passwd='{db_password}', socket='{socket}': {err}",
                                   config.filelog_fd, job_name)
             continue
         else:
@@ -70,13 +73,15 @@ def redis_backup(job_data):
                 'redis',
                 'rdb',
                 gzip)
-
-            periodic_backup.remove_old_local_file(storages, '', job_name)
+            if not safety_backup:
+                periodic_backup.remove_old_local_file(storages, '', job_name)
 
             if is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):
                 periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                        storages, '',
                                                        job_name)
+                if safety_backup:
+                    periodic_backup.remove_old_local_file(storages, '', job_name)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
@@ -106,19 +111,22 @@ def is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):
             try:
                 general_files_func.gzip_file(backup_full_tmp_path_tmp, backup_full_tmp_path)
             except general_function.MyError as stderr:
-                log_and_mail.writelog('ERROR',
-                                      f"Can't gzip redis database dump '{backup_full_tmp_path_tmp}' in tmp directory:{stderr}.",
-                                      config.filelog_fd, job_name)
+                log_and_mail.writelog(
+                    'ERROR',
+                    f"Can't gzip redis database dump '{backup_full_tmp_path_tmp}' in tmp directory:{stderr}.",
+                    config.filelog_fd, job_name)
                 return False
             else:
-                log_and_mail.writelog('INFO',
-                                      f"Successfully created redis database dump '{backup_full_tmp_path}' in tmp directory.",
-                                      config.filelog_fd, job_name)
+                log_and_mail.writelog(
+                    'INFO',
+                    f"Successfully created redis database dump '{backup_full_tmp_path}' in tmp directory.",
+                    config.filelog_fd, job_name)
                 return True
             finally:
                 general_function.del_file_objects(job_name, backup_full_tmp_path_tmp)
         else:
-            log_and_mail.writelog('INFO',
-                                  f"Successfully created redis database dump '{backup_full_tmp_path_tmp}' in tmp directory.",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'INFO',
+                f"Successfully created redis database dump '{backup_full_tmp_path_tmp}' in tmp directory.",
+                config.filelog_fd, job_name)
             return True
