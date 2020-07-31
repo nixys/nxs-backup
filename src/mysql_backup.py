@@ -130,15 +130,12 @@ def mysql_backup(job_data):
                     'sql',
                     gzip)
 
-                if not safety_backup:
-                    periodic_backup.remove_old_local_file(storages, db, job_name)
+                periodic_backup.remove_old_local_file(storages, db, job_name)
 
                 if is_success_mysqldump(db, extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
                     periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                            storages, db,
-                                                           job_name)
-                    if safety_backup:
-                        periodic_backup.remove_old_local_file(storages, db, job_name)
+                                                           job_name, safety_backup)
 
         if is_slave:
             try:
