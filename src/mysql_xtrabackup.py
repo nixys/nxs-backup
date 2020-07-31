@@ -13,6 +13,7 @@ import periodic_backup
 
 
 def mysql_xtrabackup(job_data):
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -23,6 +24,7 @@ def mysql_xtrabackup(job_data):
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
+    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -56,12 +58,15 @@ def mysql_xtrabackup(job_data):
             'tar',
             gzip)
 
-        periodic_backup.remove_old_local_file(storages, '', job_name)
+        if not safety_backup:
+            periodic_backup.remove_old_local_file(storages, '', job_name)
 
         if is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
             periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                    storages, '',
                                                    job_name)
+            if safety_backup:
+                periodic_backup.remove_old_local_file(storages, '', job_name)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

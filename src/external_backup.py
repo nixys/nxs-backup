@@ -16,6 +16,7 @@ def external_backup(job_data):
 
     """
 
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -26,7 +27,10 @@ def external_backup(job_data):
                               config.filelog_fd, job_name)
         return 1
 
-    periodic_backup.remove_old_local_file(storages, '', job_name)
+    safety_backup = job_data.get('safety_backup', False)
+
+    if not safety_backup:
+        periodic_backup.remove_old_local_file(storages, '', job_name)
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']
@@ -57,10 +61,12 @@ def external_backup(job_data):
                                            storages, '',
                                            job_name)
 
+    if safety_backup:
+        periodic_backup.remove_old_local_file(storages, '', job_name)
+
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      '/var/cache/davfs2/*')
+    general_function.del_file_objects(backup_type, '/var/cache/davfs2/*')
 
 
 def get_value_from_stdout(stderr, stdout, job_name):
@@ -76,7 +82,7 @@ def get_value_from_stdout(stderr, stdout, job_name):
     else:
         try:
             source_dict = json.loads(stdout)
-        except (ValueError) as err:
+        except ValueError as err:
             log_and_mail.writelog('ERROR', f"Can't parse output str: {err}",
                                   config.filelog_fd, job_name)
             return None
@@ -86,7 +92,7 @@ def get_value_from_stdout(stderr, stdout, job_name):
                 source_dict['basename']
                 source_dict['extension']
                 source_dict['gzip']
-            except (KeyError) as err:
+            except KeyError as err:
                 log_and_mail.writelog('ERROR', f"Can't find required key: {err}",
                                       config.filelog_fd, job_name)
                 return None

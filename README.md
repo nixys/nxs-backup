@@ -91,6 +91,7 @@ jobs: !include [conf.d/*.conf]
   * *external*
 * `tmp_dir`: local path to the temporary directory for backups.
 * `dump_cmd`(**only for *external* type**): full command to run an external script.
+* `safety_backup`(logicals)(optional): Delete outdated backups after creating a new one. By default "false". **IMPORTANT** Using of this option requires more disk space. Make sure there is enough free space on the end device.
 * `sources` (objects array) specify one target or array of targets for backup:
   * `connect` (object, **Only for *databases* types**). It is necessary to fill a minimum set of keys to allow database connection:
     * `db_host`: DB host.
