@@ -58,15 +58,12 @@ def mysql_xtrabackup(job_data):
             'tar',
             gzip)
 
-        if not safety_backup:
-            periodic_backup.remove_old_local_file(storages, '', job_name)
+        periodic_backup.remove_old_local_file(storages, '', job_name)
 
         if is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
             periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                    storages, '',
-                                                   job_name)
-            if safety_backup:
-                periodic_backup.remove_old_local_file(storages, '', job_name)
+                                                   job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

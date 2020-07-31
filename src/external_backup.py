@@ -29,8 +29,7 @@ def external_backup(job_data):
 
     safety_backup = job_data.get('safety_backup', False)
 
-    if not safety_backup:
-        periodic_backup.remove_old_local_file(storages, '', job_name)
+    periodic_backup.remove_old_local_file(storages, '', job_name)
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']
@@ -57,12 +56,8 @@ def external_backup(job_data):
 
     general_function.move_ofs(full_tmp_path, new_full_tmp_path)
 
-    periodic_backup.general_desc_iteration(new_full_tmp_path,
-                                           storages, '',
-                                           job_name)
-
-    if safety_backup:
-        periodic_backup.remove_old_local_file(storages, '', job_name)
+    periodic_backup.general_desc_iteration(new_full_tmp_path, storages, '',
+                                           job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

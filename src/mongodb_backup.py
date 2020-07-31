@@ -129,16 +129,13 @@ def mongodb_backup(job_data):
                             gzip)
 
                         part_of_dir_path = os.path.join(db, collection)
-                        if not safety_backup:
-                            periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                        periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
                         if is_success_mongodump(collection, db, extra_keys, str_auth_finally, backup_full_tmp_path,
                                                 gzip, job_name):
                             periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                                    storages, part_of_dir_path,
-                                                                   job_name)
-                            if safety_backup:
-                                periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                                                                   job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

@@ -287,3 +287,19 @@ def get_default_port(type_source):
     """
 
     return config.default_port_dict[type_source]
+
+
+def get_host_and_share(storage, current_storage_data):
+    """"""
+
+    if storage != 's3':
+        host = current_storage_data['host']
+    else:
+        host = ''
+
+    if storage != 'smb':
+        share = ''
+    else:
+        share = current_storage_data['share']
+
+    return host, share

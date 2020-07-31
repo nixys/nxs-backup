@@ -72,8 +72,7 @@ def desc_files_backup(job_data):
                         'tar',
                         gzip)
 
-                    if not safety_backup:
-                        periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                    periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
                     if general_files_func.create_tar('files', backup_full_tmp_path, i,
                                                      gzip, backup_type, job_name):
@@ -81,9 +80,7 @@ def desc_files_backup(job_data):
                         # transferred the data to the specified storage
                         periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                                storages, part_of_dir_path,
-                                                               job_name)
-                        if safety_backup:
-                            periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                                                               job_name, safety_backup)
                 else:
                     continue
 
