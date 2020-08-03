@@ -10,6 +10,7 @@ import periodic_backup
 
 
 def postgresql_backup(job_data):
+    job_name = 'undefined'
     try:
         job_name = job_data['job']
         backup_type = job_data['type']
@@ -20,6 +21,7 @@ def postgresql_backup(job_data):
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return 1
 
+    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -67,7 +69,7 @@ def postgresql_backup(job_data):
             connection.close()
 
         for db in target_list:
-            if not db in exclude_list:
+            if db not in exclude_list:
                 backup_full_tmp_path = general_function.get_full_path(
                     full_path_tmp_dir,
                     db,
@@ -81,7 +83,7 @@ def postgresql_backup(job_data):
                 if is_success_pgdump(db, extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
                     periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                            storages, db,
-                                                           job_name)
+                                                           job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

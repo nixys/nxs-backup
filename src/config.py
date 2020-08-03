@@ -177,7 +177,8 @@ def get_conf_value(parsed_str):
             external_job_dict[job_name] = job_data
         else:
             general_function.print_info(
-                f"Backup type '{backup_type}' in job '{job_name}' does not supported, so this job was ignored! Only one of this type backup is allowed:{supported_backup_type}!")
+                f"Backup type '{backup_type}' in job '{job_name}' does not supported, so this job was ignored! "
+                f"Only one of this type backup is allowed:{supported_backup_type}!")
 
     all_jobs_name = (list(db_job_dict.keys()) + list(file_job_dict.keys()) +
                      list(external_job_dict.keys()) + supported_general_job)
