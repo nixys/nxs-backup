@@ -121,9 +121,13 @@ def get_mount_data(current_storage_data):
     global mount_point
     global mount_point_sub_dir
     dist = general_function.get_dist()
-    pre_mount = {}
 
+    pre_mount = {}
     dict_mount_data = {}
+    storage = current_storage_data.get('storage', '')
+
+    if storage == 'local':
+        return [dict_mount_data, pre_mount]
 
     if re.match('(debian|ubuntu)', dist, re.I):
         family_os = 'deb'
@@ -134,7 +138,6 @@ def get_mount_data(current_storage_data):
     else:
         raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
 
-    storage = current_storage_data.get('storage', '')
     backup_dir = current_storage_data.get('backup_dir', '')
     remote_mount_point = current_storage_data.get('remote_mount_point', backup_dir)
     user = current_storage_data.get('user', '')
@@ -148,6 +151,10 @@ def get_mount_data(current_storage_data):
     s3fs_opts = current_storage_data.get('s3fs_opts', '')
     s3fs_access_key_id = current_storage_data.get('access_key_id', '')
     s3fs_secret_access_key = current_storage_data.get('secret_access_key', '')
+
+    mount_point = ''
+    packets = ['']
+    mount_cmd = ''
 
     if storage == 'scp':
         packets = ['openssh-client', 'sshfs', 'sshpass']
@@ -201,9 +208,6 @@ def get_mount_data(current_storage_data):
         mount_cmd = f's3fs {bucket_name} {mount_point} {s3fs_opts}'
         if s3fs_access_key_id and s3fs_secret_access_key:
             pre_mount['check_s3fs_secrets'] = f'{bucket_name}:{s3fs_access_key_id}:{s3fs_secret_access_key}\n'
-    else:
-        mount_point = ''
-        return [dict_mount_data, pre_mount]
 
     packets.append('fuse')
     dict_mount_data['type_storage'] = storage

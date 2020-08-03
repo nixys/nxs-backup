@@ -43,7 +43,7 @@ def do_backup(path_to_config, jobs_name):
 
     general_function.create_files('', config.log_file)
 
-    if not jobs_name in config.all_jobs_name:
+    if jobs_name not in config.all_jobs_name:
         general_function.print_info(f"Only one of this job's name is allowed: {config.general_str}")
         sys.exit(1)
 
@@ -65,8 +65,8 @@ def do_backup(path_to_config, jobs_name):
 
     try:
         general_function.get_lock()
-    except BlockingIOError:
-        msg = "Script already is running!"
+    except general_function.MyError as ex:
+        msg = ex.message
         log_and_mail.writelog('ERROR', f"{msg}", config.filelog_fd, '')
         general_function.print_info(f"{msg}")
         sys.exit(1)

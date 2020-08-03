@@ -70,11 +70,13 @@ Nxs-backup main settings block description.
 * `smtp_password`(optional): SMTP user password.
 * `smtp_timeout`(optional): SMTP connection timeout.
 * `block_io_read`(optional): limit reading speed from the block device on which backups are collected (MB/s).
-* `block_io_write`(optional): limit writing speed to a block device on which backups are collected (MB/s)
-* `blkio_weight`(optional): "weight" of the backup process when working with a block device on which backups are collected (weight must be in range from 100 to 1000)
+* `block_io_write`(optional): limit writing speed to a block device on which backups are collected (MB/s).
+* `blkio_weight`(optional): "weight" of the backup process when working with a block device on which backups are collected (weight must be in range from 100 to 1000).
 * `general_path_to_all_tmp_dir`(optional): the general part of the path to directories with temporary copies (based on this, the block device is defined, which IO must be limited).
 * `cpu_shares`(optional): the percentage of CPU computing resources that will go to the backup process.
 * `log_file`(optional): path to log file. If not specified the default value will be used (/var/log/nxs-backup/nxs-backup.log).
+* `loop_timeout`(optional): waiting time for another nxs-backup to be completed. By default disabled.
+* `loop_interval`(optional): the interval in seconds, how often to check if another copy of nxs-backup has ended. By default 30 seconds.
 
 ### `jobs`
 
