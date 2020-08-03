@@ -67,4 +67,4 @@ def generate(backup_type, storages, path_to_file):
 
     os.chmod(path_to_file, 0o600)
 
-    general_function.print_info("Successfully generated '{path_to_file}' configuration file!")
+    general_function.print_info(f"Successfully generated '{path_to_file}' configuration file!")
