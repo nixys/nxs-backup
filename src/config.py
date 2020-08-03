@@ -223,6 +223,6 @@ def get_conf_value(parsed_str):
     smtp_tls = parsed_str['main'].get('smtp_tls', None)
 
     loop_timeout = parsed_str['main'].get('loop_timeout', None)
-    loop_interval = parsed_str['main'].get('loop_interval', 30)  # 20 seconds - default loop interval
+    loop_interval = parsed_str['main'].get('loop_interval', 30)  # 30 seconds - default loop interval
 
     return db_job_dict, file_job_dict, external_job_dict
