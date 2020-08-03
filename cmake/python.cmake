@@ -10,6 +10,7 @@ set(PYTHON_MODULES
 "psycopg2-binary"
 "redis"
 "pyyaml"
+"distro"
 )
 
 foreach(module ${PYTHON_MODULES})
