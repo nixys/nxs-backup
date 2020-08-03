@@ -37,7 +37,7 @@ def do_backup(path_to_config, jobs_name):
         general_function.print_info(f"An error in the parse of the configuration file {path_to_config}:{e}!")
         sys.exit(1)
 
-    (db_jobs_dict, file_jobs_dict, external_jobs_dict) = config.get_conf_value(parsed_string)
+    db_jobs_dict, file_jobs_dict, external_jobs_dict = config.get_conf_value(parsed_string)
 
     resource_constraint.set_limitations()
 
