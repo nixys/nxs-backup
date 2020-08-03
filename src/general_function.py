@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import distro
 import fcntl
 import os
-import platform
 import shutil
 import subprocess
 import sys
+from time import sleep
 
 import psutil
 
@@ -61,6 +62,21 @@ def print_info(*message):
 
 
 def get_lock():
+    try:
+        create_lock_file()
+    except BlockingIOError:
+        if config.loop_timeout is None:
+            raise MyError("Script already is running!")
+        else:
+            msg = "Script already is running! Waiting until completion."
+            log_and_mail.writelog('WARNING', f"{msg}", config.filelog_fd, '')
+            print_info(f"{msg}")
+            unlock_waiting()
+
+    return 1
+
+
+def create_lock_file():
     create_files('', config.path_to_lock_file)
     config.lock_file_fd = open(config.path_to_lock_file, 'a')
     fcntl.flock(config.lock_file_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -72,6 +88,21 @@ def get_unlock():
     fcntl.flock(config.lock_file_fd, fcntl.LOCK_UN)
 
     return 1
+
+
+def unlock_waiting():
+    loop_timeout = config.loop_timeout
+    loop_interval = config.loop_interval
+    while loop_timeout > 0:
+        try:
+            create_lock_file()
+        except BlockingIOError:
+            sleep(loop_interval)
+            loop_timeout -= loop_interval
+        else:
+            return 1
+
+    raise MyError("Waiting time for completion of another nxs-backup script has been exceeded. Cannot start script.")
 
 
 def get_time_now(unit):
@@ -180,8 +211,7 @@ def get_dist():
 
     """
 
-    dist = platform.linux_distribution()[0]
-    return dist
+    return distro.id()
 
 
 def set_prio_process(nice, ionice):

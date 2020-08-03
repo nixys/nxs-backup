@@ -96,6 +96,8 @@ smtp_user = ''
 smtp_password = ''
 smtp_timeout = ''
 smtp_tls = ''
+loop_timeout = 0
+loop_interval = 0
 
 
 def get_conf_value(parsed_str):
@@ -141,6 +143,9 @@ def get_conf_value(parsed_str):
     global smtp_password
     global smtp_timeout
     global smtp_tls
+
+    global loop_timeout
+    global loop_interval
 
     general_str_for_backup_type_db = ', '.join(supported_db_backup_type)
     general_str_for_backup_type_files = ', '.join(supported_file_backup_type)
@@ -216,5 +221,8 @@ def get_conf_value(parsed_str):
     smtp_password = parsed_str['main'].get('smtp_password', None)
     smtp_timeout = parsed_str['main'].get('smtp_timeout', None)
     smtp_tls = parsed_str['main'].get('smtp_tls', None)
+
+    loop_timeout = parsed_str['main'].get('loop_timeout', None)
+    loop_interval = parsed_str['main'].get('loop_interval', 30)  # 20 seconds - default loop interval
 
     return db_job_dict, file_job_dict, external_job_dict
