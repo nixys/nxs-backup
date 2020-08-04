@@ -125,6 +125,9 @@ def get_mount_data(current_storage_data):
     pre_mount = {}
     dict_mount_data = {}
     storage = current_storage_data.get('storage', '')
+    mount_point = ''
+    packets = ['']
+    mount_cmd = ''
 
     if storage == 'local':
         return [dict_mount_data, pre_mount]
@@ -151,10 +154,6 @@ def get_mount_data(current_storage_data):
     s3fs_opts = current_storage_data.get('s3fs_opts', '')
     s3fs_access_key_id = current_storage_data.get('access_key_id', '')
     s3fs_secret_access_key = current_storage_data.get('secret_access_key', '')
-
-    mount_point = ''
-    packets = ['']
-    mount_cmd = ''
 
     if storage == 'scp':
         packets = ['openssh-client', 'sshfs', 'sshpass']
