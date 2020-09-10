@@ -10,18 +10,11 @@ import periodic_backup
 
 
 def postgresql_basebackup(job_data):
-    job_name = 'undefined'
-    try:
-        job_name = job_data['job']
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
-        return 1
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
-    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -38,7 +31,7 @@ def postgresql_basebackup(job_data):
         db_user = connect.get('db_user')
         db_password = connect.get('db_password')
 
-        if not (db_user and db_host and db_password):
+        if not (db_user or db_host or db_password):
             log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill in the required fields",
                                   config.filelog_fd, job_name)
             continue
@@ -50,9 +43,11 @@ def postgresql_basebackup(job_data):
             connection = psycopg2.connect(dbname="postgres", user=db_user, password=db_password, host=db_host,
                                           port=db_port)
         except psycopg2.Error as err:
-            log_and_mail.writelog('ERROR',
-                                  f"Can't connect to PostgreSQL instances with with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'ERROR',
+                f"Can't connect to PostgreSQL instances with with following data host='{db_host}', "
+                f"port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
+                config.filelog_fd, job_name)
             continue
         else:
             connection.close()
@@ -61,7 +56,7 @@ def postgresql_basebackup(job_data):
             full_path_tmp_dir,
             'postgresq_hot',
             'tar',
-            gzip)
+            gzip, i)
 
         periodic_backup.remove_old_local_file(storages, '', job_name)
 

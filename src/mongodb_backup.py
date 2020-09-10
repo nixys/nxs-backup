@@ -5,6 +5,7 @@ import os
 import re
 
 import pymongo
+from pymongo.errors import PyMongoError
 
 import config
 import general_function
@@ -32,21 +33,14 @@ def mongodb_backup(job_data):
     At the entrance receives a dictionary with the data of the job.
 
     """
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
-    job_name = 'undefined'
-    try:
-        job_name = job_data['job']
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
-        return 1
-
-    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
+    dumped_collections = {}
     for i in range(len(sources)):
         exclude_dbs_list = sources[i].get('exclude_dbs', [])
         exclude_collections_list = sources[i].get('exclude_collections', [])
@@ -83,23 +77,25 @@ def mongodb_backup(job_data):
 
         if db_user:
             uri = f"mongodb://{db_user}:{db_password}@{db_host}:{db_port}/"  # for pymongo
-            str_auth = f" --host {db_host} --port {db_port} --username {db_user} --password {db_password} "  # for mongodump
+            str_auth = f" --host {db_host} --port {db_port} --username {db_user} --password {db_password} "
         else:
             uri = f"mongodb://{db_host}:{db_port}/"
             str_auth = f" --host {db_host} --port {db_port} "
 
+        client = None
         if is_all_flag_db:
             try:
                 client = pymongo.MongoClient(uri)
-                target_db_list = client.database_names()
-            except pymongo.errors.PyMongoError as err:
+                target_db_list = client.list_database_names()
+            except PyMongoError as err:
                 log_and_mail.writelog('ERROR',
                                       f"Can't connect to MongoDB instances with the following data host='{db_host}', "
                                       f"port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
                 continue
             finally:
-                client.close()
+                if client:
+                    client.close()
 
         for db in target_db_list:
             if db not in exclude_dbs_list:
@@ -107,13 +103,16 @@ def mongodb_backup(job_data):
                     client = pymongo.MongoClient(uri)
                     current_db = client[db]
                     collection_list = current_db.collection_names()
-                except pymongo.errors.PyMongoError as err:
-                    log_and_mail.writelog('ERROR',
-                                          f"Can't connect to MongoDB instances with the following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
-                                          config.filelog_fd, job_name)
+                except PyMongoError as err:
+                    log_and_mail.writelog(
+                        'ERROR',
+                        f"Can't connect to MongoDB instances with the following data host='{db_host}', "
+                        f"port='{db_port}', user='{db_user}', passwd='{db_password}':{err}", config.filelog_fd,
+                        job_name)
                     continue
                 finally:
-                    client.close()
+                    if client:
+                        client.close()
 
                 if is_all_flag_collection:
                     target_collection_list = collection_list
@@ -126,21 +125,40 @@ def mongodb_backup(job_data):
                             full_path_tmp_dir,
                             collection,
                             'mongodump',
-                            gzip)
+                            gzip,
+                            f'{i}-{db}-')
 
                         part_of_dir_path = os.path.join(db, collection)
                         periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
 
                         if is_success_mongodump(collection, db, extra_keys, str_auth_finally, backup_full_tmp_path,
                                                 gzip, job_name):
+                            dumped_collections[collection] = {'success': True, 'tmp_path': backup_full_tmp_path}
+                        else:
+                            dumped_collections[collection] = {'success': False}
+
+                        if deferred_copying_level <= 0 and dumped_collections[collection]['success']:
                             periodic_backup.general_desc_iteration(backup_full_tmp_path,
                                                                    storages, part_of_dir_path,
                                                                    job_name, safety_backup)
 
+                for collection, result in dumped_collections.items():
+                    if deferred_copying_level == 1 and result['success']:
+                        periodic_backup.general_desc_iteration(result['tmp_path'], storages,
+                                                               collection, job_name, safety_backup)
+
+        for collection, result in dumped_collections.items():
+            if deferred_copying_level == 2 and result['success']:
+                periodic_backup.general_desc_iteration(result['tmp_path'], storages,
+                                                       collection, job_name, safety_backup)
+
+    for collection, result in dumped_collections.items():
+        if deferred_copying_level >= 3 and result['success']:
+            periodic_backup.general_desc_iteration(result['tmp_path'], storages, collection, job_name, safety_backup)
+
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      full_path_tmp_dir, '/var/cache/davfs2/*')
+    general_function.del_file_objects(backup_type, full_path_tmp_dir, '/var/cache/davfs2/*')
 
 
 def is_success_mongodump(collection, db, extra_keys, str_auth, backup_full_path, gzip, job_name):
@@ -155,16 +173,19 @@ def is_success_mongodump(collection, db, extra_keys, str_auth, backup_full_path,
     code = command['code']
 
     if stderr and is_real_mongo_err(stderr):
-        log_and_mail.writelog('ERROR',
-                              f"Can't create collection '{collection}' in '{db}' database dump in tmp directory:{stderr}",
-                              config.filelog_fd, job_name)
+        log_and_mail.writelog(
+            'ERROR',
+            f"Can't create collection '{collection}' in '{db}' database dump in tmp directory:{stderr}",
+            config.filelog_fd, job_name)
         return False
     elif code != 0:
-        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
-                              config.filelog_fd, job_name)
+        log_and_mail.writelog(
+            'ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
+            config.filelog_fd, job_name)
         return False
     else:
-        log_and_mail.writelog('INFO',
-                              f"Successfully created collection '{collection}' in '{db}' database dump in tmp directory.",
-                              config.filelog_fd, job_name)
+        log_and_mail.writelog(
+            'INFO',
+            f"Successfully created collection '{collection}' in '{db}' database dump in tmp directory.",
+            config.filelog_fd, job_name)
         return True

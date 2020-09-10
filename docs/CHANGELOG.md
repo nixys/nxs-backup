@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2020-09-10
+### Adds
+- Added possibility of deferred copying of created temporary backups
+
 ## [2.1.13] - 2020-08-04
 ### Adds
 - Fixed error with unmount of local storage
