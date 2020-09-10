@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.13] - 2020-08-04
+### Adds
+- Fixed error with unmount of local storage
+
+## [2.1.12] - 2020-08-03
+### Adds
+- Added timeout for waiting of completion already ran script
+- Added the ability to create new backups on remote storages safely
+
 ## [2.1.11] - 2020-07-29
 ### Adds
 - Scp and nfs mount point option
