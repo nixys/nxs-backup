@@ -29,7 +29,7 @@ def get_connection(db_host, db_port, db_user, db_password, auth_file, socket, jo
         except MySQLdb.Error as err:
             log_and_mail.writelog('ERROR', f"Can't connect to MySQL instances with '{auth_file}' auth file:{err}",
                                   config.filelog_fd, job_name)
-            return 1
+            return
         str_auth = f' --defaults-extra-file={auth_file} '
     else:
         if db_host:
@@ -37,38 +37,34 @@ def get_connection(db_host, db_port, db_user, db_password, auth_file, socket, jo
                 connection = MySQLdb.connect(host=db_host, port=int(db_port), user=db_user, passwd=db_password)
             except MySQLdb.Error as err:
                 log_and_mail.writelog('ERROR',
-                                      f"Can't connect to MySQL instances with following data host='{db_host}', port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
+                                      f"Can't connect to MySQL instances with following data host='{db_host}', "
+                                      f"port='{db_port}', user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
-                return 1
+                return
             str_auth = f' --host={db_host} --port={db_port} --user={db_user} --password={db_password} '
         else:
             try:
                 connection = MySQLdb.connect(unix_socket=socket, user=db_user, passwd=db_password)
             except MySQLdb.Error as err:
                 log_and_mail.writelog('ERROR',
-                                      f"Can't connect to MySQL instances with following data: socket='{socket}', user='{db_user}', passwd='{db_password}':{err}",
+                                      f"Can't connect to MySQL instances with following data: socket='{socket}', "
+                                      f"user='{db_user}', passwd='{db_password}':{err}",
                                       config.filelog_fd, job_name)
-                return 1
+                return
             str_auth = f' --socket={socket} --user={db_user} --password={db_password} '
 
-    return (connection, str_auth)
+    return connection, str_auth
 
 
 def mysql_backup(job_data):
-    job_name = 'undefined'
-    try:
-        job_name = job_data['job']
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
-        return 1
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
-    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
+    dumped_dbs = {}
     for i in range(len(sources)):
         exclude_list = sources[i].get('excludes', [])
         try:
@@ -88,7 +84,7 @@ def mysql_backup(job_data):
         db_password = connect.get('db_password')
         auth_file = connect.get('auth_file')
 
-        if not (auth_file or ((db_host or socket) and db_user and db_password)):
+        if not (auth_file or ((db_host or socket) or db_user or db_password)):
             log_and_mail.writelog('ERROR', "Can't find the authentication data, please fill in the required fields",
                                   config.filelog_fd, job_name)
             continue
@@ -101,10 +97,8 @@ def mysql_backup(job_data):
         if 'all' in target_list:
             is_all_flag = True
 
-        try:
-            (connection_1, str_auth) = get_connection(db_host, db_port, db_user, db_password, auth_file, socket,
-                                                      job_name)
-        except:
+        connection_1, str_auth = get_connection(db_host, db_port, db_user, db_password, auth_file, socket, job_name)
+        if connection_1 is None:
             continue
 
         cur_1 = connection_1.cursor()
@@ -117,42 +111,49 @@ def mysql_backup(job_data):
             try:
                 cur_1.execute("STOP SLAVE")
             except MySQLdb.Error as err:
-                log_and_mail.writelog('ERROR', f"Can't stop slave: {err}",
-                                      config.filelog_fd, job_name)
+                log_and_mail.writelog('ERROR', f"Can't stop slave: {err}", config.filelog_fd, job_name)
 
         connection_1.close()
 
         for db in target_list:
-            if not db in exclude_list:
-                backup_full_tmp_path = general_function.get_full_path(
-                    full_path_tmp_dir,
-                    db,
-                    'sql',
-                    gzip)
+            if db not in exclude_list:
+                backup_full_tmp_path = general_function.get_full_path(full_path_tmp_dir, db, 'sql', gzip, i)
 
                 periodic_backup.remove_old_local_file(storages, db, job_name)
 
                 if is_success_mysqldump(db, extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
-                    periodic_backup.general_desc_iteration(backup_full_tmp_path,
-                                                           storages, db,
-                                                           job_name, safety_backup)
+                    dumped_dbs[db] = {'success': True, 'tmp_path': backup_full_tmp_path}
+                else:
+                    dumped_dbs[db] = {'success': False}
+
+                if deferred_copying_level <= 0 and dumped_dbs[db]['success']:
+                    periodic_backup.general_desc_iteration(backup_full_tmp_path, storages, db, job_name, safety_backup)
 
         if is_slave:
+            connection_2, str_auth = get_connection(db_host, db_port, db_user, db_password, auth_file, socket, job_name)
+            if connection_2 is None:
+                log_and_mail.writelog('ERROR', f"Can't start slave: Can't connect to MySQL.",
+                                      config.filelog_fd, job_name)
+                return
+            cur_2 = connection_2.cursor()
             try:
-                (connection_2, str_auth) = get_connection(db_host, db_port, db_user, db_password, auth_file, socket,
-                                                          job_name)
-                cur_2 = connection_2.cursor()
                 cur_2.execute("START SLAVE")
             except MySQLdb.Error as err:
                 log_and_mail.writelog('ERROR', f"Can't start slave: {err} ",
                                       config.filelog_fd, job_name)
-            finally:
-                connection_2.close()
+            connection_2.close()
+
+        for db, result in dumped_dbs.items():
+            if deferred_copying_level == 1 and result['success']:
+                periodic_backup.general_desc_iteration(result['tmp_path'], storages, db, job_name, safety_backup)
+
+    for db, result in dumped_dbs.items():
+        if deferred_copying_level >= 2 and result['success']:
+            periodic_backup.general_desc_iteration(result['tmp_path'], storages, db, job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      full_path_tmp_dir, '/var/cache/davfs2/*')
+    general_function.del_file_objects(backup_type, full_path_tmp_dir, '/var/cache/davfs2/*')
 
 
 def is_success_mysqldump(db, extra_keys, str_auth, backup_full_path, gzip, job_name):

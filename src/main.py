@@ -126,47 +126,47 @@ def do_backup(path_to_config, jobs_name):
     log_and_mail.writelog('INFO', "Stopping script.", config.filelog_fd)
 
 
-def execute_job(jobs_name, jobs_data):
+def execute_job(job_name, job_data):
     """ The function makes a backup of a particular job.
     The input receives a dictionary with data of this job.
 
     """
 
-    log_and_mail.writelog('INFO', f"Starting backup for job '{jobs_name}'.", config.filelog_fd, jobs_name)
+    log_and_mail.writelog('INFO', f"Starting backup for job '{job_name}'.", config.filelog_fd, job_name)
 
-    if not specific_function.validation_storage_data(jobs_data):
+    if not specific_function.validation_storage_data(job_data):
         return 1
 
-    backup_type = jobs_data['type']
+    backup_type = job_data['type']
 
     if backup_type == 'mysql':
-        mysql_backup.mysql_backup(jobs_data)
+        mysql_backup.mysql_backup(job_data)
 
     elif backup_type == 'mysql_xtrabackup':
-        mysql_xtrabackup.mysql_xtrabackup(jobs_data)
+        mysql_xtrabackup.mysql_xtrabackup(job_data)
 
     elif backup_type == 'postgresql':
-        postgresql_backup.postgresql_backup(jobs_data)
+        postgresql_backup.postgresql_backup(job_data)
 
     elif backup_type == 'postgresql_basebackup':
-        postgresql_basebackup.postgresql_basebackup(jobs_data)
+        postgresql_basebackup.postgresql_basebackup(job_data)
 
     elif backup_type == 'mongodb':
-        mongodb_backup.mongodb_backup(jobs_data)
+        mongodb_backup.mongodb_backup(job_data)
 
     elif backup_type == 'redis':
-        redis_backup.redis_backup(jobs_data)
+        redis_backup.redis_backup(job_data)
 
     elif backup_type == 'desc_files':
-        desc_files_backup.desc_files_backup(jobs_data)
+        desc_files_backup.desc_files_backup(job_data)
 
     elif backup_type == 'inc_files':
-        inc_files_backup.inc_files_backup(jobs_data)
+        inc_files_backup.inc_files_backup(job_data)
 
     else:
-        external_backup.external_backup(jobs_data)
+        external_backup.external_backup(job_data)
 
-    log_and_mail.writelog('INFO', f"Finishing backup for job '{jobs_name}'.", config.filelog_fd, jobs_name)
+    log_and_mail.writelog('INFO', f"Finishing backup for job '{job_name}'.", config.filelog_fd, job_name)
 
     return 0
 

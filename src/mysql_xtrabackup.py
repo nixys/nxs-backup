@@ -13,18 +13,11 @@ import periodic_backup
 
 
 def mysql_xtrabackup(job_data):
-    job_name = 'undefined'
-    try:
-        job_name = job_data['job']
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
-        return 1
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
-    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -52,23 +45,16 @@ def mysql_xtrabackup(job_data):
 
         str_auth = f'--defaults-file={path_to_conf} --user={db_user} --password={db_password}'
 
-        backup_full_tmp_path = general_function.get_full_path(
-            full_path_tmp_dir,
-            'xtrabackup',
-            'tar',
-            gzip)
+        backup_full_tmp_path = general_function.get_full_path(full_path_tmp_dir, 'xtrabackup', 'tar', gzip)
 
         periodic_backup.remove_old_local_file(storages, '', job_name)
 
         if is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
-            periodic_backup.general_desc_iteration(backup_full_tmp_path,
-                                                   storages, '',
-                                                   job_name, safety_backup)
+            periodic_backup.general_desc_iteration(backup_full_tmp_path, storages, '', job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      full_path_tmp_dir, '/var/cache/davfs2/*')
+    general_function.del_file_objects(backup_type, full_path_tmp_dir, '/var/cache/davfs2/*')
 
 
 def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, job_name):
@@ -93,9 +79,9 @@ def is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_path, gzip, jo
     code = command['code']
 
     if not is_success_status_xtrabackup(tmp_status_file, job_name):
-        log_and_mail.writelog('ERROR',
-                              f"Can't create xtrabackup in tmp directory! More information in status file {tmp_status_file}.",
-                              config.filelog_fd, job_name)
+        log_and_mail.writelog(
+            'ERROR', f"Can't create xtrabackup in tmp directory! More information in status file {tmp_status_file}.",
+            config.filelog_fd, job_name)
         return False
     elif code != 0:
         log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",

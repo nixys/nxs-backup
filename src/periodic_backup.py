@@ -346,11 +346,13 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
             general_function.move_ofs(full_tmp_path, full_dst_path)
         except general_function.MyError as err:
             log_and_mail.writelog('ERROR',
-                                  f"Can't move '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage: {err}",
+                                  f"Can't move '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on "
+                                  f"'{storage}' storage: {err}",
                                   config.filelog_fd, job_name)
         else:
             log_and_mail.writelog('INFO',
-                                  f"Successfully moved '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on '{storage}' storage.",
+                                  f"Successfully moved '{subdir_name}' file '{full_tmp_path}' -> '{full_dst_path}' on "
+                                  f"'{storage}' storage.",
                                   config.filelog_fd, job_name)
 
         if link_dict:
@@ -364,9 +366,9 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
                     log_and_mail.writelog('ERROR', f"Can't create symlink '{src}' -> '{dst}' on 'local' storage: {err}",
                                           config.filelog_fd, job_name)
     else:
+        dirs_for_log = general_function.get_dirs_for_log(full_dst_path, remote_dir, storage)
         try:
             general_function.copy_ofs(full_tmp_path, full_dst_path)
-            dirs_for_log = general_function.get_dirs_for_log(full_dst_path, remote_dir, storage)
 
         except general_function.MyError as err:
             if storage != 'smb':

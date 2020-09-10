@@ -22,7 +22,7 @@ class Loader(yaml.Loader):
 
     def include(self, node):
         if isinstance(node, yaml.ScalarNode):
-            return self.extractFile(self.construct_scalar(node))
+            return self.extract_file(self.construct_scalar(node))
 
         elif isinstance(node, yaml.SequenceNode):
             result = []
@@ -30,20 +30,20 @@ class Loader(yaml.Loader):
             for i in self.construct_sequence(node):
                 i = general_function.get_absolute_path(i, self._root)
                 for j in general_files_func.get_ofs(i):
-                    result += self.extractFile(j)
+                    result += self.extract_file(j)
             return result
 
         elif isinstance(node, yaml.MappingNode):
             result = {}
             for k, v in self.construct_mapping(node).iteritems():
-                result[k] = self.extractFile(v)
+                result[k] = self.extract_file(v)
             return result
 
         else:
             print('Error:: unrecognised node type in !include statement')
             raise yaml.constructor.ConstructorError
 
-    def extractFile(self, filename):
+    def extract_file(self, filename):
         filepath = os.path.join(self._root, filename)
         with open(filepath, 'r') as f:
             return yaml.load(f, Loader)
@@ -59,8 +59,8 @@ def is_save_to_storage(job_name, storage_data):
         enable_storage = storage_data['enable']
         backup_dir = storage_data['backup_dir']
 
-        if not storage in config.supported_storages:
-            log_and_mail.writelog('ERROR', f"For '{job_name}' job set incorrect type of storage." + \
+        if storage not in config.supported_storages:
+            log_and_mail.writelog('ERROR', f"For '{job_name}' job set incorrect type of storage. "
                                   f"Only one of this type storage is allowed:{config.supported_storages}",
                                   config.filelog_fd, job_name)
             result = False
@@ -69,7 +69,8 @@ def is_save_to_storage(job_name, storage_data):
             result = False
         elif not backup_dir:
             log_and_mail.writelog('ERROR',
-                                  f"Field 'backup_dir' in job '{job_name}' for storage '{storage_data['storage']}' can't be empty!",
+                                  f"Field 'backup_dir' in job '{job_name}' for storage '{storage_data['storage']}' "
+                                  f"can't be empty!",
                                   config.filelog_fd, job_name)
             result = False
         else:
@@ -177,13 +178,13 @@ def get_parsed_string(path_to_config):
                 yaml_str = yaml.load(stream, Loader=Loader)
             except yaml.YAMLError as e:
                 raise general_function.MyError(str(e))
-            except (RuntimeError) as e:
+            except RuntimeError as e:
                 if "maximum recursion depth exceeded while calling" in str(e):
                     error_msg = f" error in include value - '{e}'"
                 else:
                     error_msg = str(e)
                 raise general_function.MyError(error_msg)
-    except (FileNotFoundError, PermissionError) as e:
+    except (FileNotFoundError, PermissionError):
         general_function.print_info(f"No such file '{path_to_config}' or permission denied!")
         sys.exit(1)
     else:

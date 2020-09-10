@@ -94,7 +94,8 @@ jobs: !include [conf.d/*.conf]
 * `tmp_dir`: local path to the temporary directory for backups.
 * `dump_cmd`(**only for *external* type**): full command to run an external script.
 * `safety_backup`(logicals)(optional): Delete outdated backups after creating a new one. By default "false". **IMPORTANT** Using of this option requires more disk space. Make sure there is enough free space on the end device.
-* `sources` (objects array) specify one target or array of targets for backup:
+* `deferred_copying_level` (optional)(int): Determines the level of deferred copying. The minimum value is 0 (by default), copying occurs immediately after the temporary backup is created. The maximum value is 3, copying occurs after creation of all temporary backups defined in the task. **IMPORTANT** Using of this option requires more disk space for more level. Make sure there is enough free space on the device where temporary backups stores.
+* `sources` (objects array): Specify one target or array of targets for backup:
   * `connect` (object, **Only for *databases* types**). It is necessary to fill a minimum set of keys to allow database connection:
     * `db_host`: DB host.
     * `db_port`: DB port.

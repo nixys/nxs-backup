@@ -122,7 +122,7 @@ def get_time_now(unit):
         result = now.strftime("%Y")
     elif unit == "log":  # Full date for logging
         result = now.strftime("%Y-%m-%d %H:%M:%S")
-    elif unit == "backup":  # Full date for dump name
+    else:  # Full date for dump name. Default for "backup"
         result = now.strftime("%Y-%m-%d_%H-%M")
     return result
 
@@ -226,13 +226,13 @@ def set_prio_process(nice, ionice):
         p.ionice(psutil.IOPRIO_CLASS_IDLE)
 
 
-def get_full_path(path_dir, base_name, base_extension, gzip):
+def get_full_path(path_dir, base_name, base_extension, gzip, prefix=None):
     """ The function returns the full path to the archive. The input receives the following arguments:
         path_dir - path to the directory with the archive;
         base_name - the key part of the name (for example, the name of the database);
         base_extension - archive extension (.tar, .sql, etc.);
         gzip - True/False.
-
+        prefix - index of source in job
     """
 
     date_now = get_time_now('backup')
@@ -241,6 +241,9 @@ def get_full_path(path_dir, base_name, base_extension, gzip):
         backup_base_name = f'{base_name}_{date_now}.{base_extension}.gz'
     else:
         backup_base_name = f'{base_name}_{date_now}.{base_extension}'
+
+    if prefix:
+        backup_base_name = f'{prefix}-{backup_base_name}'
 
     full_path = os.path.join(path_dir, backup_base_name)
 
@@ -268,9 +271,6 @@ def get_absolute_path(i, root):
     """ The function returns the absolute path to the object.
 
     """
-
-    result = ''
-
     if i.startswith('/'):
         result = i
     else:
@@ -333,3 +333,24 @@ def get_host_and_share(storage, current_storage_data):
         share = current_storage_data['share']
 
     return host, share
+
+
+def get_job_parameters(job_data):
+    job_name = job_data.get('job', 'Unknown')
+    try:
+        backup_type = job_data['type']
+        tmp_dir = job_data['tmp_dir']
+        sources = job_data['sources']
+        storages = job_data['storages']
+    except KeyError as e:
+        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
+        return False
+
+    safety_backup = job_data.get('safety_backup', False)
+    deferred_copying_level = job_data.get('deferred_copying_level', 0)
+
+    try:
+        deferred_copying_level = int(deferred_copying_level)
+    except ValueError:
+        deferred_copying_level = 0
+    return True, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level

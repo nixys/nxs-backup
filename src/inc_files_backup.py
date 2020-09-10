@@ -20,14 +20,10 @@ def inc_files_backup(job_data):
 
     """
 
-    try:
-        job_name = job_data['job']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
-                              config.filelog_fd, job_name)
-        return 1
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
     for i in range(len(sources)):
         target_list = sources[i]['target']
@@ -44,14 +40,14 @@ def inc_files_backup(job_data):
         for regex in target_list:
             target_ofs_list = general_files_func.get_ofs(regex)
 
-            for i in target_ofs_list:
-                if not general_files_func.is_excluded_ofs(i):
+            for ofs in target_ofs_list:
+                if not general_files_func.is_excluded_ofs(ofs):
                     # Create a backup only if the directory is not in the exception list
                     # so as not to generate empty backups
 
                     # A function that by regularity returns the name of
                     # the backup WITHOUT EXTENSION AND DATE
-                    backup_file_name = general_files_func.get_name_files_backup(regex, i)
+                    backup_file_name = general_files_func.get_name_files_backup(regex, ofs)
 
                     # Get the part of the backup storage path for this archive relative to
                     # the backup dir
@@ -90,10 +86,8 @@ def inc_files_backup(job_data):
                                         host = ''
                                         share = ''
                                         local_dst_dirname = backup_dir
-                                    # We collect an incremental copy
-                                    # For storage: local, sshfs, nfs backup_dir is the mount point and must already be created before mounting.
-                                    # For storage: ftp, smb, webdav, s3 is NOT a mount point, but actually a relative path relative to the mount point
-                                    if not storage in ('local', 'scp', 'nfs'):
+
+                                    if storage not in ('local', 'scp', 'nfs'):
                                         local_dst_dirname = os.path.join(local_dst_dirname, backup_dir.lstrip('/'))
 
                                     create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file_name,
@@ -162,8 +156,8 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             dirs_for_log = general_function.get_dirs_for_log(year_dir, remote_dir, storage)
             file_for_log = os.path.join(dirs_for_log, os.path.basename(year_inc_file))
             log_and_mail.writelog('ERROR',
-                                  f"The file {file_for_log} not found, so the directory {dirs_for_log} is cleared." + \
-                                  "Incremental backup will be reinitialized ",
+                                  f"The file {file_for_log} not found, so the directory {dirs_for_log} is cleared. "
+                                  f"Incremental backup will be reinitialized ",
                                   config.filelog_fd, job_name)
 
         # Initialize the incremental backup, i.e. collect a full copy
@@ -444,29 +438,37 @@ def create_inc_tar(path_to_tarfile, remote_dir, dict_directory, target_change_li
         out_tarfile.close()
     except tarfile.TarError as err:
         if storage == 'local':
-            log_and_mail.writelog('ERROR',
-                                  f"Can't create incremental '{file_for_log}' archive on '{storage}' storage: {err}",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'ERROR',
+                f"Can't create incremental '{file_for_log}' archive on '{storage}' storage: {err}",
+                config.filelog_fd, job_name)
         elif storage == 'smb':
-            log_and_mail.writelog('ERROR',
-                                  f"Can't create incremental '{file_for_log}' archive in '{share}' share on '{storage}' storage({host}): {err}",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'ERROR',
+                f"Can't create incremental '{file_for_log}' archive in '{share}' share on '{storage}' "
+                f"storage({host}): {err}",
+                config.filelog_fd, job_name)
         else:
-            log_and_mail.writelog('ERROR',
-                                  f"Can't create incremental '{file_for_log}' archive on '{storage}' storage({host}): {err}",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'ERROR',
+                f"Can't create incremental '{file_for_log}' archive on '{storage}' storage({host}): {err}",
+                config.filelog_fd, job_name)
         return False
     else:
         if storage == 'local':
-            log_and_mail.writelog('INFO',
-                                  f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage.",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'INFO',
+                f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage.",
+                config.filelog_fd, job_name)
         elif storage == 'smb':
-            log_and_mail.writelog('INFO',
-                                  f"Successfully created incremental '{file_for_log}' archive in '{share}' share on '{storage}' storage({host}).",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'INFO',
+                f"Successfully created incremental '{file_for_log}' archive in '{share}' share on '{storage}' "
+                f"storage({host}).",
+                config.filelog_fd, job_name)
         else:
-            log_and_mail.writelog('INFO',
-                                  f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage({host}).",
-                                  config.filelog_fd, job_name)
+            log_and_mail.writelog(
+                'INFO',
+                f"Successfully created incremental '{file_for_log}' archive on '{storage}' storage({host}).",
+                config.filelog_fd, job_name)
         return True

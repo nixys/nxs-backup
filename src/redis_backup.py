@@ -11,18 +11,11 @@ import periodic_backup
 
 
 def redis_backup(job_data):
-    job_name = 'undefined'
-    try:
-        job_name = job_data['job']
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
-    except KeyError as e:
-        log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
-        return 1
+    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
+        general_function.get_job_parameters(job_data)
+    if not is_prams_read:
+        return
 
-    safety_backup = job_data.get('safety_backup', False)
     full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
 
     for i in range(len(sources)):
@@ -99,9 +92,10 @@ def is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):
     stdout = check_command.get('stdout')
 
     if stdout == 1:
-        log_and_mail.writelog('ERROR',
-                              f"Can't create redis database dump '{backup_full_tmp_path_tmp}' in tmp directory:{stderr}",
-                              config.filelog_fd, job_name)
+        log_and_mail.writelog(
+            'ERROR',
+            f"Can't create redis database dump '{backup_full_tmp_path_tmp}' in tmp directory:{stderr}",
+            config.filelog_fd, job_name)
         return False
     else:
         if gzip:
