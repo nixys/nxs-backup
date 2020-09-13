@@ -133,7 +133,9 @@ def mongodb_backup(job_data):
 
                         if is_success_mongodump(collection, db, extra_keys, str_auth_finally, backup_full_tmp_path,
                                                 gzip, job_name):
-                            dumped_collections[collection] = {'success': True, 'tmp_path': backup_full_tmp_path}
+                            dumped_collections[collection] = {'success': True,
+                                                              'tmp_path': backup_full_tmp_path,
+                                                              'part_of_dir_path': part_of_dir_path}
                         else:
                             dumped_collections[collection] = {'success': False}
 
@@ -145,16 +147,17 @@ def mongodb_backup(job_data):
                 for collection, result in dumped_collections.items():
                     if deferred_copying_level == 1 and result['success']:
                         periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                               collection, job_name, safety_backup)
+                                                               result['part_of_dir_path'], job_name, safety_backup)
 
         for collection, result in dumped_collections.items():
             if deferred_copying_level == 2 and result['success']:
                 periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                       collection, job_name, safety_backup)
+                                                       result['part_of_dir_path'], job_name, safety_backup)
 
     for collection, result in dumped_collections.items():
         if deferred_copying_level >= 3 and result['success']:
-            periodic_backup.general_desc_iteration(result['tmp_path'], storages, collection, job_name, safety_backup)
+            periodic_backup.general_desc_iteration(result['tmp_path'], storages,
+                                                   result['part_of_dir_path'], job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

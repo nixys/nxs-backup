@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.1] - 2020-09-13
+### Fix
+- Fixed creation of of files and mpngodb backups
+
 ## [2.2.0] - 2020-09-10
 ### Adds
 - Added possibility of deferred copying of created temporary backups

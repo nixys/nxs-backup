@@ -67,7 +67,9 @@ def desc_files_backup(job_data):
 
                     if general_files_func.create_tar('files', backup_full_tmp_path, ofs,
                                                      gzip, backup_type, job_name):
-                        dumped_ofs[ofs] = {'success': True, 'tmp_path': backup_full_tmp_path}
+                        dumped_ofs[ofs] = {'success': True,
+                                           'tmp_path': backup_full_tmp_path,
+                                           'part_of_dir_path': part_of_dir_path}
                     else:
                         dumped_ofs[ofs] = {'success': False}
 
@@ -81,17 +83,17 @@ def desc_files_backup(job_data):
             for ofs, result in dumped_ofs.items():
                 if deferred_copying_level == 1 and result['success']:
                     periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                           ofs, job_name, safety_backup)
+                                                           result['part_of_dir_path'], job_name, safety_backup)
 
         for ofs, result in dumped_ofs.items():
             if deferred_copying_level == 2 and result['success']:
                 periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                       ofs, job_name, safety_backup)
+                                                       result['part_of_dir_path'], job_name, safety_backup)
 
     for ofs, result in dumped_ofs.items():
         if deferred_copying_level >= 3 and result['success']:
             periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                   ofs, job_name, safety_backup)
+                                                   result['part_of_dir_path'], job_name, safety_backup)
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!

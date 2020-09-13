@@ -91,8 +91,7 @@ def inc_files_backup(job_data):
                                         local_dst_dirname = os.path.join(local_dst_dirname, backup_dir.lstrip('/'))
 
                                     create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file_name,
-                                                    i, exclude_list, gzip, job_name, storage, host,
-                                                    share)  # general_inc_iteration
+                                                    ofs, exclude_list, gzip, job_name, storage, host, share)
 
                                     try:
                                         mount_fuse.unmount()
