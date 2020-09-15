@@ -230,7 +230,7 @@ def mount(current_storage_data):
 
     if not data_mount:
         # if local storage
-        return 0
+        return
     else:
         type_storage = data_mount.get('type_storage')
         packets = data_mount.get('packets')
@@ -262,7 +262,14 @@ def mount(current_storage_data):
         stdout_mount = check_mount['stdout']
 
         if stdout_mount:
-            raise general_function.MyError(f"Mount point {mount_point} is busy!")
+            if mount_point == '/mnt/sshfs':
+                remote_mount = stdout_mount.split()[0]
+                if remote_mount not in mount_cmd:
+                    raise general_function.MyError(f"Mount point {mount_point} is busy by different remote resource! "
+                                                   f"Requested mount: {mount_cmd}. "
+                                                   f"Current mount: {stdout_mount}.")
+            else:
+                raise general_function.MyError(f"Mount point {mount_point} is busy!")
         else:
             general_function.create_dirs(job_name='', dirs_pairs={mount_point: ''})
             data_mounting = general_function.exec_cmd(f"{mount_cmd}")
@@ -281,7 +288,7 @@ def mount(current_storage_data):
                 except ConnectionAbortedError:
                     raise general_function.MyError("incorrect authentification data!")
 
-    return 1
+    return
 
 
 def unmount():
@@ -297,7 +304,7 @@ def unmount():
             raise general_function.MyError(f"Bad result code external process '{umount_cmd}':'{code}'")
         else:
             general_function.del_file_objects('', mount_point)
-    return 1
+    return
 
 
 def check_secrets(str_auth):
@@ -316,7 +323,7 @@ def check_secrets(str_auth):
     except (FileNotFoundError, IOError) as e:
         raise MountError(f"Can't write authentication information for 'webdav' resource: {e}")
 
-    return 1
+    return
 
 
 def check_s3fs_secrets(str_auth):
@@ -336,4 +343,4 @@ def check_s3fs_secrets(str_auth):
         os.chmod(conf_path, 0o600)
     except OSError:
         pass
-    return 1
+    return

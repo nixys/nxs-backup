@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2020-09-15
+### Adds
+- Added possibility to use already mounted by ssh the same remote resource.
+
 ## [2.2.1] - 2020-09-13
 ### Fix
 - Fixed creation of of files and mpngodb backups
