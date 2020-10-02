@@ -41,11 +41,8 @@ def exec_cmd(cmdline):
                                        executable='/bin/bash')
     data = current_process.communicate()
 
-    data_stdout = data[0][0:-1].decode('utf-8')
-    data_stderr = data[1][0:-1].decode('utf-8')
-
-    data_dict['stdout'] = data_stdout
-    data_dict['stderr'] = data_stderr
+    data_dict['stdout'] = data[0][0:-1].decode('utf-8')
+    data_dict['stderr'] = data[1][0:-1].decode('utf-8')
     data_dict['code'] = current_process.returncode
 
     return data_dict
