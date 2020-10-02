@@ -25,9 +25,10 @@ def external_backup(job_data):
     except KeyError as e:
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                               config.filelog_fd, job_name)
-        return 1
+        return
 
     safety_backup = job_data.get('safety_backup', False)
+    skip_backup_rotate = job_data.get('skip_backup_rotate', False)
 
     periodic_backup.remove_old_local_file(storages, '', job_name)
 
@@ -39,12 +40,17 @@ def external_backup(job_data):
     if code != 0:
         log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}': '{code}'",
                               config.filelog_fd, job_name)
-        return 1
+        return
+
+    if skip_backup_rotate:
+        log_and_mail.writelog('INFO', f"Command '{dump_cmd}' finished success with the next result:\n{stdout}",
+                              config.filelog_fd, job_name)
+        return
 
     source_dict = get_value_from_stdout(stderr, stdout, job_name)
 
     if source_dict is None:
-        return 1
+        return
 
     full_tmp_path = source_dict['full_path']
     basename = source_dict['basename']

@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.0] - 2020-10-02
+### Adds
+- The capabilities of the External block are extended by the parameter `skip_backup_rotate`.  
+- Added support of Debian 10 Buster.  
+
 ## [2.3.0] - 2020-09-15
 ### Adds
 - Added possibility to use already mounted by ssh the same remote resource.

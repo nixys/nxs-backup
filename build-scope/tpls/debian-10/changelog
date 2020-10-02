@@ -1,0 +1,5 @@
+#PACKAGE# (#VERSION#-deb10u1) buster; urgency=low
+
+  * New version nxs-backup
+
+ -- #USERNAME# <#EMAIL#>  #DATE#

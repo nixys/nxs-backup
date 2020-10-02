@@ -112,6 +112,7 @@ jobs: !include [conf.d/*.conf]
   * `exclude_dbs`(**Only for *mongodb* type**):
   * `exclude_collections`(**Only for *mongodb* type**): 
   * `gzip`(logicals): compress or not compress the archive 
+  * `skip_backup_rotate`(**Only for *external* type**)(optional)(logicals): If creation of a local copy is not required, for example, in case of copying data to a remote server, rotation of local backups may be skipped with this option.
 * `storages`(objects array) specify one storage or array of storages to store archive:
  * `storage`: type of storage. It can take the following values:
    * *local*, *scp*, *ftp*, *smb* (via cifs), *nfs*, *webdav*, *s3*
@@ -183,7 +184,8 @@ The work is based on  `redis-cli with --rdb option`, so for the correct work of 
 
 ### External nxs-backup module
 
-In this module, an external script is executed passed to the program via the key "dump_cmd". At the completion of this command, it is expected that:
+In this module, an external script is executed passed to the program via the key "dump_cmd".  
+By default at the completion of this command, it is expected that:
 * A complete archive of data will be collected
 * The stdout will send data in json format, like:
 
@@ -200,6 +202,9 @@ In this case, the keys basename, extension, gzip are necessary only for the form
 * make sure that there is no unnecessary information in stdout
 * *gzip* is a parameter that tells the script whether the file is compressed along the path specified in full_path or not, but does not indicate the need for compression at the nxs-backup
 * successfully completed program must exit with 0
+
+If the module was used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running the command.  
+For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is expected to be a standard output to stdout.  
 
 ### SSH storage nxs-backup module
 
