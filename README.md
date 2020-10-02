@@ -112,7 +112,7 @@ jobs: !include [conf.d/*.conf]
   * `exclude_dbs`(**Only for *mongodb* type**):
   * `exclude_collections`(**Only for *mongodb* type**): 
   * `gzip`(logicals): compress or not compress the archive 
-  * `skip_backup_rotate`(**Only for *external* type**)(optional)(logicals): 
+  * `skip_backup_rotate`(**Only for *external* type**)(optional)(logicals): If creation of a local copy is not required, for example, in case of copying data to a remote server, rotation of local backups may be skipped with this option.
 * `storages`(objects array) specify one storage or array of storages to store archive:
  * `storage`: type of storage. It can take the following values:
    * *local*, *scp*, *ftp*, *smb* (via cifs), *nfs*, *webdav*, *s3*
