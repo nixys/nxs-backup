@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.1] - 2020-10-07
+### Fix
+- Fixed building for Debian 10 Buster.  
+
 ## [2.4.0] - 2020-10-02
 ### Adds
 - The capabilities of the External block are extended by the parameter `skip_backup_rotate`.  
