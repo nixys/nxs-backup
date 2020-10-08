@@ -38,7 +38,9 @@ def external_backup(job_data):
     code = command['code']
 
     if code != 0:
-        log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}': '{code}'",
+        log_and_mail.writelog('ERROR',
+                              f"Bad result code external process '{dump_cmd}': '{code}' with next STDERR:\n"
+                              f"'{stderr}'",
                               config.filelog_fd, job_name)
         return
 

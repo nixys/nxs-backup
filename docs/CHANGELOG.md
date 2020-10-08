@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.2] - 2020-10-08
+### Adds
+- The STDERR output of the External Block has been added to the logs.
+
 ## [2.4.1] - 2020-10-07
 ### Fix
 - Fixed building for Debian 10 Buster.  
