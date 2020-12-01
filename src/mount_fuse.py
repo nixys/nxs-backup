@@ -58,7 +58,7 @@ def get_storage_data(job_name, storage_data):
             data_dict['user'] = user
 
         if storage == 'scp':
-            data_dict['remote_mount_point'] = storage_data.get('remote_mount_point')
+            data_dict['remote_mount_point'] = storage_data.get('remote_mount_point', '')
             path_to_key = storage_data.get('path_to_key', '')
             if not (password or path_to_key):
                 err_message = "At least one of the fields 'path_to_key' or 'password' must be filled in" + \
@@ -76,7 +76,7 @@ def get_storage_data(job_name, storage_data):
                 data_dict['password'] = password
 
     if storage == 'nfs':
-        data_dict['remote_mount_point'] = storage_data.get('remote_mount_point')
+        data_dict['remote_mount_point'] = storage_data.get('remote_mount_point', '')
         data_dict['extra_keys'] = storage_data.get('extra_keys', '')
 
     if storage == 'smb':
@@ -139,7 +139,8 @@ def get_mount_data(current_storage_data):
         family_os = 'rpm'
         general_check_packet_cmd = 'rpm -q'
     else:
-        raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
+        pass
+        # raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
 
     backup_dir = current_storage_data.get('backup_dir', '')
     remote_mount_point = current_storage_data.get('remote_mount_point', backup_dir)

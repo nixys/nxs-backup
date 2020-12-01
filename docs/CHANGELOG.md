@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.3] - 2020-12-01
+### Fix
+- Fixed `scp` mount without `remote_mount_point` parameter
+
 ## [2.4.2] - 2020-10-08
 ### Adds
 - The STDERR output of the External Block has been added to the logs.
