@@ -75,7 +75,7 @@ def inc_files_backup(job_data):
                                 else:
                                     remote_dir = ''  # Only for logging
                                     if storage != 'local':
-                                        local_dst_dirname = mount_fuse.mount_point
+                                        local_dst_dirname = mount_fuse.mount_point + mount_fuse.mount_point_sub_dir
                                         remote_dir = backup_dir
                                         if storage != 's3':
                                             host = current_storage_data['host']

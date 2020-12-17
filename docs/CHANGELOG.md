@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.4] - 2020-12-17
+### Fix
+- Fixed `scp` mount fot `inc_files` backups type
+
 ## [2.4.3] - 2020-12-01
 ### Fix
 - Fixed `scp` mount without `remote_mount_point` parameter

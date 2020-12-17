@@ -125,22 +125,20 @@ def get_mount_data(current_storage_data):
     pre_mount = {}
     dict_mount_data = {}
     storage = current_storage_data.get('storage', '')
-    mount_point = ''
     packets = ['']
     mount_cmd = ''
 
     if storage == 'local':
         return [dict_mount_data, pre_mount]
 
-    if re.match('(debian|ubuntu)', dist, re.I):
+    if re.match('(debian|ubuntu|neon)', dist, re.I):
         family_os = 'deb'
         general_check_packet_cmd = 'dpkg -s'
     elif re.match('centos', dist, re.I):
         family_os = 'rpm'
         general_check_packet_cmd = 'rpm -q'
     else:
-        pass
-        # raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
+        raise MountError(f"This distribution of Linux:'{dist}' is not supported.")
 
     backup_dir = current_storage_data.get('backup_dir', '')
     remote_mount_point = current_storage_data.get('remote_mount_point', backup_dir)
@@ -160,7 +158,7 @@ def get_mount_data(current_storage_data):
         packets = ['openssh-client', 'sshfs', 'sshpass']
         mount_point = '/mnt/sshfs'
         if remote_mount_point != backup_dir:
-            mount_point_sub_dir = backup_dir.replace(remote_mount_point, '')
+            mount_point_sub_dir = backup_dir.replace(remote_mount_point.rstrip('/'), '')
         if not port:
             port = '22'
         if not path_to_key:
