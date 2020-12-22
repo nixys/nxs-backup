@@ -187,14 +187,23 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
         general_function.create_dirs(job_name=job_name, dirs_pairs={month_dir: month_dirs_for_log,
                                                                     daily_dir: daily_dirs_for_log})
 
-        if storage in 'local, scp':
+        if storage in 'local':
             link_dict[month_inc_file] = year_inc_file
             link_dict[os.path.join(month_dir, os.path.basename(full_backup_path))] = full_backup_path
             link_dict[daily_inc_file] = year_inc_file
             link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path
+        elif storage in 'scp, nfs':
+            link_dict[month_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            link_dict[os.path.join(month_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
+                local_dst_dirname, remote_dir)
+            link_dict[daily_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
+                local_dst_dirname, remote_dir)
         else:
             copy_dict[month_inc_file] = year_inc_file
+            copy_dict[os.path.join(month_dir, os.path.basename(full_backup_path))] = full_backup_path
             copy_dict[daily_inc_file] = year_inc_file
+            copy_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path
     else:
         symlink_dir = ''
         if int(date_day) == 1:
@@ -283,8 +292,10 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
                        share)
 
         if symlink_dir:
-            if storage in 'local, scp':
+            if storage in 'local':
                 link_dict[daily_inc_file] = month_inc_file
+            elif storage in 'scp, nfs':
+                link_dict[daily_inc_file] = month_inc_file.replace(local_dst_dirname, remote_dir)
             else:
                 copy_dict[daily_inc_file] = month_inc_file
 
