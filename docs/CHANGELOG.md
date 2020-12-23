@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ## [2.4.5] - 2020-12-23
 ### Fix
 - Fixed creating of the symlinks for `inc_files` backups type with `scp` storage 
+- Fixed error "Missing required key:''tmp_dir''" for type=inc_files ([issue/22](https://github.com/nixys/nxs-backup/issues/22))
 
 ## [2.4.4] - 2020-12-17
 ### Fix
