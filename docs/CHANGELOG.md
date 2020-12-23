@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.5] - 2020-12-23
+### Fix
+- Fixed creating of the symlinks for `inc_files` backups type with `scp` storage 
+
 ## [2.4.4] - 2020-12-17
 ### Fix
 - Fixed `scp` mount fot `inc_files` backups type
