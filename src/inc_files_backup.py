@@ -69,7 +69,7 @@ def inc_files_backup(job_data):
                                 try:
                                     mount_fuse.mount(current_storage_data)
                                 except general_function.MyError as err:
-                                    log_and_mail.writelog('ERROR', f"Can't mount remote '{storage}' storage :{err}",
+                                    log_and_mail.writelog('ERROR', f"Can't mount remote '{storage}' storage: {err}",
                                                           config.filelog_fd, job_name)
                                     continue
                                 else:
@@ -193,10 +193,10 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             link_dict[daily_inc_file] = year_inc_file
             link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path
         elif storage in 'scp, nfs':
-            copy_dict[month_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            copy_dict[month_inc_file] = year_inc_file
             link_dict[os.path.join(month_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
                 local_dst_dirname, remote_dir)
-            copy_dict[daily_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            copy_dict[daily_inc_file] = year_inc_file
             link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
                 local_dst_dirname, remote_dir)
         else:
@@ -295,15 +295,13 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             if storage in 'local':
                 link_dict[daily_inc_file] = month_inc_file
             elif storage in 'scp, nfs':
-                link_dict[daily_inc_file] = month_inc_file.replace(local_dst_dirname, remote_dir)
+                copy_dict[daily_inc_file.replace(local_dst_dirname, remote_dir)] = month_inc_file.replace(
+                    local_dst_dirname, remote_dir)
             else:
                 copy_dict[daily_inc_file] = month_inc_file
 
     if link_dict:
-        for key in link_dict.keys():
-            src = link_dict[key]
-            dst = key
-
+        for dst, src in link_dict.items():
             try:
                 general_function.create_symlink(src, dst)
             except general_function.MyError as err:
@@ -311,10 +309,7 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
                                       config.filelog_fd, job_name)
 
     if copy_dict:
-        for key in copy_dict.keys():
-            src = copy_dict[key]
-            dst = key
-
+        for dst, src in copy_dict.items():
             try:
                 general_function.copy_ofs(src, dst)
             except general_function.MyError as err:

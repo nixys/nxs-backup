@@ -227,7 +227,7 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name, 
                 try:
                     mount_fuse.mount(current_storage_data)
                 except general_function.MyError as err:
-                    log_and_mail.writelog('ERROR', f"Can't mount remote '{storage}' storage :{err}",
+                    log_and_mail.writelog('ERROR', f"Can't mount remote '{storage}' storage: {err}",
                                           config.filelog_fd, job_name)
                     continue
                 else:
