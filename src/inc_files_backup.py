@@ -193,10 +193,10 @@ def create_inc_file(local_dst_dirname, remote_dir, part_of_dir_path, backup_file
             link_dict[daily_inc_file] = year_inc_file
             link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path
         elif storage in 'scp, nfs':
-            link_dict[month_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            copy_dict[month_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
             link_dict[os.path.join(month_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
                 local_dst_dirname, remote_dir)
-            link_dict[daily_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
+            copy_dict[daily_inc_file] = year_inc_file.replace(local_dst_dirname, remote_dir)
             link_dict[os.path.join(daily_dir, os.path.basename(full_backup_path))] = full_backup_path.replace(
                 local_dst_dirname, remote_dir)
         else:
