@@ -106,36 +106,27 @@ def get_conf_value(parsed_str):
     """
 
     global all_jobs_name
-
     global general_str
     global regular_str
     global regular_str_for_backup_type
     global general_str_for_backup_type
-
     global general_str_for_backup_type_db
     global general_str_for_backup_type_files
     global general_str_for_backup_type_external
-
     global regular_str_for_storage
     global general_str_for_storage
-
     global log_file
-
     global admin_mail
     global client_mail
     global level_message
     global mail_from
-
     global server_name
-
     global block_io_write
     global block_io_read
     global block_io_weight
     global general_path_to_all_tmp_dir
-
     global cpu_shares
     global supported_general_job
-
     global smtp_server
     global smtp_port
     global smtp_ssl
@@ -143,7 +134,6 @@ def get_conf_value(parsed_str):
     global smtp_password
     global smtp_timeout
     global smtp_tls
-
     global loop_timeout
     global loop_interval
 
