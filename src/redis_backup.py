@@ -11,17 +11,16 @@ import periodic_backup
 
 
 def redis_backup(job_data):
-    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
-        general_function.get_job_parameters(job_data)
+    is_prams_read, job_name, options = general_function.get_job_parameters(job_data)
     if not is_prams_read:
         return
 
-    full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
+    full_path_tmp_dir = general_function.get_tmp_dir(options['tmp_dir'], options['backup_type'])
 
-    for i in range(len(sources)):
+    for i in range(len(options['sources'])):
         try:
-            connect = sources[i]['connect']
-            gzip = sources[i]['gzip']
+            connect = options['sources'][i]['connect']
+            gzip = options['sources'][i]['gzip']
         except KeyError as e:
             log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
@@ -66,17 +65,15 @@ def redis_backup(job_data):
                 'redis',
                 'rdb',
                 gzip)
-            periodic_backup.remove_old_local_file(storages, '', job_name)
+            periodic_backup.remove_old_local_file(options['storages'], '', job_name)
 
             if is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):
-                periodic_backup.general_desc_iteration(backup_full_tmp_path,
-                                                       storages, '',
-                                                       job_name, safety_backup)
+                periodic_backup.general_desc_iteration(backup_full_tmp_path, options['storages'], '', job_name,
+                                                       options['safety_backup'])
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      full_path_tmp_dir, '/var/cache/davfs2/*')
+    general_function.del_file_objects(options['backup_type'], full_path_tmp_dir, '/var/cache/davfs2/*')
 
 
 def is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):

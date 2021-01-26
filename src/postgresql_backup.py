@@ -10,21 +10,20 @@ import periodic_backup
 
 
 def postgresql_backup(job_data):
-    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
-        general_function.get_job_parameters(job_data)
+    is_prams_read, job_name, options = general_function.get_job_parameters(job_data)
     if not is_prams_read:
         return
 
-    full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
+    full_path_tmp_dir = general_function.get_tmp_dir(options['tmp_dir'], options['backup_type'])
 
     dumped_dbs = {}
-    for i in range(len(sources)):
-        exclude_list = sources[i].get('excludes', [])
+    for i in range(len(options['sources'])):
+        exclude_list = options['sources'][i].get('excludes', [])
         try:
-            connect = sources[i]['connect']
-            target_list = sources[i]['target']
-            gzip = sources[i]['gzip']
-            extra_keys = sources[i]['extra_keys']
+            connect = options['sources'][i]['connect']
+            target_list = options['sources'][i]['target']
+            gzip = options['sources'][i]['gzip']
+            extra_keys = options['sources'][i]['extra_keys']
         except KeyError as e:
             log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
             continue
@@ -72,7 +71,7 @@ def postgresql_backup(job_data):
                     'pgdump',
                     gzip, i)
 
-                periodic_backup.remove_old_local_file(storages, db, job_name)
+                periodic_backup.remove_old_local_file(options['storages'], db, job_name)
 
                 str_auth = f' --dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db} '
 
@@ -81,21 +80,23 @@ def postgresql_backup(job_data):
                 else:
                     dumped_dbs[db] = {'success': False}
 
-                if deferred_copying_level <= 0 and dumped_dbs[db]['success']:
+                if options['deferred_copying_level'] <= 0 and dumped_dbs[db]['success']:
                     periodic_backup.general_desc_iteration(backup_full_tmp_path,
-                                                           storages, db,
-                                                           job_name, safety_backup)
+                                                           options['storages'], db,
+                                                           job_name, options['safety_backup'])
         for db, result in dumped_dbs.items():
-            if deferred_copying_level == 1 and result['success']:
-                periodic_backup.general_desc_iteration(result['tmp_path'], storages, db, job_name, safety_backup)
+            if options['deferred_copying_level'] == 1 and result['success']:
+                periodic_backup.general_desc_iteration(result['tmp_path'], options['storages'], db, job_name,
+                                                       options['safety_backup'])
 
     for db, result in dumped_dbs.items():
-        if deferred_copying_level >= 2 and result['success']:
-            periodic_backup.general_desc_iteration(result['tmp_path'], storages, db, job_name, safety_backup)
+        if options['deferred_copying_level'] >= 2 and result['success']:
+            periodic_backup.general_desc_iteration(result['tmp_path'], options['storages'], db, job_name,
+                                                   options['safety_backup'])
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
+    general_function.del_file_objects(options['backup_type'],
                                       full_path_tmp_dir, '/var/cache/davfs2/*')
 
 

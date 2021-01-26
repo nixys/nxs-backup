@@ -13,19 +13,18 @@ def desc_files_backup(job_data):
     At the entrance receives a dictionary with the data of the job.
 
     """
-    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
-        general_function.get_job_parameters(job_data)
+    is_prams_read, job_name, options = general_function.get_job_parameters(job_data)
     if not is_prams_read:
         return
 
-    full_path_tmp_dir = general_function.get_tmp_dir(tmp_dir, backup_type)
+    full_path_tmp_dir = general_function.get_tmp_dir(options['tmp_dir'], options['backup_type'])
 
     dumped_ofs = {}
-    for i in range(len(sources)):
-        exclude_list = sources[i].get('excludes', '')
+    for i in range(len(options['sources'])):
+        exclude_list = options['sources'][i].get('excludes', '')
         try:
-            target_list = sources[i]['target']
-            gzip = sources[i]['gzip']
+            target_list = options['sources'][i]['target']
+            gzip = options['sources'][i]['gzip']
         except KeyError as e:
             log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!",
                                   config.filelog_fd, job_name)
@@ -63,39 +62,38 @@ def desc_files_backup(job_data):
                         'tar',
                         gzip)
 
-                    periodic_backup.remove_old_local_file(storages, part_of_dir_path, job_name)
+                    periodic_backup.remove_old_local_file(options['storages'], part_of_dir_path, job_name)
 
                     if general_files_func.create_tar('files', backup_full_tmp_path, ofs,
-                                                     gzip, backup_type, job_name):
+                                                     gzip, options['backup_type'], job_name):
                         dumped_ofs[ofs] = {'success': True,
                                            'tmp_path': backup_full_tmp_path,
                                            'part_of_dir_path': part_of_dir_path}
                     else:
                         dumped_ofs[ofs] = {'success': False}
 
-                    if deferred_copying_level <= 0 and dumped_ofs[ofs]['success']:
-                        periodic_backup.general_desc_iteration(backup_full_tmp_path,
-                                                               storages, part_of_dir_path,
-                                                               job_name, safety_backup)
+                    if options['deferred_copying_level'] <= 0 and dumped_ofs[ofs]['success']:
+                        periodic_backup.general_desc_iteration(backup_full_tmp_path, options['storages'],
+                                                               part_of_dir_path, job_name, options['safety_backup'])
                 else:
                     continue
 
             for ofs, result in dumped_ofs.items():
-                if deferred_copying_level == 1 and result['success']:
-                    periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                           result['part_of_dir_path'], job_name, safety_backup)
+                if options['deferred_copying_level'] == 1 and result['success']:
+                    periodic_backup.general_desc_iteration(result['tmp_path'], options['storages'],
+                                                           result['part_of_dir_path'], job_name,
+                                                           options['safety_backup'])
 
         for ofs, result in dumped_ofs.items():
-            if deferred_copying_level == 2 and result['success']:
-                periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                       result['part_of_dir_path'], job_name, safety_backup)
+            if options['deferred_copying_level'] == 2 and result['success']:
+                periodic_backup.general_desc_iteration(result['tmp_path'], options['storages'],
+                                                       result['part_of_dir_path'], job_name, options['safety_backup'])
 
     for ofs, result in dumped_ofs.items():
-        if deferred_copying_level >= 3 and result['success']:
-            periodic_backup.general_desc_iteration(result['tmp_path'], storages,
-                                                   result['part_of_dir_path'], job_name, safety_backup)
+        if options['deferred_copying_level'] >= 3 and result['success']:
+            periodic_backup.general_desc_iteration(result['tmp_path'], options['storages'],
+                                                   result['part_of_dir_path'], job_name, options['safety_backup'])
 
     # After all the manipulations, delete the created temporary directory and
     # data inside the directory with cache davfs, but not the directory itself!
-    general_function.del_file_objects(backup_type,
-                                      full_path_tmp_dir, '/var/cache/davfs2/*')
+    general_function.del_file_objects(options['backup_type'], full_path_tmp_dir, '/var/cache/davfs2/*')

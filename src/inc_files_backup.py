@@ -20,15 +20,14 @@ def inc_files_backup(job_data):
 
     """
 
-    is_prams_read, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level = \
-        general_function.get_job_parameters(job_data)
+    is_prams_read, job_name, job_options = general_function.get_job_parameters(job_data)
     if not is_prams_read:
         return
 
-    for i in range(len(sources)):
-        target_list = sources[i]['target']
-        exclude_list = sources[i].get('excludes', '')
-        gzip = sources[i]['gzip']
+    for i in range(len(job_options['sources'])):
+        target_list = job_options['sources'][i]['target']
+        exclude_list = job_options['sources'][i].get('excludes', '')
+        gzip = job_options['sources'][i]['gzip']
 
         # Keeping an exception list in the global variable due to the specificity of
         # the `filter` key of the `add` method of the `tarfile` class
@@ -52,14 +51,12 @@ def inc_files_backup(job_data):
                     # the backup dir
                     part_of_dir_path = backup_file_name.replace('___', '/')
 
-                    for j in range(len(storages)):
-                        if specific_function.is_save_to_storage(job_name, storages[j]):
+                    for j in range(len(job_options['storages'])):
+                        if specific_function.is_save_to_storage(job_name, job_options['storages'][j]):
                             try:
-                                current_storage_data = mount_fuse.get_storage_data(job_name,
-                                                                                   storages[j])
+                                current_storage_data = mount_fuse.get_storage_data(job_name, job_options['storages'][j])
                             except general_function.MyError as err:
-                                log_and_mail.writelog('ERROR', f'{err}',
-                                                      config.filelog_fd, job_name)
+                                log_and_mail.writelog('ERROR', f'{err}', config.filelog_fd, job_name)
                                 continue
                             else:
                                 storage = current_storage_data['storage']
@@ -90,7 +87,8 @@ def inc_files_backup(job_data):
                                         local_dst_dirname = os.path.join(local_dst_dirname, backup_dir.lstrip('/'))
 
                                     create_inc_backup(local_dst_dirname, remote_dir, part_of_dir_path, backup_file_name,
-                                                      ofs, exclude_list, gzip, job_name, storage, host, share)
+                                                      ofs, exclude_list, gzip, job_name, storage, host, share,
+                                                      job_options['months_to_store'])
 
                                     try:
                                         mount_fuse.unmount()
@@ -106,6 +104,17 @@ def inc_files_backup(job_data):
 
 
 def get_dated_paths(local_dst_dirname, part_of_dir_path, date_year, date_month, date_day):
+    """
+
+    :rtype: dict
+    :param str local_dst_dirname:
+    :param str part_of_dir_path:
+    :param date_year:
+    :param date_month:
+    :param date_day:
+    :return: Dict with next keys: initial_dir, daily_dir, month_dir, year_dir, old_year_dir, daily_inc_file,
+        month_inc_file, year_inc_file
+    """
     dated_paths = {}
 
     if int(date_day) < 11:
@@ -173,7 +182,7 @@ def create_links_and_copies(link_dict, copy_dict, job_name):
 
 
 def create_inc_backup(local_dst_dirname, remote_dir, part_of_dir_path, backup_file_name,
-                      target, exclude_list, gzip, job_name, storage, host, share):
+                      target, exclude_list, gzip, job_name, storage, host, share, months_to_store):
     """ The function determines whether to collect a full backup or incremental,
     prepares all the necessary information.
 
@@ -186,10 +195,27 @@ def create_inc_backup(local_dst_dirname, remote_dir, part_of_dir_path, backup_fi
 
     # Before we proceed to collect a copy, we need to delete the copies for the same month last year
     # if they are to not save extra archives
-
-    if os.path.isdir(dated_paths['old_year_dir']):
-        old_month_dir = os.path.join(dated_paths['old_year_dir'], f'month_{date_month}')
-        del_old_inc_file(dated_paths['old_year_dir'], old_month_dir)
+    old_month_dirs = []
+    if os.path.isdir(dated_paths['old_year_dir']) or months_to_store < 12:
+        if months_to_store < 12:
+            int_date_month = int(date_month)
+            last_month = int_date_month - months_to_store
+            if last_month <= 0:
+                m_range = list(range(last_month+12, 13))
+                m_range.extend(list(range(1, int_date_month)))
+            else:
+                m_range = list(range(last_month, int_date_month))
+            for i in range(1, 13):
+                if i not in m_range:
+                    date = str(i).zfill(2)
+                    if i < int(date_month):
+                        year_to_cleanup = dated_paths['year_dir']
+                    else:
+                        year_to_cleanup = dated_paths['old_year_dir']
+                    old_month_dirs.append(os.path.join(year_to_cleanup, f'month_{date}'))
+        else:
+            old_month_dirs.append(os.path.join(dated_paths['old_year_dir'], f'month_{date_month}'))
+        del_old_inc_file(dated_paths['old_year_dir'], old_month_dirs)
 
     link_dict = {}  # dict for symlink with pairs like dst: src
     copy_dict = {}  # dict for copy with pairs like dst: src
@@ -305,13 +331,22 @@ def create_inc_backup(local_dst_dirname, remote_dir, part_of_dir_path, backup_fi
     create_links_and_copies(link_dict, copy_dict, job_name)
 
 
-def del_old_inc_file(old_year_dir, old_month_dir):
-    general_function.del_file_objects('inc_files', old_month_dir)
+def del_old_inc_file(old_year_dir, old_month_dirs):
+    """
 
-    list_subdir_in_old_dir = os.listdir(old_year_dir)
+    :param str old_year_dir:
+    :param list old_month_dirs:
+    """
+    for old_month_dir in old_month_dirs:
+        general_function.del_file_objects('inc_files', old_month_dir)
 
-    if len(list_subdir_in_old_dir) == 1 and list_subdir_in_old_dir[0] == 'year':
-        general_function.del_file_objects('inc_files', old_year_dir)
+    if os.path.isdir(old_year_dir):
+        list_subdir_in_old_dir = os.listdir(old_year_dir)
+
+        if len(list_subdir_in_old_dir) == 1 and \
+                list_subdir_in_old_dir[0] == 'year' and \
+                old_year_dir != general_function.get_time_now('year'):
+            general_function.del_file_objects('inc_files', old_year_dir)
 
 
 def get_gnu_dumpdir_format(diff_json, dir_name, backup_dir, excludes, first_level_subdirs, first_level_files):

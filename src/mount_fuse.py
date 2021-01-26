@@ -36,7 +36,7 @@ def get_storage_data(job_name, storage_data):
 
     err_message = ''
 
-    if not storage in ('local', 's3'):
+    if storage not in ('local', 's3'):
         host = storage_data.get('host')
 
         if not host:
@@ -44,7 +44,7 @@ def get_storage_data(job_name, storage_data):
         else:
             data_dict['host'] = host
 
-    if not storage in ('local', 'nfs', 's3'):
+    if storage not in ('local', 'nfs', 's3'):
         user = storage_data.get('user', '')
         password = storage_data.get('password', '')
         port = storage_data.get('port', '')

@@ -89,7 +89,7 @@ def control_old_files(full_dir_path, store_backup_count, storage, job_name,
             result_delete_count = delta_count_file + 1
 
         if safety_backup:
-            result_delete_count = result_delete_count - 1
+            result_delete_count -= 1
 
         if result_delete_count < 1:
             return 1
@@ -101,19 +101,19 @@ def control_old_files(full_dir_path, store_backup_count, storage, job_name,
                 log_and_mail.writelog(
                     'ERROR',
                     f"Can't delete old '{time_period}' files in directory '{full_dir_path}' on '{storage}' "
-                    f"storage:{err}",
+                    f"storage: {err}",
                     config.filelog_fd, job_name)
             elif storage == 'smb':
                 log_and_mail.writelog(
                     'ERROR',
                     f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' in '{share}' "
-                    f"share on '{storage}' storage({host}):{err}",
+                    f"share on '{storage}' storage({host}): {err}",
                     config.filelog_fd, job_name)
             else:
                 log_and_mail.writelog(
                     'ERROR',
                     f"Can't delete old '{time_period}' files in directory '{full_path_for_log}' on '{storage}' "
-                    f"storage({host}):{err}",
+                    f"storage({host}): {err}",
                     config.filelog_fd, job_name)
         else:
             if storage == 'local':

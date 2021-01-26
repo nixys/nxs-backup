@@ -49,8 +49,8 @@ def exec_cmd(cmdline):
 
 
 def print_info(*message):
-    """ Print the message to stdout in special format.
-
+    """
+    Print the message to stdout in special format.
     """
 
     print("{}: {}".format('nxs-backup',
@@ -59,6 +59,9 @@ def print_info(*message):
 
 
 def get_lock():
+    """
+    Creates a lock file to prevent more than one nxs-backup instance from executing.
+    """
     try:
         create_lock_file()
     except BlockingIOError:
@@ -70,15 +73,11 @@ def get_lock():
             print_info(f"{msg}")
             unlock_waiting()
 
-    return 1
-
 
 def create_lock_file():
     create_files('', config.path_to_lock_file)
     config.lock_file_fd = open(config.path_to_lock_file, 'a')
     fcntl.flock(config.lock_file_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-    return 1
 
 
 def get_unlock():
@@ -317,7 +316,12 @@ def get_default_port(type_source):
 
 
 def get_host_and_share(storage, current_storage_data):
-    """"""
+    """
+
+    :param storage:
+    :param current_storage_data:
+    :return:
+    """
 
     if storage != 's3':
         host = current_storage_data['host']
@@ -333,21 +337,34 @@ def get_host_and_share(storage, current_storage_data):
 
 
 def get_job_parameters(job_data):
+    """
+
+    :param job_data:
+    :return:
+    """
     job_name = job_data.get('job', 'Unknown')
+    options = {}
     try:
-        backup_type = job_data['type']
-        tmp_dir = job_data['tmp_dir']
-        sources = job_data['sources']
-        storages = job_data['storages']
+        options['backup_type'] = job_data['type']
+        options['tmp_dir'] = job_data['tmp_dir']
+        options['sources'] = job_data['sources']
+        options['storages'] = job_data['storages']
     except KeyError as e:
         log_and_mail.writelog('ERROR', f"Missing required key:'{e}'!", config.filelog_fd, job_name)
         return False
 
-    safety_backup = job_data.get('safety_backup', False)
+    options['safety_backup'] = job_data.get('safety_backup', False)
     deferred_copying_level = job_data.get('deferred_copying_level', 0)
-
     try:
-        deferred_copying_level = int(deferred_copying_level)
-    except ValueError:
-        deferred_copying_level = 0
-    return True, job_name, backup_type, tmp_dir, sources, storages, safety_backup, deferred_copying_level
+        options['deferred_copying_level'] = int(deferred_copying_level)
+    except TypeError:
+        options['deferred_copying_level'] = 0
+
+    if options['backup_type'] == 'inc_files':
+        try:
+            months_to_store = job_data.get('inc_months_to_store')
+            options['months_to_store'] = int(months_to_store)
+        except TypeError:
+            options['months_to_store'] = 12
+
+    return True, job_name, options

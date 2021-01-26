@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.0] - 2021-01-26
+### Adds
+- Added the `inc_months_to_store` parameter for incremental copies, allowing you to specify how many months with copies will be stored.
+
 ## [2.4.6] - 2021-01-15
 ### Fix
 - Fixed creating of the .inc files for `inc_files` backups type with `scp` storage 
