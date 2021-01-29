@@ -68,7 +68,7 @@ def postgresql_backup(job_data):
                 backup_full_tmp_path = general_function.get_full_path(
                     full_path_tmp_dir,
                     db,
-                    'pgdump',
+                    'pgdump.sql',
                     gzip, i)
 
                 periodic_backup.remove_old_local_file(options['storages'], db, job_name)
