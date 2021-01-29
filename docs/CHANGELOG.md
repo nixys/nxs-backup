@@ -3,9 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [2.5.0] - 2021-01-26
+## [2.5.0] - 2021-01-29
 ### Adds
 - Added the `inc_months_to_store` parameter for incremental copies, allowing you to specify how many months with copies will be stored.
+- Fixed backup file extension for `postgresql` backup type
 
 ## [2.4.6] - 2021-01-15
 ### Fix
