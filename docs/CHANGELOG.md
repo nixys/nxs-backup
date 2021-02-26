@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.1] - 2021-02-26
+### Adds
+- Fixed `postgresql` backup with some messages in output of pg_dump.
+
 ## [2.5.0] - 2021-01-29
 ### Adds
 - Added the `inc_months_to_store` parameter for incremental copies, allowing you to specify how many months with copies will be stored.

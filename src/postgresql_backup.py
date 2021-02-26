@@ -110,14 +110,20 @@ def is_success_pgdump(db, extra_keys, str_auth, backup_full_path, gzip, job_name
     stderr = command['stderr']
     code = command['code']
 
-    if stderr:
-        log_and_mail.writelog('ERROR', f"Can't create '{db}' database dump in tmp directory:{stderr}",
+    if stderr and (stderr.find('error') != -1):
+        log_and_mail.writelog('ERROR', f"Can't create '{db}' database dump in tmp directory with the next error: "
+                                       f"{stderr}",
                               config.filelog_fd, job_name)
         return False
     elif code != 0:
         log_and_mail.writelog('ERROR', f"Bad result code external process '{dump_cmd}':'{code}'",
                               config.filelog_fd, job_name)
         return False
+    elif stderr:
+        log_and_mail.writelog('INFO', f"Successfully created '{db}' database dump in tmp directory with the next "
+                                      f"message: {stderr}",
+                              config.filelog_fd, job_name)
+        return True
     else:
         log_and_mail.writelog('INFO', f"Successfully created '{db}' database dump in tmp directory.",
                               config.filelog_fd, job_name)
