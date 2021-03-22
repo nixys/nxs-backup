@@ -118,7 +118,7 @@ def mysql_backup(job_data):
             if db not in exclude_list:
                 backup_full_tmp_path = general_function.get_full_path(full_path_tmp_dir, db, 'sql', gzip, i)
 
-                periodic_backup.remove_old_local_file(options['storages'], db, job_name)
+                periodic_backup.remove_local_file(options['storages'], db, job_name)
 
                 if is_success_mysqldump(db, extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
                     dumped_dbs[db] = {'success': True, 'tmp_path': backup_full_tmp_path}

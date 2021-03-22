@@ -57,7 +57,7 @@ def postgresql_basebackup(job_data):
             'tar',
             gzip, i)
 
-        periodic_backup.remove_old_local_file(options['storages'], '', job_name)
+        periodic_backup.remove_local_file(options['storages'], '', job_name)
 
         str_auth = f' --dbname=postgresql://{db_user}:{db_password}@{db_host}:{db_port}/ '
 

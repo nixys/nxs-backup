@@ -65,7 +65,7 @@ def redis_backup(job_data):
                 'redis',
                 'rdb',
                 gzip)
-            periodic_backup.remove_old_local_file(options['storages'], '', job_name)
+            periodic_backup.remove_local_file(options['storages'], '', job_name)
 
             if is_success_bgsave(str_auth, backup_full_tmp_path, gzip, job_name):
                 periodic_backup.general_desc_iteration(backup_full_tmp_path, options['storages'], '', job_name,

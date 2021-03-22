@@ -3,8 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.2] - 2021-03-22
+### Fix
+- Fixed storing of decremental backups.
+
 ## [2.5.1] - 2021-02-26
-### Adds
+### Fix
 - Fixed `postgresql` backup with some messages in output of pg_dump.
 
 ## [2.5.0] - 2021-01-29

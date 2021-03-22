@@ -30,7 +30,7 @@ def external_backup(job_data):
     safety_backup = job_data.get('safety_backup', False)
     skip_backup_rotate = job_data.get('skip_backup_rotate', False)
 
-    periodic_backup.remove_old_local_file(storages, '', job_name)
+    periodic_backup.remove_local_file(storages, '', job_name)
 
     command = general_function.exec_cmd(dump_cmd)
     stderr = command['stderr']

@@ -128,7 +128,7 @@ def mongodb_backup(job_data):
                             f'{i}-{db}-')
 
                         part_of_dir_path = os.path.join(db, collection)
-                        periodic_backup.remove_old_local_file(options['storages'], part_of_dir_path, job_name)
+                        periodic_backup.remove_local_file(options['storages'], part_of_dir_path, job_name)
 
                         if is_success_mongodump(collection, db, extra_keys, str_auth_finally, backup_full_tmp_path,
                                                 gzip, job_name):

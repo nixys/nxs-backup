@@ -46,7 +46,7 @@ def mysql_xtrabackup(job_data):
 
         backup_full_tmp_path = general_function.get_full_path(full_path_tmp_dir, 'xtrabackup', 'tar', gzip)
 
-        periodic_backup.remove_old_local_file(options['storages'], '', job_name)
+        periodic_backup.remove_local_file(options['storages'], '', job_name)
 
         if is_success_mysql_xtrabackup(extra_keys, str_auth, backup_full_tmp_path, gzip, job_name):
             periodic_backup.general_desc_iteration(backup_full_tmp_path, options['storages'], '', job_name,

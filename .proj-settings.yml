@@ -2,7 +2,7 @@ name: "nxs-backup"
 version:
   major: 2
   minor: 5
-  patch: 1
+  patch: 2
 builds:
 - name: "debian-9"
   deb:

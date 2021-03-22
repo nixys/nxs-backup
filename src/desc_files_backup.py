@@ -62,7 +62,7 @@ def desc_files_backup(job_data):
                         'tar',
                         gzip)
 
-                    periodic_backup.remove_old_local_file(options['storages'], part_of_dir_path, job_name)
+                    periodic_backup.remove_local_file(options['storages'], part_of_dir_path, job_name)
 
                     if general_files_func.create_tar('files', backup_full_tmp_path, ofs,
                                                      gzip, options['backup_type'], job_name):
