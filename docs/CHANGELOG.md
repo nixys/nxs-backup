@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.3] - 2021-04-05
+### Fix
+- Fixed handling of the error with incorrect connection to mysql.
+
 ## [2.5.2] - 2021-03-22
 ### Fix
 - Fixed storing of decremental backups.

@@ -96,8 +96,9 @@ def mysql_backup(job_data):
         if 'all' in target_list:
             is_all_flag = True
 
-        connection_1, str_auth = get_connection(db_host, db_port, db_user, db_password, auth_file, socket, job_name)
-        if connection_1 is None:
+        try:
+            connection_1, str_auth = get_connection(db_host, db_port, db_user, db_password, auth_file, socket, job_name)
+        except:
             continue
 
         cur_1 = connection_1.cursor()
