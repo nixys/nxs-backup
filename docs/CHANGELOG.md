@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.4] - 2021-04-21
+### Fix
+- Fixed error "Can't mount remote 's3' storage: shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory" for s3 storage with many targets
+- Fixed error "Can't umount remote 'local' storage:shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory"
+
 ## [2.5.3] - 2021-04-05
 ### Fix
 - Fixed handling of the error with incorrect connection to mysql.

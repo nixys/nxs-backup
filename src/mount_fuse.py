@@ -286,12 +286,14 @@ def mount(current_storage_data):
                     os.chdir('/mnt/s3')
                 except ConnectionAbortedError:
                     raise general_function.MyError("incorrect authentification data!")
+                else:
+                    os.chdir('/') # fix error 'getcwd: cannot access parent directories: No such file or directory'
 
     return
 
 
 def unmount():
-    if mount_point:
+    if storage != 'local' and mount_point:
         umount_cmd = f"fusermount -uz {mount_point}"
         umount = general_function.exec_cmd(umount_cmd)
         stderr_umount = umount['stderr']
