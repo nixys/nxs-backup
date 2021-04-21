@@ -91,7 +91,7 @@ def inc_files_backup(job_data):
                                                       job_options['months_to_store'])
 
                                     try:
-                                        mount_fuse.unmount()
+                                        mount_fuse.unmount(storage)
                                     except general_function.MyError as err:
                                         log_and_mail.writelog('ERROR',
                                                               f"Can't umount remote '{storage}' storage :{err}",

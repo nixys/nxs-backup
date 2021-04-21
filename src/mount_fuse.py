@@ -292,7 +292,7 @@ def mount(current_storage_data):
     return
 
 
-def unmount():
+def unmount(storage):
     if storage != 'local' and mount_point:
         umount_cmd = f"fusermount -uz {mount_point}"
         umount = general_function.exec_cmd(umount_cmd)

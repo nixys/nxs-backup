@@ -285,7 +285,7 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name, 
                                             backup_dir, job_name, host, share, safety_backup)
 
                     try:
-                        mount_fuse.unmount()
+                        mount_fuse.unmount(storage)
                     except general_function.MyError as err:
                         log_and_mail.writelog('ERROR', f"Can't umount remote '{storage}' storage:{err}",
                                               config.filelog_fd, job_name)
