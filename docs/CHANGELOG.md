@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.5] - 2021-06-24
+### Fix
+- Added `--single-transaction` flag for mysql backup
+
 ## [2.5.4] - 2021-04-21
 ### Fix
 - Fixed error "Can't mount remote 's3' storage: shell-init: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory" for s3 storage with many targets
