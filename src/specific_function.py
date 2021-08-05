@@ -121,10 +121,10 @@ def is_time_to_backup(job_data):
     job_type = job_data['type']
     storages = job_data['storages']
 
-    result = True
-
     if job_type == 'inc_files':
-        return result
+        return True
+
+    result = False
 
     dow = general_function.get_time_now("dow")
     dom = general_function.get_time_now("dom")
@@ -147,26 +147,34 @@ def is_time_to_backup(job_data):
                                       f'There are no stores data for storage {job_type} in the job {job_name}!',
                                       config.filelog_fd, job_name)
                 continue
-    if not day_flag:
-        if not week_flag:
-            if not month_flag:
-                result = False
-            else:
-                if dom == config.dom_backup:
-                    result = True
-                else:
-                    result = False
-        else:
-            if dow == config.dow_backup:
-                result = True
-            else:
-                if not month_flag:
-                    result = False
-                else:
-                    if dom == config.dom_backup:
-                        result = True
-    else:
-        result = True
+
+        if day_flag:
+            result = True
+        elif week_flag and dow == config.dow_backup:
+            result = True
+        elif month_flag and dom == config.dom_backup:
+            result = True
+
+    # if not day_flag:
+    #     if not week_flag:
+    #         if not month_flag:
+    #             result = False
+    #         else:
+    #             if dom == config.dom_backup:
+    #                 result = True
+    #             else:
+    #                 result = False
+    #     else:
+    #         if dow == config.dow_backup:
+    #             result = True
+    #         else:
+    #             if not month_flag:
+    #                 result = False
+    #             else:
+    #                 if dom == config.dom_backup:
+    #                     result = True
+    # else:
+    #     result = True
 
     return result
 

@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.6] - 2021-08-05
+### Fix
+- Fixed decremental backups schedule bugs.
+
 ## [2.5.5] - 2021-06-24
 ### Fix
 - Added `--single-transaction` flag for mysql backup

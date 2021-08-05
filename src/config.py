@@ -51,8 +51,8 @@ backup_extenstion = [
 
 supported_general_job = ['external', 'databases', 'files', 'all']
 
-dow_backup = '7'
-dom_backup = '01'
+dow_backup = '4'
+dom_backup = '05'
 
 default_port_dict = {
     'mysql': '3306',

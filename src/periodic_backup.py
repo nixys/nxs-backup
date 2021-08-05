@@ -257,9 +257,9 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name, 
                         share = ''
 
                     subdir_name = ''
-                    if type(int(month_count)) is int and dom == config.dom_backup:
+                    if type(int(month_count)) is int and int(month_count) > 0 and dom == config.dom_backup:
                         subdir_name = 'monthly'
-                    elif type(int(weeks_count)) is int and dow == config.dow_backup:
+                    elif type(int(weeks_count)) is int and int(weeks_count) > 0 and dow == config.dow_backup:
                         subdir_name = 'weekly'
                     elif type(int(days_count)) is int:
                         subdir_name = 'daily'
@@ -275,10 +275,7 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name, 
                                                               part_of_dir_path)
 
                     periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count,
-                                    weeks_count, job_name, host, share)
-
-                    if int(days_count) == 0:
-                        remove_local_file(storages, part_of_dir_path, job_name, 'latest')
+                                    weeks_count, month_count, job_name, host, share)
 
                     if safety_backup and storage != 'local':
                         remove_remote_files(store_dict, storage, local_dst_dirname, part_of_dir_path,
@@ -295,7 +292,7 @@ def general_desc_iteration(full_tmp_path, storages, part_of_dir_path, job_name, 
 
 
 def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, subdir_name, days_count, weeks_count,
-                    job_name, host, share):
+                    month_count, job_name, host, share):
     daily_subdir_name = "daily"
     weekly_subdir_name = "weekly"
     monthly_subdir_name = "monthly"
@@ -310,9 +307,11 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
     daily_dir = os.path.join(general_local_dst_path, daily_subdir_name)
     weekly_dir = os.path.join(general_local_dst_path, weekly_subdir_name)
     monthly_dir = os.path.join(general_local_dst_path, monthly_subdir_name)
+    execute_file_operation = False
 
-    if storage == 'local':
-        if subdir_name == monthly_subdir_name:
+    if subdir_name == monthly_subdir_name and int(month_count) > 0:
+        execute_file_operation = True
+        if storage == 'local':
             dst_dirs.append(monthly_dir)
 
             if dow == config.dow_backup and int(weeks_count) > 0:
@@ -326,8 +325,11 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
                 dst_link = os.path.join(general_local_dst_path, daily_subdir_name, backup_file_name)
                 dst_dirs.append(daily_dir)
                 link_dict[dst_link] = src_link
-        elif subdir_name == weekly_subdir_name and storage == 'local':
-
+        else:
+            dst_dirs.append(full_dst_path)
+    elif subdir_name == weekly_subdir_name and int(weeks_count) > 0:
+        execute_file_operation = True
+        if storage == 'local':
             dst_dirs.append(weekly_dir)
 
             if int(days_count) > 0:
@@ -336,15 +338,19 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
                 dst_dirs.append(daily_dir)
                 link_dict[dst_link] = src_link
         else:
+            dst_dirs.append(full_dst_path)
+    elif int(days_count) > 0:
+        execute_file_operation = True
+        if storage == 'local':
             dst_dirs.append(daily_dir)
-    else:
-        dst_dirs.append(full_dst_path)
+        else:
+            dst_dirs.append(full_dst_path)
 
     for dst_dir in set(dst_dirs):
         dirs_for_log = general_function.get_dirs_for_log(dst_dir, remote_dir, storage)
         general_function.create_dirs(job_name='', dirs_pairs={dst_dir: dirs_for_log})
 
-    if storage == 'local':
+    if storage == 'local' and execute_file_operation:
         try:
             general_function.move_ofs(full_tmp_path, full_dst_path)
         except general_function.MyError as err:
@@ -368,7 +374,7 @@ def periodic_backup(full_tmp_path, general_local_dst_path, remote_dir, storage, 
                 except general_function.MyError as err:
                     log_and_mail.writelog('ERROR', f"Can't create symlink '{src}' -> '{dst}' on 'local' storage: {err}",
                                           config.filelog_fd, job_name)
-    else:
+    elif execute_file_operation:
         dirs_for_log = general_function.get_dirs_for_log(full_dst_path, remote_dir, storage)
         try:
             general_function.copy_ofs(full_tmp_path, full_dst_path)
