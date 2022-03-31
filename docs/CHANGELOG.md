@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.7] - 2022-03-31
+### Fix
+- Fixed dom and dow config.
+
 ## [2.5.6] - 2021-08-05
 ### Fix
 - Fixed decremental backups schedule bugs.
