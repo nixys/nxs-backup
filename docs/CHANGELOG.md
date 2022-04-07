@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.8] - 2022-04-07
+### Fix
+- Dependency versions locked.
+
 ## [2.5.7] - 2022-03-31
 ### Fix
 - Fixed dom and dow config.

@@ -4,13 +4,13 @@ set(PYTHON_SPEC_FILE "${CMAKE_MODULE_PATH}/app-python.spec")
 
 # Specify Python packages to be downloaded and imported into your project
 set(PYTHON_MODULES
-"mysqlclient"
-"pymongo"
-"psutil"
-"psycopg2-binary"
-"redis"
-"pyyaml"
-"distro"
+"mysqlclient==2.1.0"
+"pymongo==3.12.3"
+"psutil==5.9.0"
+"psycopg2-binary==2.9.3"
+"redis==3.5.3"
+"pyyaml==6.0"
+"distro==1.7.0"
 )
 
 foreach(module ${PYTHON_MODULES})
