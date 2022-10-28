@@ -1,6 +1,0 @@
-chown -R root: /etc/nxs-backup
-chmod 750 /etc/nxs-backup
-chmod 750 /etc/nxs-backup/conf.d
-chmod 0640 /etc/nxs-backup/nxs-backup.conf
-
-chmod 750 /var/log/nxs-backup

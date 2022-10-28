@@ -3,6 +3,7 @@
 /.pydevproject
 /.settings
 /tmp
+/test
 /objs
 _CPack_Packages
 CMakeCache.txt
@@ -11,6 +12,7 @@ Makefile
 CPackConfig.cmake
 CPackSourceConfig.cmake
 cmake_install.cmake
-/src/version.go
+/py_src/version.go
 nxs-backup.code-workspace
 /.vscode
+version.go

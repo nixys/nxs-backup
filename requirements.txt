@@ -1,7 +1,0 @@
-mysqlclient
-pymongo
-psutil
-psycopg2-binary
-redis
-pyyaml
-distro
