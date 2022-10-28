@@ -1,0 +1,4 @@
+package misc
+
+// VERSION is a program version generated using nxs-build-tools
+const VERSION string = "@MAJOR_VERSION@.@MINOR_VERSION@.@PATCH_VERSION@"

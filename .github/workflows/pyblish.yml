@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+
+  build-and-deploy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          TARGET: arm
+
+        - os: ubuntu-latest
+          TARGET: arm64
+
+        - os: ubuntu-latest
+          TARGET: amd64
+
+    steps:
+    - name: Building ${{ matrix.TARGET }}
+      run: echo "${{ matrix.TARGET }}"
+
+    - uses: actions/checkout@master
+
+    - uses: actions/setup-go@v3
+      name: Set up Go
+      with:
+        go-version: 1.18
+
+    - name: Set version
+      run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
+
+    - name: Build
+      run: GOOS=linux GOARCH=${{ matrix.TARGET }} go build -v -o nxs-backup-${{ matrix.TARGET }}
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: nxs-backup-${{ matrix.TARGET }}
+        path: nxs-backup-${{ matrix.TARGET }}
+
+    - uses: softprops/action-gh-release@v1
+      name: Upload binaries to release
+      if: github.ref_type == 'tag'
+      with:
+        files: nxs-backup-${{ matrix.TARGET }}
+        prerelease: ${{ contains(github.ref_name, 'rc') }}
+        generate_release_notes: true
+        append_body: true
