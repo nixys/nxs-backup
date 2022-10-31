@@ -31,7 +31,7 @@ type sourceYaml struct {
 	Connect            srcConnectYaml `yaml:"connect,omitempty"`
 	SpecialKeys        string         `yaml:"special_keys,omitempty"`
 	Targets            []string       `yaml:"targets,omitempty"`
-	TargetDbs          []string       `yaml:"target_dbs,omitempty"`
+	TargetDBs          []string       `yaml:"target_dbs,omitempty"`
 	TargetCollections  []string       `yaml:"target_collections,omitempty"`
 	Excludes           []string       `yaml:"excludes,omitempty"`
 	ExcludeDbs         []string       `yaml:"exclude_dbs,omitempty"`
@@ -39,7 +39,7 @@ type sourceYaml struct {
 	Gzip               bool           `yaml:"gzip,omitempty"`
 	SaveAbsPath        bool           `yaml:"save_abs_path,omitempty"`
 	IsSlave            bool           `yaml:"is_slave,omitempty"`
-	ExtraKeys          string         `yaml:"extra_keys,omitempty"`
+	ExtraKeys          string         `yaml:"db_extra_keys,omitempty"`
 	SkipBackupRotate   bool           `yaml:"skip_backup_rotate,omitempty"` // used by external
 	PrepareXtrabackup  bool           `yaml:"prepare_xtrabackup,omitempty"`
 }
@@ -49,10 +49,9 @@ type srcConnectYaml struct {
 	DBHost         string        `yaml:"db_host,omitempty"`
 	DBPort         string        `yaml:"db_port,omitempty"`
 	Socket         string        `yaml:"socket,omitempty"`
-	SSLMode        string        `yaml:"ssl_mode,omitempty"`
+	SSLMode        string        `yaml:"psql_ssl_mode,omitempty"`
 	DBUser         string        `yaml:"db_user,omitempty"`
 	DBPassword     string        `yaml:"db_password,omitempty"`
-	PathToConf     string        `yaml:"path_to_conf,omitempty"`
 	MongoRSName    string        `yaml:"mongo_replica_set_name,omitempty"`
 	MongoRSAddr    string        `yaml:"mongo_replica_set_address,omitempty"`
 	ConnectTimeout time.Duration `yaml:"connection_timeout,omitempty"`
@@ -195,8 +194,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					Socket:     "",
 					AuthFile:   "",
 				},
-				IsSlave: false,
-				Targets: []string{"all"},
+				IsSlave:   false,
+				TargetDBs: []string{"all"},
 				Excludes: []string{
 					"mysql",
 					"information_schema",
@@ -220,8 +219,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					Socket:     "",
 					AuthFile:   "",
 				},
-				IsSlave: false,
-				Targets: []string{"all"},
+				IsSlave:   false,
+				TargetDBs: []string{"all"},
 				Excludes: []string{
 					"mysql",
 					"information_schema",
@@ -244,10 +243,9 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					DBUser:     "postgres",
 					DBPassword: "postgresP@5s",
 					Socket:     "",
-					SSLMode:    "disable",
+					SSLMode:    "require",
 				},
-				IsSlave: false,
-				Targets: []string{"all"},
+				TargetDBs: []string{"all"},
 				Excludes: []string{
 					"postgres",
 					"demo.information_schema",
@@ -267,9 +265,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					DBUser:     "repmgr",
 					DBPassword: "repmgrP@5s",
 					Socket:     "",
-					SSLMode:    "disable",
+					SSLMode:    "require",
 				},
-				IsSlave:   false,
 				ExtraKeys: "",
 			},
 		}
@@ -287,7 +284,7 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					MongoRSName: "",
 					MongoRSAddr: "",
 				},
-				TargetDbs:         []string{"all"},
+				TargetDBs:         []string{"all"},
 				TargetCollections: []string{"all"},
 				ExcludeDbs: []string{
 					"admin",
@@ -310,8 +307,6 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 					DBPassword: "redisP@5s",
 					Socket:     "",
 				},
-				IsSlave:   false,
-				ExtraKeys: "",
 			},
 		}
 	case ctx.AllowedJobTypes[8]:
