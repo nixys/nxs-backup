@@ -15,7 +15,7 @@ amongst others:
 * Email notifications about status and errors during backup process
 
 The source code of Nxs-backup is available at https://github.com/nixys/go-nxs-backup under the license.
-Additionally, Nxs-backup offers binary package repositories for the major Linux distributions (Debian, CentOS).
+Additionally, Nxs-backup offers binary files for the Linux distributions https://github.com/nixys/go-nxs-backup/releases.
 
 ## Getting started
 
