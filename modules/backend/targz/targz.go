@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/klauspost/pgzip"
@@ -67,6 +68,8 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 		baseDir = filepath.Base(src)
 	}
 
+	hLinks := make(map[uint64]string)
+
 	return filepath.Walk(src,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -79,9 +82,27 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				}
 			}
 
-			header, err := tar.FileInfoHeader(info, info.Name())
+			link, _ := os.Readlink(path)
+
+			header, err := tar.FileInfoHeader(info, link)
 			if err != nil {
 				return err
+			}
+
+			stat := info.Sys().(*syscall.Stat_t)
+			if stat.Nlink > 1 {
+				l, ok := hLinks[stat.Ino]
+				if ok {
+					link, err = filepath.Rel(filepath.Dir(path), l)
+					if err != nil {
+						return err
+					}
+					header.Linkname = link
+					header.Typeflag = tar.TypeLink
+					header.Size = 0
+				} else {
+					hLinks[stat.Ino] = path
+				}
 			}
 
 			if saveAbsPath {
@@ -101,7 +122,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				return err
 			}
 
-			if info.IsDir() {
+			if info.IsDir() || header.Linkname != "" {
 				return nil
 			}
 
