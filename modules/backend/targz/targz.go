@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -82,8 +83,12 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				}
 			}
 
-			link, _ := os.Readlink(path)
+			// skipping sockets
+			if info.Mode()&fs.ModeSocket != 0 {
+				return nil
+			}
 
+			link, _ := os.Readlink(path)
 			header, err := tar.FileInfoHeader(info, link)
 			if err != nil {
 				return err

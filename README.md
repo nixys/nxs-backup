@@ -239,17 +239,19 @@ copying data to a remote server, rotation of backups may be skipped with this op
 
 #### Database connection params
 
-| Name                        | Description                                       | Value       |
-|-----------------------------|---------------------------------------------------|-------------|
-| `db_host`                   | DB host                                           | `""`        |
-| `db_port`                   | DB port                                           | `""`        |
-| `socket`                    | Path to DB socket                                 | `""`        |
-| `db_user`                   | DB user                                           | `""`        |
-| `db_password`               | DB password                                       | `""`        |
-| `mysql_auth_file`           | Path to MySQL auth file                           | `""`        |
-| `psql_ssl_mode`             | PostgreSQL SSL mode option                        | `"require"` |
-| `mongo_replica_set_name`    | MongoDB replicaset name                           | `""`        |
-| `mongo_replica_set_address` | Comma separated list of MongoDB replicaset hosts  | `""`        |
+| Name                        | Description                                                                          | Value       |
+|-----------------------------|--------------------------------------------------------------------------------------|-------------|
+| `db_host`                   | DB host                                                                              | `""`        |
+| `db_port`                   | DB port                                                                              | `""`        |
+| `socket`                    | Path to DB socket                                                                    | `""`        |
+| `db_user`                   | DB user                                                                              | `""`        |
+| `db_password`               | DB password                                                                          | `""`        |
+| `mysql_auth_file`           | Path to MySQL auth file                                                              | `""`        |
+| `psql_ssl_mode`             | PostgreSQL SSL mode option                                                           | `"require"` |
+| `psql_ssl_root_cert`        | Path to file containing SSL certificate authority (CA) certificate(s) for PostgreSQL | `""`        |
+| `psql_ssl_crl`              | Path to file containing SSL server certificate revocation list (CRL) for PostgreSQL  | `""`        |
+| `mongo_replica_set_name`    | MongoDB replicaset name                                                              | `""`        |
+| `mongo_replica_set_address` | Comma separated list of MongoDB replicaset hosts                                     | `""`        |
 
 You may use either `auth_file` or `db_host` or `socket` options. Options priority follows:
 `auth_file` → `db_host` → `socket`

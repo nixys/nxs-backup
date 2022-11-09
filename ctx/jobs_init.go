@@ -205,12 +205,14 @@ func jobsInit(cfgJobs []jobCfg, storages map[string]interfaces.Storage) ([]inter
 
 				sources = append(sources, psql.SourceParams{
 					ConnectParams: psql_connect.Params{
-						User:    src.Connect.DBUser,
-						Passwd:  src.Connect.DBPassword,
-						Host:    src.Connect.DBHost,
-						Port:    src.Connect.DBPort,
-						Socket:  src.Connect.Socket,
-						SSLMode: src.Connect.PSQLSSLMode,
+						User:        src.Connect.DBUser,
+						Passwd:      src.Connect.DBPassword,
+						Host:        src.Connect.DBHost,
+						Port:        src.Connect.DBPort,
+						Socket:      src.Connect.Socket,
+						SSLMode:     src.Connect.SSLMode,
+						SSLRootCert: src.Connect.SSlRootCert,
+						SSLCrl:      src.Connect.SSlCrl,
 					},
 					Name:      src.Name,
 					TargetDBs: src.TargetDBs,
@@ -247,12 +249,14 @@ func jobsInit(cfgJobs []jobCfg, storages map[string]interfaces.Storage) ([]inter
 
 				sources = append(sources, psql_basebackup.SourceParams{
 					ConnectParams: psql_connect.Params{
-						User:    src.Connect.DBUser,
-						Passwd:  src.Connect.DBPassword,
-						Host:    src.Connect.DBHost,
-						Port:    src.Connect.DBPort,
-						Socket:  src.Connect.Socket,
-						SSLMode: src.Connect.PSQLSSLMode,
+						User:        src.Connect.DBUser,
+						Passwd:      src.Connect.DBPassword,
+						Host:        src.Connect.DBHost,
+						Port:        src.Connect.DBPort,
+						Socket:      src.Connect.Socket,
+						SSLMode:     src.Connect.SSLMode,
+						SSLRootCert: src.Connect.SSlRootCert,
+						SSLCrl:      src.Connect.SSlCrl,
 					},
 					Name:      src.Name,
 					Gzip:      src.Gzip,

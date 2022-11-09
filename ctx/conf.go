@@ -85,7 +85,9 @@ type sourceConnect struct {
 	DBUser        string `conf:"db_user"`
 	DBPassword    string `conf:"db_password"`
 	MySQLAuthFile string `conf:"mysql_auth_file"`
-	PSQLSSLMode   string `conf:"psql_ssl_mode" conf_extraopts:"default=require"`
+	SSLMode       string `conf:"psql_ssl_mode" conf_extraopts:"default=require"`
+	SSlRootCert   string `conf:"psql_ssl_root_cert"`
+	SSlCrl        string `conf:"psql_ssl_crl"`
 	MongoRSName   string `conf:"mongo_replica_set_name"`
 	MongoRSAddr   string `conf:"mongo_replica_set_address"`
 }
