@@ -127,7 +127,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				return err
 			}
 
-			if info.IsDir() || header.Linkname != "" {
+			if header.Typeflag != tar.TypeReg {
 				return nil
 			}
 
