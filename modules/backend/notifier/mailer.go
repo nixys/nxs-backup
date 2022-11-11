@@ -130,7 +130,8 @@ type localMail struct {
 func (l localMail) Send(_ string, _ []string, msg io.WriterTo) error {
 	buf := bytes.Buffer{}
 	_, _ = msg.WriteTo(&buf)
-	cmd := exec.Command("/usr/sbin/sendmail", "-t", "-oi", buf.String())
+	cmd := exec.Command("/usr/sbin/sendmail", "-t", "-oi")
+	cmd.Stdin = &buf
 	return cmd.Run()
 }
 

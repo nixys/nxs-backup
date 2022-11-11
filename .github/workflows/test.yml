@@ -22,7 +22,7 @@ jobs:
       run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
 
     - name: Build
-      run: go build -v
+      run: CGO_ENABLED=0 go build -v
 
     - name: Test
       run: go test -v ./...

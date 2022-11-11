@@ -36,7 +36,7 @@ jobs:
       run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
 
     - name: Build
-      run: GOOS=linux GOARCH=${{ matrix.TARGET }} go build -v -o nxs-backup-${{ matrix.TARGET }}
+      run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -v -o nxs-backup-${{ matrix.TARGET }}
 
     - uses: actions/upload-artifact@v3
       with:

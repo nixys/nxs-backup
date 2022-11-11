@@ -123,6 +123,10 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				"ctime": fmt.Sprintf("%f", float64(header.ChangeTime.UnixNano())/float64(time.Second)),
 			}
 
+			if info.IsDir() {
+				header.Name += "/"
+			}
+
 			if err = tarWriter.WriteHeader(header); err != nil {
 				return err
 			}
@@ -137,7 +141,10 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 			}
 			defer func() { _ = file.Close() }()
 
-			_, err = io.Copy(tarWriter, file)
-			return err
+			_, err = io.CopyN(tarWriter, file, info.Size())
+			if err != nil {
+				return fmt.Errorf("failed to archivate file %s: %v", file.Name(), err)
+			}
+			return nil
 		})
 }
