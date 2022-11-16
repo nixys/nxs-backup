@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"nxs-backup/modules/logger"
 )
 
 const (
@@ -112,4 +115,36 @@ func RandString(strLen int64) string {
 	}
 
 	return string(b)
+}
+
+// GetMessage generates notification message from event log record
+func GetMessage(n logger.LogRecord, project, server string) (m string) {
+
+	switch n.Level {
+	case logrus.DebugLevel:
+		m += "[DEBUG]\n\n"
+	case logrus.InfoLevel:
+		m += "[INFO]\n\n"
+	case logrus.WarnLevel:
+		m += "⚠️[WARNING]\n\n"
+	case logrus.ErrorLevel:
+		m += "‼️[ERROR]\n\n"
+	}
+
+	if project != "" {
+		m += fmt.Sprintf("Project: %s\n", project)
+	}
+	if server != "" {
+		m += fmt.Sprintf("Server: %s\n\n", server)
+	}
+
+	if n.JobName != "" {
+		m += fmt.Sprintf("Job: %s\n", n.JobName)
+	}
+	if n.StorageName != "" {
+		m += fmt.Sprintf("Storage: %s\n", n.StorageName)
+	}
+	m += fmt.Sprintf("\nMessage: %s\n", n.Message)
+
+	return
 }

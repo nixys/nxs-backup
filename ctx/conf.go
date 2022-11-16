@@ -27,12 +27,13 @@ type confOpts struct {
 }
 
 type notifications struct {
-	Mail     mailConf     `conf:"mail"`
-	NxsAlert nxsAlertConf `conf:"nxs_alert"`
+	Mail     mailConf      `conf:"mail"`
+	NxsAlert nxsAlertConf  `conf:"nxs_alert"`
+	Webhooks []webhookConf `conf:"webhooks"`
 }
 
 type mailConf struct {
-	Enabled      bool     `conf:"enabled"`
+	Enabled      bool     `conf:"enabled" conf_extraopts:"default=true"`
 	From         string   `conf:"mail_from"`
 	SmtpServer   string   `conf:"smtp_server"`
 	SmtpPort     int      `conf:"smtp_port"`
@@ -43,11 +44,21 @@ type mailConf struct {
 }
 
 type nxsAlertConf struct {
-	Enabled      bool   `conf:"enabled"`
+	Enabled      bool   `conf:"enabled"  conf_extraopts:"default=true"`
 	NxsAlertURL  string `conf:"nxs_alert_url" conf_extraopts:"default=https://nxs-alert.nixys.ru/v2/alert/pool"`
 	AuthKey      string `conf:"auth_key"`
 	InsecureTLS  bool   `conf:"insecure_tls" conf_extraopts:"default=false"`
 	MessageLevel string `conf:"message_level" conf_extraopts:"default=warn"`
+}
+
+type webhookConf struct {
+	Enabled           bool                   `conf:"enabled" conf_extraopts:"default=true"`
+	WebhookURL        string                 `conf:"webhook_url" conf_extraopts:"required"`
+	PayloadMessageKey string                 `conf:"payload_message_key" conf_extraopts:"required"`
+	ExtraPayload      map[string]interface{} `conf:"extra_payload"`
+	ExtraHeaders      map[string]string      `conf:"extra_headers"`
+	InsecureTLS       bool                   `conf:"insecure_tls" conf_extraopts:"default=false"`
+	MessageLevel      string                 `conf:"message_level" conf_extraopts:"default=warn"`
 }
 
 type jobCfg struct {

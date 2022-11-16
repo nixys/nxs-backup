@@ -2,6 +2,7 @@ package targz
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -74,6 +75,10 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 	return filepath.Walk(src,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
+				// skip removed file
+				if errors.Is(err, fs.ErrNotExist) {
+					return nil
+				}
 				return err
 			}
 

@@ -15,7 +15,6 @@ import (
 )
 
 type MailOpts struct {
-	Enabled      bool
 	From         string
 	SmtpServer   string
 	SmtpPort     int
@@ -28,22 +27,18 @@ type MailOpts struct {
 	ServerName   string
 }
 
-type Mailer struct {
+type mailer struct {
 	opts MailOpts
 }
 
-func MailerInit(mailCfg MailOpts) (Mailer, error) {
-	m := Mailer{opts: mailCfg}
-
-	if !mailCfg.Enabled {
-		return m, nil
-	}
+func MailerInit(mailCfg MailOpts) (*mailer, error) {
+	m := &mailer{opts: mailCfg}
 
 	if mailCfg.SmtpServer != "" {
 		d := gomail.NewDialer(mailCfg.SmtpServer, mailCfg.SmtpPort, mailCfg.SmtpUser, mailCfg.SmtpPassword)
 		sc, err := d.Dial()
 		if err != nil {
-			return Mailer{}, fmt.Errorf("Failed to dial SMTP server. Error: %v ", err)
+			return m, fmt.Errorf("Failed to dial SMTP server. Error: %v ", err)
 		}
 		defer func() { _ = sc.Close() }()
 	}
@@ -52,13 +47,13 @@ func MailerInit(mailCfg MailOpts) (Mailer, error) {
 }
 
 // Send sends notification via Email
-func (m *Mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.WaitGroup) {
-	if !m.opts.Enabled || n.Level > m.opts.MessageLevel {
-		return
-	}
-
+func (m *mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
+
+	if n.Level > m.opts.MessageLevel {
+		return
+	}
 
 	var (
 		sc  gomail.SendCloser
@@ -94,7 +89,7 @@ func (m *Mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.Wa
 	}
 }
 
-func (m *Mailer) getMailBody(n logger.LogRecord) (b string) {
+func (m *mailer) getMailBody(n logger.LogRecord) (b string) {
 	switch n.Level {
 	case logrus.DebugLevel:
 		b += "[DEBUG]:\n\n"

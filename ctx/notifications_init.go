@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
+	"nxs-backup/interfaces"
 
 	"nxs-backup/modules/backend/notifier"
 )
@@ -31,68 +32,101 @@ var messageLevels = map[string]logrus.Level{
 	"INFO":    logrus.InfoLevel,
 }
 
-func mailerInit(conf confOpts) (m notifier.Mailer, err error) {
+func notifiersInit(conf confOpts) ([]interfaces.Notifier, error) {
 	var errs *multierror.Error
+	var ns []interfaces.Notifier
 
-	if !conf.Notifications.Mail.Enabled {
-		return
-	}
-
-	mailList := conf.Notifications.Mail.Recipients
-	mailList = append(mailList, conf.Notifications.Mail.From)
-	for _, a := range mailList {
-		_, err = mail.ParseAddress(a)
-		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("  failed to parse email \"%s\". %s", a, err))
+	if conf.Notifications.NxsAlert.Enabled {
+		ml, ok := messageLevels[conf.Notifications.NxsAlert.MessageLevel]
+		if ok {
+			a, err := notifier.WebhookInit(notifier.WebhookOpts{
+				WebhookURL:  conf.Notifications.NxsAlert.NxsAlertURL,
+				InsecureTLS: conf.Notifications.NxsAlert.InsecureTLS,
+				ExtraHeaders: map[string]string{
+					"X-Auth-Key": conf.Notifications.NxsAlert.AuthKey,
+				},
+				PayloadMessageKey: "triggerMessage",
+				ExtraPayload: map[string]interface{}{
+					"isEmergencyAlert":  false,
+					"rawTriggerMessage": false,
+					"monitoringURL":     "-",
+				},
+				MessageLevel: ml,
+				ProjectName:  conf.ProjectName,
+				ServerName:   conf.ServerName,
+			})
+			if err != nil {
+				errs = multierror.Append(errs, err)
+			} else {
+				ns = append(ns, a)
+			}
+		} else {
+			errs = multierror.Append(errs, fmt.Errorf("Nxs-alerter init fail. Unknown message level. Available levels: 'INFO', 'WARN', 'ERR' "))
 		}
 	}
 
-	ml, ok := messageLevels[conf.Notifications.Mail.MessageLevel]
-	if !ok {
-		errs = multierror.Append(fmt.Errorf("Unknown Mail message level. Available levels: 'INFO', 'WARN', 'ERR' "))
+	if conf.Notifications.Mail.Enabled {
+		var mailErrs *multierror.Error
+		mailList := conf.Notifications.Mail.Recipients
+		mailList = append(mailList, conf.Notifications.Mail.From)
+		for _, a := range mailList {
+			_, err := mail.ParseAddress(a)
+			if err != nil {
+				mailErrs = multierror.Append(mailErrs, fmt.Errorf("Email init fail. Failed to parse email \"%s\". %s ", a, err))
+			}
+		}
+
+		ml, ok := messageLevels[conf.Notifications.Mail.MessageLevel]
+		if ok {
+			if mailErrs != nil {
+				errs = multierror.Append(errs, mailErrs.Errors...)
+			} else {
+				m, err := notifier.MailerInit(notifier.MailOpts{
+					From:         conf.Notifications.Mail.From,
+					SmtpServer:   conf.Notifications.Mail.SmtpServer,
+					SmtpPort:     conf.Notifications.Mail.SmtpPort,
+					SmtpUser:     conf.Notifications.Mail.SmtpUser,
+					SmtpPassword: conf.Notifications.Mail.SmtpPassword,
+					Recipients:   conf.Notifications.Mail.Recipients,
+					MessageLevel: ml,
+					ProjectName:  conf.ProjectName,
+					ServerName:   conf.ServerName,
+				})
+				if err != nil {
+					errs = multierror.Append(errs, err)
+				} else {
+					ns = append(ns, m)
+				}
+			}
+		} else {
+			errs = multierror.Append(fmt.Errorf("Email init fail. Unknown message level. Available levels: 'INFO', 'WARN', 'ERR' "))
+		}
 	}
-	if errs != nil {
-		err = errs
-		return
+
+	for _, wh := range conf.Notifications.Webhooks {
+		if wh.Enabled {
+			ml, ok := messageLevels[wh.MessageLevel]
+			if ok {
+				a, err := notifier.WebhookInit(notifier.WebhookOpts{
+					WebhookURL:        wh.WebhookURL,
+					InsecureTLS:       wh.InsecureTLS,
+					ExtraHeaders:      wh.ExtraHeaders,
+					PayloadMessageKey: wh.PayloadMessageKey,
+					ExtraPayload:      wh.ExtraPayload,
+					MessageLevel:      ml,
+					ProjectName:       conf.ProjectName,
+					ServerName:        conf.ServerName,
+				})
+				if err != nil {
+					errs = multierror.Append(errs, err)
+				} else {
+					ns = append(ns, a)
+				}
+			} else {
+				errs = multierror.Append(errs, fmt.Errorf("Webhook init fail. Unknown message level. Available levels: 'INFO', 'WARN', 'ERR' "))
+			}
+		}
 	}
 
-	m, err = notifier.MailerInit(notifier.MailOpts{
-		Enabled:      conf.Notifications.Mail.Enabled,
-		From:         conf.Notifications.Mail.From,
-		SmtpServer:   conf.Notifications.Mail.SmtpServer,
-		SmtpPort:     conf.Notifications.Mail.SmtpPort,
-		SmtpUser:     conf.Notifications.Mail.SmtpUser,
-		SmtpPassword: conf.Notifications.Mail.SmtpPassword,
-		Recipients:   conf.Notifications.Mail.Recipients,
-		MessageLevel: ml,
-		ProjectName:  conf.ProjectName,
-		ServerName:   conf.ServerName,
-	})
-
-	return
-}
-
-func alerterInit(conf confOpts) (a notifier.AlertServer, err error) {
-
-	if !conf.Notifications.NxsAlert.Enabled {
-		return
-	}
-
-	ml, ok := messageLevels[conf.Notifications.NxsAlert.MessageLevel]
-	if !ok {
-		err = fmt.Errorf("Unknown Mail message level. Available levels: 'INFO', 'WARN', 'ERR' ")
-		return
-	}
-
-	a, err = notifier.AlertServerInit(notifier.AlertServerOpts{
-		Enabled:      conf.Notifications.NxsAlert.Enabled,
-		NxsAlertURL:  conf.Notifications.NxsAlert.NxsAlertURL,
-		AuthKey:      conf.Notifications.NxsAlert.AuthKey,
-		InsecureTLS:  conf.Notifications.NxsAlert.InsecureTLS,
-		MessageLevel: ml,
-		ProjectName:  conf.ProjectName,
-		ServerName:   conf.ServerName,
-	})
-
-	return
+	return ns, errs.ErrorOrNil()
 }

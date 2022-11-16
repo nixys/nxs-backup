@@ -9,7 +9,6 @@ import (
 	appctx "github.com/nixys/nxs-go-appctx/v2"
 
 	"nxs-backup/interfaces"
-	"nxs-backup/modules/backend/notifier"
 	"nxs-backup/modules/logger"
 )
 
@@ -23,8 +22,7 @@ type Ctx struct {
 	DBsJobs      interfaces.Jobs
 	ExternalJobs interfaces.Jobs
 	LogCh        chan logger.LogRecord
-	Mailer       notifier.Mailer
-	Alerter      notifier.AlertServer
+	Notifiers    []interfaces.Notifier
 	WG           *sync.WaitGroup
 
 	Cfg confOpts
@@ -80,14 +78,9 @@ func (c *Ctx) Init(opts appctx.CustomContextFuncOpts) (appctx.CfgData, error) {
 
 	c.LogCh = make(chan logger.LogRecord)
 
-	c.Mailer, err = mailerInit(conf)
+	c.Notifiers, err = notifiersInit(conf)
 	if err != nil {
-		fmt.Printf("Failed init mail notifications with next errors:\n%v", err)
-		os.Exit(1)
-	}
-	c.Alerter, err = alerterInit(conf)
-	if err != nil {
-		fmt.Printf("Failed init nxs-alert notifications with next errors:\n%v", err)
+		fmt.Printf("Failed init notifications with next errors:\n%v", err)
 		os.Exit(1)
 	}
 	c.WG = new(sync.WaitGroup)
