@@ -59,7 +59,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	// check if mysqldump available
 	_, err := exec_cmd.Exec("pg_basebackup", "--version")
 	if err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Failed to check pg_basebackup version. Please check that `pg_dump` installed. Error: %s ", jp.Name, err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `pg_basebackup` version. Please cinstall `pg_basebackup`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{

@@ -244,6 +244,8 @@ func (wd *webDav) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart 
 						logCh <- logger.Log(jobName, wd.name).Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
 							dirName, backupDir, err)
 						errs = multierror.Append(errs, err)
+					} else {
+						logCh <- logger.Log(jobName, wd.name).Infof("Deleted old backup '%s' in directory '%s'", dirName, backupDir)
 					}
 				}
 			}

@@ -65,7 +65,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	// check if mysqldump available
 	_, err := exec_cmd.Exec("mysqldump", "--version")
 	if err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Failed to check mysqldump version. Please check that `mysqldump` installed. Error: %s ", jp.Name, err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `mysqldump` version. Please install `mysqldump`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -88,32 +88,34 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 		// fetch all databases
 		var databases []string
-		err = dbConn.Select(&databases, "show databases")
-		if err != nil {
-			return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+		if misc.Contains(src.TargetDBs, "all") {
+			err = dbConn.Select(&databases, "show databases")
+			if err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+			}
+		} else {
+			databases = src.TargetDBs
 		}
 
 		for _, db := range databases {
 			if misc.Contains(src.Excludes, db) {
 				continue
 			}
-			if misc.Contains(src.TargetDBs, "all") || misc.Contains(src.TargetDBs, db) {
 
-				var ignoreTables []string
-				for _, excl := range src.Excludes {
-					if matched, _ := regexp.MatchString(`^`+db+`\..*$`, excl); matched {
-						ignoreTables = append(ignoreTables, "--ignore-table="+excl)
-					}
+			var ignoreTables []string
+			for _, excl := range src.Excludes {
+				if matched, _ := regexp.MatchString(`^`+db+`\..*$`, excl); matched {
+					ignoreTables = append(ignoreTables, "--ignore-table="+excl)
 				}
-				j.targets[src.Name+"/"+db] = target{
-					connect:      dbConn,
-					authFile:     authFile,
-					dbName:       db,
-					ignoreTables: ignoreTables,
-					extraKeys:    src.ExtraKeys,
-					gzip:         src.Gzip,
-					isSlave:      src.IsSlave,
-				}
+			}
+			j.targets[src.Name+"/"+db] = target{
+				connect:      dbConn,
+				authFile:     authFile,
+				dbName:       db,
+				ignoreTables: ignoreTables,
+				extraKeys:    src.ExtraKeys,
+				gzip:         src.Gzip,
+				isSlave:      src.IsSlave,
 			}
 		}
 	}

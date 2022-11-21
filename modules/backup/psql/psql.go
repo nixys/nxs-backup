@@ -63,7 +63,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	// check if mysqldump available
 	_, err := exec_cmd.Exec("pg_dump", "--version")
 	if err != nil {
-		return nil, fmt.Errorf("failed to check pg_dump version. Please check that `pg_dump` installed. Error: %s", err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `pg_dump` version. Please install `pg_dump`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -81,42 +81,42 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 		for _, key := range src.ExtraKeys {
 			if matched, _ := regexp.MatchString(`(-f|--file)`, key); matched {
-				return nil, fmt.Errorf("forbidden usage \"--file|-f\" parameter as extra_keys for `postgresql` jobs type")
+				return nil, fmt.Errorf("Job `%s` init failed. Forbidden usage \"--file|-f\" parameter as extra_keys for `postgresql` jobs type ", jp.Name)
 			}
 		}
 
 		dbConn, connUrl, err := psql_connect.GetConnect(src.ConnectParams)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
 		}
 
-		// fetch all databases
+		// fetch databases list to make backup
 		var databases []string
-		err = dbConn.Select(&databases, "SELECT datname FROM pg_database WHERE datistemplate = false;")
-		if err != nil {
-			return nil, err
+		if misc.Contains(src.TargetDBs, "all") {
+			if err = dbConn.Select(&databases, "SELECT datname FROM pg_database WHERE datistemplate = false;"); err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+			}
+		} else {
+			databases = src.TargetDBs
 		}
 
 		for _, db := range databases {
 			if misc.Contains(src.Excludes, db) {
 				continue
 			}
-			if misc.Contains(src.TargetDBs, "all") || misc.Contains(src.TargetDBs, db) {
-
-				var ignoreTables []string
-				compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
-				for _, excl := range src.Excludes {
-					if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
-						ignoreTables = append(ignoreTables, "--exclude-table="+match[2])
-					}
+			var ignoreTables []string
+			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
+			for _, excl := range src.Excludes {
+				if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
+					ignoreTables = append(ignoreTables, "--exclude-table="+match[2])
 				}
-				j.targets[src.Name+"/"+db] = target{
-					connUrl:      connUrl,
-					dbName:       db,
-					ignoreTables: ignoreTables,
-					extraKeys:    src.ExtraKeys,
-					gzip:         src.Gzip,
-				}
+			}
+			j.targets[src.Name+"/"+db] = target{
+				connUrl:      connUrl,
+				dbName:       db,
+				ignoreTables: ignoreTables,
+				extraKeys:    src.ExtraKeys,
+				gzip:         src.Gzip,
 			}
 		}
 	}

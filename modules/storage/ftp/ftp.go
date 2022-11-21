@@ -143,7 +143,7 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 		return err
 	}
 
-	logCh <- logger.Log(job, f.name).Debugf("Successfully uploaded file '%s'", dst)
+	logCh <- logger.Log(job, f.name).Infof("Successfully uploaded file '%s'", dst)
 	return nil
 }
 
@@ -205,7 +205,7 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string)
 						file.Name, bakDir, err)
 					errs = multierror.Append(errs, err)
 				} else {
-					logCh <- logger.Log(job, f.name).Debugf("Deleted old backup file '%s' in remote directory '%s'", file.Name, bakDir)
+					logCh <- logger.Log(job, f.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name, bakDir)
 				}
 			}
 		}
@@ -264,6 +264,8 @@ func (f *FTP) deleteIncBackup(logCh chan logger.LogRecord, job, ofsPart string, 
 						logCh <- logger.Log(job, f.name).Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
 							dir.Name, backupDir, err)
 						errs = multierror.Append(errs, err)
+					} else {
+						logCh <- logger.Log(job, f.name).Infof("Deleted old backup '%s' in directory '%s'", dir.Name, backupDir)
 					}
 				}
 			}

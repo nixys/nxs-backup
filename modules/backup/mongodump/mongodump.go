@@ -32,12 +32,12 @@ type job struct {
 }
 
 type target struct {
-	host              string
-	connOpts          mongo_connect.Params
-	dbName            string
-	ignoreCollections []string
-	extraKeys         []string
-	gzip              bool
+	host        string
+	connOpts    mongo_connect.Params
+	dbName      string
+	collections []string
+	extraKeys   []string
+	gzip        bool
 }
 
 type JobParams struct {
@@ -54,6 +54,7 @@ type SourceParams struct {
 	Name               string
 	ConnectParams      mongo_connect.Params
 	TargetDBs          []string
+	TargetCollections  []string
 	ExcludeDBs         []string
 	ExcludeCollections []string
 	ExtraKeys          []string
@@ -65,7 +66,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	// check if mysqldump available
 	_, err := exec_cmd.Exec("mongodump", "--version")
 	if err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Failed to check mongodump version. Please check that `mongodump` installed. Error: %s ", jp.Name, err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `mongodump` version. Please install `mongodump`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -85,38 +86,62 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Job `%s` init failed. MongoDB connect error: %s ", jp.Name, err)
 		}
+		defer func() { _ = conn.Disconnect(context.TODO()) }()
 
-		// fetch all databases
+		// fetch databases list to make backup
 		var databases []string
-		databases, err = conn.ListDatabaseNames(context.TODO(), bson.D{})
-		if err != nil {
-			return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+		if misc.Contains(src.TargetDBs, "all") {
+			databases, err = conn.ListDatabaseNames(context.TODO(), bson.D{})
+			if err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+			}
+		} else {
+			databases = src.TargetDBs
 		}
-		_ = conn.Disconnect(context.TODO())
+
+		isAllCollectionsFlag := false
+		if misc.Contains(src.TargetCollections, "all") {
+			isAllCollectionsFlag = true
+		}
 
 		for _, db := range databases {
 			if misc.Contains(src.ExcludeDBs, db) {
 				continue
 			}
-			if misc.Contains(src.TargetDBs, "all") || misc.Contains(src.TargetDBs, db) {
 
-				var ignoreCollections []string
-				compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<collection>.*$)`)
-				for _, excl := range src.ExcludeCollections {
-					if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
-						ignoreCollections = append(ignoreCollections, "--excludeCollection="+match[2])
-					}
+			var ignoreCollections []string
+			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<collection>.*$)`)
+			for _, excl := range src.ExcludeCollections {
+				if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
+					ignoreCollections = append(ignoreCollections, match[2])
 				}
-				j.targets[src.Name+"/"+db] = target{
-					dbName:            db,
-					ignoreCollections: ignoreCollections,
-					host:              host,
-					extraKeys:         src.ExtraKeys,
-					gzip:              src.Gzip,
-					connOpts:          src.ConnectParams,
-				}
-
 			}
+
+			var collections, tc []string
+			if isAllCollectionsFlag {
+				collections, err = conn.Database(db).ListCollectionNames(context.TODO(), bson.D{})
+				if err != nil {
+					return nil, fmt.Errorf("Job `%s` init failed. Unable to list collections of database `%s`. Error: %s ", jp.Name, db, err)
+				}
+			} else {
+				collections = src.TargetCollections
+			}
+
+			for _, col := range collections {
+				if !misc.Contains(ignoreCollections, col) {
+					tc = append(tc, col)
+				}
+			}
+
+			j.targets[src.Name+"/"+db] = target{
+				dbName:      db,
+				collections: tc,
+				host:        host,
+				extraKeys:   src.ExtraKeys,
+				gzip:        src.Gzip,
+				connOpts:    src.ConnectParams,
+			}
+
 		}
 	}
 
@@ -216,7 +241,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 }
 
 func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string, target target) error {
-	tmpMongodumpPath := path.Join(path.Dir(tmpBackupFile), "mongodump_"+target.dbName+"_"+misc.GetDateTimeNow(""))
+	tmpMongodumpPath := path.Join(path.Dir(tmpBackupFile), "dump")
 
 	var args []string
 	// define command args
@@ -227,10 +252,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 	args = append(args, "--password="+target.connOpts.Passwd)
 	// add db name
 	args = append(args, "--db="+target.dbName)
-	// add collections exclude
-	if len(target.ignoreCollections) > 0 {
-		args = append(args, target.ignoreCollections...)
-	}
+
 	// add extra dump cmd options
 	if len(target.extraKeys) > 0 {
 		args = append(args, target.extraKeys...)
@@ -239,28 +261,29 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 	args = append(args, "--out="+tmpMongodumpPath)
 
 	var stderr, stdout bytes.Buffer
-	cmd := exec.Command("mongodump", args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
-
-	if err := cmd.Start(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to start mongodump. Error: %s", err)
-		return err
-	}
 	logCh <- logger.Log(j.name, "").Infof("Starting a `%s` dump", target.dbName)
 
-	if err := cmd.Wait(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to dump `%s`. Error: %s", target.dbName, stderr.String())
-		return err
+	for _, col := range target.collections {
+		argsCol := append(args, "--collection="+col)
+		cmd := exec.Command("mongodump", argsCol...)
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
+		if err := cmd.Run(); err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Unable to dump `%s`. Error: %s", target.dbName, err)
+			logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
+			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", stderr.String())
+			return err
+		}
+		stdout.Reset()
+		stderr.Reset()
 	}
 
 	if err := targz.Tar(tmpMongodumpPath, tmpBackupFile, target.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		return err
 	}
-	_ = os.RemoveAll(tmpMongodumpPath)
+	//_ = os.RemoveAll(tmpMongodumpPath)
 
 	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", target.dbName)
 

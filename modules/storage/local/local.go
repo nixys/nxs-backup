@@ -84,7 +84,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
 		return
 	}
-	logCh <- logger.Log(jobName, "local").Debugf("Successfully copied temp backup to %s", bakDstPath)
+	logCh <- logger.Log(jobName, "local").Infof("Successfully copied temp backup to %s", bakDstPath)
 
 	for dst, src := range links {
 		err = os.MkdirAll(path.Dir(dst), os.ModePerm)
@@ -96,7 +96,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		if err = os.Symlink(src, dst); err != nil {
 			return err
 		}
-		logCh <- logger.Log(jobName, "local").Debugf("Successfully created symlink %s", dst)
+		logCh <- logger.Log(jobName, "local").Infof("Successfully created symlink %s", dst)
 	}
 
 	return
@@ -129,7 +129,7 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 		logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
 		return err
 	}
-	logCh <- logger.Log(jobName, "local").Debugf("Successfully copied metadata to %s", mtdDstPath)
+	logCh <- logger.Log(jobName, "local").Infof("Successfully copied metadata to %s", mtdDstPath)
 
 	return nil
 }
@@ -163,7 +163,7 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
-			logCh <- logger.Log(jobName, "local").Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
+			logCh <- logger.Log(jobName, "local").Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
@@ -184,11 +184,11 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			if curDate.After(retentionDate) {
 				err = os.Remove(path.Join(bakDir, file.Name()))
 				if err != nil {
-					logCh <- logger.Log(jobName, "local").Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
+					logCh <- logger.Log(jobName, "local").Errorf("Failed to delete file '%s' in directory '%s' with next error: %s",
 						file.Name(), bakDir, err)
 					errs = multierror.Append(errs, err)
 				} else {
-					logCh <- logger.Log(jobName, "local").Debugf("Deleted old backup file '%s' in remote directory '%s'", file.Name(), bakDir)
+					logCh <- logger.Log(jobName, "local").Infof("Deleted old backup file '%s' in directory '%s'", file.Name(), bakDir)
 				}
 			}
 		}
@@ -240,6 +240,8 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 						logCh <- logger.Log(jobName, "local").Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
 							dirName, backupDir, err)
 						errs = multierror.Append(errs, err)
+					} else {
+						logCh <- logger.Log(jobName, "local").Infof("Deleted old backup '%s' in directory '%s'", dirName, backupDir)
 					}
 				}
 			}

@@ -15,7 +15,7 @@ import (
 const (
 	YearlyBackupDay  = "1"
 	MonthlyBackupDay = "1"
-	WeeklyBackupDay  = "7"
+	WeeklyBackupDay  = "0"
 	IncBackupType    = "inc_files"
 )
 

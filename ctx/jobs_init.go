@@ -302,6 +302,7 @@ func jobsInit(cfgJobs []jobCfg, storages map[string]interfaces.Storage) ([]inter
 					Gzip:               src.Gzip,
 					ExtraKeys:          extraKeys,
 					TargetDBs:          src.TargetDBs,
+					TargetCollections:  src.TargetCollections,
 					ExcludeDBs:         src.ExcludeDBs,
 					ExcludeCollections: src.ExcludeCollections,
 				})

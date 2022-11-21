@@ -269,6 +269,8 @@ func (s *SMB) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart stri
 						logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
 							dirName, backupDir, err)
 						errs = multierror.Append(errs, err)
+					} else {
+						logCh <- logger.Log(jobName, s.name).Infof("Deleted old backup '%s' in directory '%s'", dirName, backupDir)
 					}
 				}
 			}

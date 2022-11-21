@@ -65,7 +65,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	// check if xtrabackup available
 	_, err := exec_cmd.Exec("xtrabackup", "--version")
 	if err != nil {
-		return nil, fmt.Errorf("failed to check xtrabackup version. Please check that `xtrabackup` installed. Error: %s", err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `xtrabackup` version. Please install `xtrabackup`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -88,36 +88,38 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 		// fetch all databases
 		var databases []string
-		err = dbConn.Select(&databases, "show databases")
-		if err != nil {
-			return nil, err
+		if misc.Contains(src.TargetDBs, "all") {
+			err = dbConn.Select(&databases, "show databases")
+			if err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+			}
+			_ = dbConn.Close()
+		} else {
+			databases = src.TargetDBs
 		}
-		_ = dbConn.Close()
 
 		for _, db := range databases {
 			if misc.Contains(src.Excludes, db) {
 				continue
 			}
-			if misc.Contains(src.TargetDBs, "all") || misc.Contains(src.TargetDBs, db) {
 
-				var ignoreTables []string
-				compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
-				for _, excl := range src.Excludes {
-					if matched, _ := regexp.MatchString(`^\^`+db+`\[\.\].*$`, excl); matched {
-						ignoreTables = append(ignoreTables, "--tables-exclude="+excl)
-					} else if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
-						ignoreTables = append(ignoreTables, "--tables-exclude=^"+db+"[.]"+match[2])
-					}
+			var ignoreTables []string
+			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
+			for _, excl := range src.Excludes {
+				if matched, _ := regexp.MatchString(`^\^`+db+`\[\.\].*$`, excl); matched {
+					ignoreTables = append(ignoreTables, "--tables-exclude="+excl)
+				} else if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
+					ignoreTables = append(ignoreTables, "--tables-exclude=^"+db+"[.]"+match[2])
 				}
-				j.targets[src.Name+"/"+db] = target{
-					authFile:     authFile,
-					dbName:       db,
-					ignoreTables: ignoreTables,
-					extraKeys:    src.ExtraKeys,
-					gzip:         src.Gzip,
-					isSlave:      src.IsSlave,
-					prepare:      src.Prepare,
-				}
+			}
+			j.targets[src.Name+"/"+db] = target{
+				authFile:     authFile,
+				dbName:       db,
+				ignoreTables: ignoreTables,
+				extraKeys:    src.ExtraKeys,
+				gzip:         src.Gzip,
+				isSlave:      src.IsSlave,
+				prepare:      src.Prepare,
 			}
 		}
 	}
