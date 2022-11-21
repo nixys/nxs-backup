@@ -28,7 +28,6 @@ type confOpts struct {
 
 type notifications struct {
 	Mail     mailConf      `conf:"mail"`
-	NxsAlert nxsAlertConf  `conf:"nxs_alert"`
 	Webhooks []webhookConf `conf:"webhooks"`
 }
 
@@ -41,14 +40,6 @@ type mailConf struct {
 	SmtpPassword string   `conf:"smtp_password"`
 	Recipients   []string `conf:"recipients"`
 	MessageLevel string   `conf:"message_level" conf_extraopts:"default=err"`
-}
-
-type nxsAlertConf struct {
-	Enabled      bool   `conf:"enabled"  conf_extraopts:"default=true"`
-	NxsAlertURL  string `conf:"nxs_alert_url" conf_extraopts:"default=https://nxs-alert.nixys.ru/v2/alert/pool"`
-	AuthKey      string `conf:"auth_key"`
-	InsecureTLS  bool   `conf:"insecure_tls" conf_extraopts:"default=false"`
-	MessageLevel string `conf:"message_level" conf_extraopts:"default=warn"`
 }
 
 type webhookConf struct {

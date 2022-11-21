@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
-	"nxs-backup/interfaces"
 
+	"nxs-backup/interfaces"
 	"nxs-backup/modules/backend/notifier"
 )
 
@@ -35,35 +35,6 @@ var messageLevels = map[string]logrus.Level{
 func notifiersInit(conf confOpts) ([]interfaces.Notifier, error) {
 	var errs *multierror.Error
 	var ns []interfaces.Notifier
-
-	if conf.Notifications.NxsAlert.Enabled {
-		ml, ok := messageLevels[conf.Notifications.NxsAlert.MessageLevel]
-		if ok {
-			a, err := notifier.WebhookInit(notifier.WebhookOpts{
-				WebhookURL:  conf.Notifications.NxsAlert.NxsAlertURL,
-				InsecureTLS: conf.Notifications.NxsAlert.InsecureTLS,
-				ExtraHeaders: map[string]string{
-					"X-Auth-Key": conf.Notifications.NxsAlert.AuthKey,
-				},
-				PayloadMessageKey: "triggerMessage",
-				ExtraPayload: map[string]interface{}{
-					"isEmergencyAlert":  false,
-					"rawTriggerMessage": false,
-					"monitoringURL":     "-",
-				},
-				MessageLevel: ml,
-				ProjectName:  conf.ProjectName,
-				ServerName:   conf.ServerName,
-			})
-			if err != nil {
-				errs = multierror.Append(errs, err)
-			} else {
-				ns = append(ns, a)
-			}
-		} else {
-			errs = multierror.Append(errs, fmt.Errorf("Nxs-alerter init fail. Unknown message level. Available levels: 'INFO', 'WARN', 'ERR' "))
-		}
-	}
 
 	if conf.Notifications.Mail.Enabled {
 		var mailErrs *multierror.Error

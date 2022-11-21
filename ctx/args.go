@@ -133,9 +133,7 @@ notifications:
     smtp_password: ''
     recipients:
     - root@localhost
-  nxs_alert:
-    enabled: false
-    auth_key: ''
+  webhooks: []
 
 storage_connects: []
 

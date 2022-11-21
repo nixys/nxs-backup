@@ -79,33 +79,37 @@ job names:
 
 Nxs-backup main settings block description.
 
-| Name                      | Description                                                                            | Value                                |
-|---------------------------|----------------------------------------------------------------------------------------|--------------------------------------|
-| `server_name`             | The name of the server on which the nxs-backup is started                              | `""`                                 |
-| `project_name`            | The name of the project, used for notifications (optional)                             | `""`                                 |
-| `notifications.nxs_alert` | Contains [nxs-alert notification channel parameters](#nxs-alert-parameters)            | `{}`                                 |
-| `notifications.mail`      | Contains [email notification channel parameters](#email-parameters)                    | `{}`                                 |
-| `storage_connects`        | Contains list of [remote storages connections](#storage-connection-options)            | `[]`                                 |
-| `jobs`                    | Contains list of [backup jobs](#backup-job-options)                                    | `[]`                                 |
-| `include_jobs_configs`    | Contains list of filepaths or glob patterns to [job config files](#backup-job-options) | `["conf.d/*.conf"]`                  |
-| `waiting_timeout`         | Time to waite in minutes for another nxs-backup to be completed (optional)             | `0`                                  |
-| `logfile`                 | Path to log file                                                                       | `/var/log/nxs-backup/nxs-backup.log` |
-| `loglevel`                | Level of messages to be logged. [Supported levels](#notification-levels)               | `info`                               |
+| Name                     | Description                                                                            | Value                                |
+|--------------------------|----------------------------------------------------------------------------------------|--------------------------------------|
+| `server_name`            | The name of the server on which the nxs-backup is started                              | `""`                                 |
+| `project_name`           | The name of the project, used for notifications (optional)                             | `""`                                 |
+| `notifications.webhooks` | Contains list of [webhook notification channel parameters](#webhook-parameters)        | `[]`                                 |
+| `notifications.mail`     | Contains [email notification channel parameters](#email-parameters)                    | `{}`                                 |
+| `storage_connects`       | Contains list of [remote storages connections](#storage-connection-options)            | `[]`                                 |
+| `jobs`                   | Contains list of [backup jobs](#backup-job-options)                                    | `[]`                                 |
+| `include_jobs_configs`   | Contains list of filepaths or glob patterns to [job config files](#backup-job-options) | `["conf.d/*.conf"]`                  |
+| `waiting_timeout`        | Time to waite in minutes for another nxs-backup to be completed (optional)             | `0`                                  |
+| `logfile`                | Path to log file                                                                       | `/var/log/nxs-backup/nxs-backup.log` |
+| `loglevel`               | Level of messages to be logged. [Supported levels](#notification-levels)               | `info`                               |
 
-#### Nxs-alert parameters
+#### Webhook parameters
 
-| Name            | Description                                                                      | Value                                        |
-|-----------------|----------------------------------------------------------------------------------|----------------------------------------------|
-| `enabled`       | Enables notification channel                                                     | `false`                                      |
-| `auth_key`      | Nxs-alert auth key                                                               | `""`                                         |
-| `nxs_alert_url` | Contains URL of the nxs-alert service                                            | `"https://nxs-alert.nixys.ru/v2/alert/pool"` |
-| `message_level` | Level of messages to be notified about. [Supported levels](#notification-levels) | `"warning"`                                  |
+| Name                  | Description                                                                      | Value       |
+|-----------------------|----------------------------------------------------------------------------------|-------------|
+| `enabled`             | Enables notification channel                                                     | `true`      |
+| `auth_key`            | Nxs-alert auth key                                                               | `""`        |
+| `webhook_url`         | Contains URL of the webhook service                                              | `""`        |
+| `payload_message_key` | Defines request payload key that will contain notification message               | `""`        |
+| `extra_payload`       | Contains struct that contains extra request payload keys                         | `{}`        |
+| `extra_headers`       | Contains map of strings with request headers                                     | `{}`        |
+| `insecure_tls`        | Allows to skip invalid certificates on webhook service side                      | `false`     |
+| `message_level`       | Level of messages to be notified about. [Supported levels](#notification-levels) | `"warning"` |
 
 #### Email parameters
 
 | Name            | Description                                                                      | Value       |
 |-----------------|----------------------------------------------------------------------------------|-------------|
-| `enabled`       | Enables notification channel                                                     | `false`     |
+| `enabled`       | Enables notification channel                                                     | `true`      |
 | `mail_from`     | Mailbox on behalf of which mails will be sent                                    | `""`        |
 | `smtp_server`   | SMTP host. If not specified email will be sent using `/usr/sbin/sendmail`        | `""`        |
 | `smtp_port`     | SMTP port                                                                        | `465`       |
