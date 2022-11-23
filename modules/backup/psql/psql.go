@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/jmoiron/sqlx"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
@@ -85,14 +86,16 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			}
 		}
 
-		dbConn, connUrl, err := psql_connect.GetConnect(src.ConnectParams)
-		if err != nil {
-			return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
-		}
-
 		// fetch databases list to make backup
 		var databases []string
+		var connUrl *url.URL
+		var dbConn *sqlx.DB
 		if misc.Contains(src.TargetDBs, "all") {
+			dbConn, _, err = psql_connect.GetConnect(src.ConnectParams)
+			if err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
+			}
+			defer func() { _ = dbConn.Close() }()
 			if err = dbConn.Select(&databases, "SELECT datname FROM pg_database WHERE datistemplate = false;"); err != nil {
 				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
 			}
@@ -104,11 +107,20 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			if misc.Contains(src.Excludes, db) {
 				continue
 			}
+
+			cp := src.ConnectParams
+			cp.Database = db
+			dbConn, connUrl, err = psql_connect.GetConnect(cp)
+			if err != nil {
+				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
+			}
+			_ = dbConn.Close()
+
 			var ignoreTables []string
 			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
 			for _, excl := range src.Excludes {
 				if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
-					ignoreTables = append(ignoreTables, "--exclude-table="+match[2])
+					ignoreTables = append(ignoreTables, match[2])
 				}
 			}
 			j.targets[src.Name+"/"+db] = target{
@@ -223,20 +235,18 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupPath string,
 		logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp file. Error: %s", err)
 		return err
 	}
-	defer func() { _ = backupWriter.Close }()
+	defer func() { _ = backupWriter.Close() }()
 
 	var args []string
 	// define command args
 	// add tables exclude
-	if len(target.ignoreTables) > 0 {
-		args = append(args, target.ignoreTables...)
+	for _, ex := range target.ignoreTables {
+		args = append(args, "--exclude-table="+ex)
 	}
 	// add extra dump cmd options
 	if len(target.extraKeys) > 0 {
 		args = append(args, target.extraKeys...)
 	}
-	// add db name
-	target.connUrl.Path = target.dbName
 	args = append(args, "--dbname="+target.connUrl.String())
 
 	var stderr bytes.Buffer

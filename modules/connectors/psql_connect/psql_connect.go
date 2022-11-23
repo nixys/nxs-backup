@@ -14,6 +14,7 @@ type Params struct {
 	Host        string // Network host
 	Port        string // Network port
 	Socket      string // Socket path
+	Database    string // Database name
 	SSLMode     string // SSL mode
 	SSLRootCert string // SSL root cert path
 	SSLCrl      string // SSL crl path
@@ -40,6 +41,9 @@ func GetConnect(params Params) (*sqlx.DB, *url.URL, error) {
 	}
 	if params.SSLCrl != "" {
 		opts.Add("sslcrl", params.SSLCrl)
+	}
+	if params.Database != "" {
+		connUrl.Path = params.Database
 	}
 
 	connUrl.RawQuery = opts.Encode()
