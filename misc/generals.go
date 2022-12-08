@@ -58,7 +58,7 @@ func GetDateTimeNow(unit string) (res string) {
 	case "previous_year":
 		res = strconv.Itoa(currentTime.Year() - 1)
 	default:
-		res = currentTime.Format("2006-01-2_15-04")
+		res = currentTime.Format("2006-01-02_15-04")
 	}
 
 	return res

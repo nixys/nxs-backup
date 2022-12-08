@@ -132,11 +132,14 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	logCh <- logger.Log(j.name, "").Infof("Starting of `%s`", j.dumpCmd)
 
 	if err = cmd.Wait(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to finish `%s`. Error: %s", j.dumpCmd, stderr.String())
+		logCh <- logger.Log(j.name, "").Errorf("Unable to finish `%s`. Error: %s", j.dumpCmd, err)
+		logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
+		logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", stderr.String())
 		return err
 	}
 
 	logCh <- logger.Log(j.name, "").Infof("Dumping completed")
+	logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
 
 	if j.skipBackupRotate {
 		return
@@ -147,7 +150,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	}
 	err = json.Unmarshal(stdout.Bytes(), &out)
 	if err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to parse execution result. Error: %s", stderr.String())
+		logCh <- logger.Log(j.name, "").Errorf("Unable to parse execution result. Error: %s", err)
 		return err
 	}
 

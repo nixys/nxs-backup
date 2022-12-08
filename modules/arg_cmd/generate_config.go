@@ -18,7 +18,7 @@ import (
 type jobCfgYml struct {
 	JobName         string            `yaml:"job_name"`
 	JobType         string            `yaml:"type"`
-	TmpDir          string            `yaml:"tmp_dir"`
+	TmpDir          string            `yaml:"tmp_dir,omitempty"`
 	SafetyBackup    bool              `yaml:"safety_backup"`
 	DeferredCopying bool              `yaml:"deferred_copying"`
 	Sources         []sourceYaml      `yaml:"sources"`
@@ -312,6 +312,7 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 	case ctx.AllowedJobTypes[8]:
 		job.StoragesOptions = genStorageOpts(params.Storages, false)
 		job.DumpCmd = "/path/to/backup_script.sh"
+		job.TmpDir = ""
 	default:
 		errs = multierror.Append(fmt.Errorf("Unknown job type. Allowed types: %s ", strings.Join(ctx.AllowedJobTypes, ", ")))
 	}
@@ -402,7 +403,16 @@ func updateStorageConnects(cfgPath string, storages map[string]string) error {
 		}
 	}
 
-	if yamlNode.Content[0].Content[stIdx].Style == yaml.FlowStyle {
+	if stIdx == -1 {
+		sNode := &yaml.Node{}
+		sNode.SetString("storage_connects")
+		lNode := &yaml.Node{}
+		lNode.Tag = "!!seq"
+		lNode.Kind = yaml.SequenceNode
+		lNode.Style = 0
+		yamlNode.Content[0].Content = append(yamlNode.Content[0].Content, sNode, lNode)
+		stIdx = len(yamlNode.Content[0].Content) - 1
+	} else if yamlNode.Content[0].Content[stIdx].Style == yaml.FlowStyle {
 		yamlNode.Content[0].Content[stIdx].Style = 0
 	}
 

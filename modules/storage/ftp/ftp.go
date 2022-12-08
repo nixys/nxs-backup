@@ -2,14 +2,17 @@ package ftp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -176,7 +179,7 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string)
 		bakDir := path.Join(f.backupPath, ofsPart, period)
 		files, err := f.conn.List(bakDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) || strings.Contains(strings.ToLower(err.Error()), syscall.ENOENT.Error()) {
 				continue
 			}
 			logCh <- logger.Log(job, f.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
@@ -184,6 +187,9 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string)
 		}
 
 		for _, file := range files {
+			if file.Name == ".." || file.Name == "." {
+				continue
+			}
 
 			fileDate := file.Time
 			var retentionDate time.Time

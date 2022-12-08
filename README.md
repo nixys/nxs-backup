@@ -12,7 +12,7 @@ amongst others:
 * Built-in generator of the configuration files to expedite initial setup
 * Support of user-defined custom scripts to extend functionality
 * Possibility to restore backups with standard tools (no extra software including Nxs-backup is required)
-* Email notifications about status and errors during backup process
+* Email and webhooks notifications about status and errors during backup process
 
 The source code of Nxs-backup is available at https://github.com/nixys/go-nxs-backup under the license.
 Additionally, Nxs-backup offers binary files for the Linux distributions https://github.com/nixys/go-nxs-backup/releases.
@@ -38,23 +38,23 @@ file per job). Config files are in YAML format. For details, see Settings.
 ### Generate your Configurations Files for job
 
 You can generate your conﬁguration ﬁle for a job by running the script with the command ***generate*** and *-S*/*
---storages* (list of storages), *-T*/*--type* (type of backup), *-P*/*--path* (path to generated file) options. The
+--storages* (map of storages), *-T*/*--type* (type of backup), *-P*/*--path* (path to generated file) options. The
 script will generate conﬁguration ﬁle for the job and print result:
 
  ```bash
-# nxs-backup generate -S local scp -T mysql -P /etc/nxs-backup/conf.d/mysql.conf
+# nxs-backup generate -S store=scp s3_store=s3 -T mysql -P /etc/nxs-backup/conf.d/mysql.conf
 nxs-backup: Successfully generated '/etc/nxs-backup/conf.d/mysql.conf' configuration file!
 ```
 
 ### Testing your Conﬁguration Files
 
-You can test if conﬁguration is correct by running the script with the ***-t*** option and
-optional *-c*/*--config* (path to main conf file). The script will process the conﬁg ﬁle and print any error
+You can test if conﬁguration correct running the script with the ***-t*** option and
+optional *-c*/*--config* (path to main conf file). The script will process the conﬁg ﬁles and print any error
 messages and then terminate:
 
 ```bash
 # nxs-backup -t
-nxs-backup: The configuration file '/etc/nxs-backup/nxs-backup.conf' syntax is ok!
+nxs-backup: The configuration is correct.
 ```
 
 ### Start your jobs
@@ -63,11 +63,11 @@ You cat start your jobs by running the script with the command ***start*** and o
 conf file). The script will execute the job passed by the argument. It should be noted that there are several reserved
 job names:
 
-+ `all` - simulates the sequential execution of *files*, *databases*, *external* job (default value)
-+ `files` - random execution of all jobs with the types *desc_files*, *inc_files*
-+ `databases` - random execution of all jobs with the types *mysql*, *mysql_xtrabackup*, *postgresql*, *
++ `all` - simulates the sequential execution of *external*, *databases*, *files* jobs (default value)
++ `files` - random execution of all jobs of types *desc_files*, *inc_files*
++ `databases` - random execution of all jobs of types *mysql*, *mysql_xtrabackup*, *postgresql*, *
   postgresql_basebackup*, *mongodb*, *redis*
-+ `external` - random execution of all jobs with the type *external*
++ `external` - random execution of all jobs of type *external*
 
 ```bash
 # nxs-backup start all
@@ -97,7 +97,6 @@ Nxs-backup main settings block description.
 | Name                  | Description                                                                      | Value       |
 |-----------------------|----------------------------------------------------------------------------------|-------------|
 | `enabled`             | Enables notification channel                                                     | `true`      |
-| `auth_key`            | Nxs-alert auth key                                                               | `""`        |
 | `webhook_url`         | Contains URL of the webhook service                                              | `""`        |
 | `payload_message_key` | Defines request payload key that will contain notification message               | `""`        |
 | `extra_payload`       | Contains struct that contains extra request payload keys                         | `{}`        |
@@ -191,8 +190,8 @@ Nxs-backup storage connect settings block description.
 | `port`               | SMB port (optional)                       | `445`     |
 | `user`               | SMB user (optional)                       | `"Guest"` |
 | `password`           | SMB password (optional)                   | `""`      |
-| `share`              | SMB share name                            | `5`       |
-| `domain`             | SMB domain (optional)                     | `5`       |
+| `share`              | SMB share name                            | `""`      |
+| `domain`             | SMB domain (optional)                     | `""`      |
 | `connection_timeout` | SMB connection timeout seconds (optional) | `10`      |
 
 #### WebDav connection params
@@ -270,11 +269,11 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 
 #### Storage retention
 
-| Name    | Description                                                                                                                                                                          | Value |
-|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
-| `days`  | Days to store backups                                                                                                                                                                | `7`   |
-| `weeks` | Weeks to store backups                                                                                                                                                               | `5`   |
-| `month` | Months to store backups. For *inc_files* backup type determines how many months of incremental copies<br> will be stored relative to the current month. Can take values from 0 to 12 | `12`  |
+| Name     | Description                                                                                                                                                                          | Value |
+|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
+| `days`   | Days to store backups                                                                                                                                                                | `7`   |
+| `weeks`  | Weeks to store backups                                                                                                                                                               | `5`   |
+| `months` | Months to store backups. For *inc_files* backup type determines how many months of incremental copies<br> will be stored relative to the current month. Can take values from 0 to 12 | `12`  |
 
 #### Backup types
 
@@ -363,7 +362,7 @@ mongodb-clients**.
 
 ### Redis nxs-backup module
 
-Works on top of `redis-cli with --rdb option`, so for the correct work of the module you have to install compatible **
+Works on top of `redis-cli` with `--rdb` option, so for the correct work of the module you have to install compatible **
 redis-tools**.
 
 ### External nxs-backup module
@@ -383,7 +382,7 @@ By default at the completion of this command, it is expected that:
 IMPORTANT:
 
 * make sure that there is no unnecessary information in stdout
-* the successfully completed program must exit with 0
+* the successfully completed program should finish with exit code 0
 
 If the module used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running
 the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is expected to be a
