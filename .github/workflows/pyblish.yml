@@ -38,16 +38,27 @@ jobs:
     - name: Build
       run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -v -o nxs-backup-${{ matrix.TARGET }}
 
+    - name: Compress
+      uses: a7ul/tar-action@v1.1.0
+      id: compress
+      with:
+        command: c
+        files: |
+          ./nxs-backup-${{ matrix.TARGET }}
+          ./README.md
+          ./LICENSE
+        outPath: nxs-backup-${{ matrix.TARGET }}.tar.gz
+
     - uses: actions/upload-artifact@v3
       with:
-        name: nxs-backup-${{ matrix.TARGET }}
-        path: nxs-backup-${{ matrix.TARGET }}
+        name: nxs-backup-${{ matrix.TARGET }}.tar.gz
+        path: nxs-backup-${{ matrix.TARGET }}.tar.gz
 
     - uses: softprops/action-gh-release@v1
       name: Upload binaries to release
       if: github.ref_type == 'tag'
       with:
-        files: nxs-backup-${{ matrix.TARGET }}
+        files: nxs-backup-${{ matrix.TARGET }}.tar.gz
         prerelease: ${{ contains(github.ref_name, 'rc') }}
         generate_release_notes: true
         append_body: true

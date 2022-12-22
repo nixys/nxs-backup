@@ -1,21 +1,17 @@
 package inc_files
 
 import (
-	"archive/tar"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
-
-	"github.com/hashicorp/go-multierror"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
@@ -39,8 +35,6 @@ type target struct {
 	saveAbsPath bool
 	excludes    []*regexp.Regexp
 }
-
-type metadata map[string]float64
 
 type JobParams struct {
 	Name            string
@@ -195,7 +189,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
-		if err = j.createTmpBackup(tmpBackupFile, tgt, mtd, initMeta); err != nil {
+		if err = targz.TarIncremental(tgt.path, tmpBackupFile, tgt.gzip, tgt.saveAbsPath, initMeta, tgt.excludes, mtd); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 			logCh <- logger.Log(j.name, "").Error(err)
 			errs = multierror.Append(errs, err)
@@ -221,10 +215,10 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	return errs.ErrorOrNil()
 }
 
-func (j *job) getMetadata(logCh chan logger.LogRecord, ofsPart string) (mtd metadata, initMeta bool, err error) {
+func (j *job) getMetadata(logCh chan logger.LogRecord, ofsPart string) (mtd targz.Metadata, initMeta bool, err error) {
 	var yearMetaFile, monthMetaFile, dayMetaFile io.Reader
 
-	mtd = make(metadata)
+	mtd = make(targz.Metadata)
 
 	//year := misc.GetDateTimeNow("year")
 	moy := misc.GetDateTimeNow("moy")
@@ -300,8 +294,8 @@ func (j *job) getMetadataFile(logCh chan logger.LogRecord, ofsPart, metadata str
 }
 
 // read metadata from file
-func (j *job) readMetadata(logCh chan logger.LogRecord, fileReader io.Reader) (mtd metadata, err error) {
-	mtd = make(metadata)
+func (j *job) readMetadata(logCh chan logger.LogRecord, fileReader io.Reader) (mtd targz.Metadata, err error) {
+	mtd = make(targz.Metadata)
 
 	byteValue, err := io.ReadAll(fileReader)
 	if err != nil {
@@ -315,147 +309,6 @@ func (j *job) readMetadata(logCh chan logger.LogRecord, fileReader io.Reader) (m
 	}
 
 	return
-}
-
-func (j *job) createTmpBackup(tmpBackupFile string, tgt target, prevMtd metadata, initMeta bool) error {
-
-	// create new index
-	mtd := make(metadata)
-
-	fileWriter, err := targz.GetFileWriter(tmpBackupFile, tgt.gzip)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = fileWriter.Close() }()
-
-	tarWriter := tar.NewWriter(fileWriter)
-	defer func() { _ = tarWriter.Close() }()
-
-	info, err := os.Stat(tgt.path)
-	if err != nil {
-		return err
-	}
-
-	var baseDir string
-	if info.IsDir() {
-		baseDir = path.Base(tgt.path)
-	}
-
-	headers := map[string]*tar.Header{}
-
-	err = filepath.Walk(tgt.path,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			for _, excl := range tgt.excludes {
-				if excl.MatchString(path) {
-					return err
-				}
-			}
-
-			header, err := tar.FileInfoHeader(info, info.Name())
-			if err != nil {
-				return err
-			}
-
-			if tgt.saveAbsPath {
-				header.Name = path
-			} else if baseDir != "" {
-				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, tgt.path))
-			}
-			header.Format = tar.FormatPAX
-
-			mTime := float64(header.ModTime.UnixNano()) / float64(time.Second)
-			aTime := float64(header.AccessTime.UnixNano()) / float64(time.Second)
-			cTime := float64(header.ChangeTime.UnixNano()) / float64(time.Second)
-
-			paxRecs := map[string]string{
-				"mtime": fmt.Sprintf("%f", mTime),
-				"atime": fmt.Sprintf("%f", aTime),
-				"ctime": fmt.Sprintf("%f", cTime),
-			}
-
-			if info.IsDir() {
-				var (
-					files   []fs.FileInfo
-					dumpDir string
-				)
-				delimiterSymbol := "\u0000"
-
-				files, err = ioutil.ReadDir(path)
-				if err != nil {
-					return err
-				}
-				for _, fi := range files {
-					excluded := false
-					for _, excl := range tgt.excludes {
-						if excl.MatchString(filepath.Join(path, fi.Name())) {
-							excluded = true
-							break
-						}
-					}
-					if excluded {
-						continue
-					}
-
-					if fi.IsDir() {
-						dumpDir += "D"
-					} else if prevMtd[path] == mtd[path] {
-						dumpDir += "N"
-					} else {
-						dumpDir += "Y"
-					}
-					dumpDir += fi.Name() + delimiterSymbol
-				}
-				paxRecs["GNU.dumpdir"] = dumpDir + delimiterSymbol
-			} else {
-				mtd[path] = mTime
-			}
-			header.PAXRecords = paxRecs
-
-			headers[path] = header
-
-			return err
-		})
-	if err != nil {
-		return err
-	}
-
-	for fPath, header := range headers {
-		if err = tarWriter.WriteHeader(header); err != nil {
-			return err
-		}
-		if _, ok := header.PAXRecords["GNU.dumpdir"]; !ok {
-			func() {
-				var file fs.File
-				file, err = os.Open(fPath)
-				defer func() { _ = file.Close() }()
-				if err != nil {
-					return
-				}
-				_, err = io.Copy(tarWriter, file)
-				if err != nil {
-					return
-				}
-			}()
-		}
-	}
-
-	file, err := json.Marshal(mtd)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(path.Join(path.Dir(tmpBackupFile), path.Base(tmpBackupFile)+".inc"), file, 0644)
-	if err != nil {
-		return err
-	}
-
-	if initMeta {
-		_, err = os.Create(path.Join(path.Dir(tmpBackupFile), path.Base(tmpBackupFile)+".init"))
-	}
-	return err
 }
 
 func (j *job) Close() error {

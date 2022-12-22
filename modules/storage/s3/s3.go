@@ -121,7 +121,6 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string, jobName, bakType string, full bool) error {
 
 	var errs *multierror.Error
-	var objsToDel []minio.ObjectInfo
 
 	objCh := make(chan minio.ObjectInfo)
 	curDate := time.Now()
@@ -141,7 +140,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string
 
 				if bakType == misc.IncBackupType {
 					if full {
-						objsToDel = append(objsToDel, object)
+						objCh <- object
 					} else {
 						intMoy, _ := strconv.Atoi(misc.GetDateTimeNow("moy"))
 						lastMonth := intMoy - s.Months
@@ -158,7 +157,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string
 							dirParts := strings.Split(path.Base(object.Key), "_")
 							dirMonth, _ := strconv.Atoi(dirParts[1])
 							if dirMonth < lastMonth {
-								objsToDel = append(objsToDel, object)
+								objCh <- object
 							}
 						}
 					}
@@ -177,7 +176,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string
 					}
 					retentionDate = retentionDate.Truncate(24 * time.Hour)
 					if curDate.After(retentionDate) {
-						objsToDel = append(objsToDel, object)
+						objCh <- object
 					}
 				}
 			}
