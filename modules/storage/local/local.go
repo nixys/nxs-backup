@@ -229,7 +229,7 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 				return err
 			}
 		}
-		rx := regexp.MustCompile("month_\\d\\d")
+		rx := regexp.MustCompile(`month_\d\d`)
 		for _, dir := range dirs {
 			dirName := dir.Name()
 			if rx.MatchString(dirName) {

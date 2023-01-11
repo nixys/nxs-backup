@@ -7,19 +7,36 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/klauspost/pgzip"
+	"github.com/mb0/glob"
+
+	"nxs-backup/misc"
 )
 
+const delimiterSymbol = "\u0000" // for incremental tars headers
+
 type Metadata map[string]float64
+
+type dumpDirs map[string]string
+
+type hardLinks map[uint64]string
+
+type Error struct {
+	Err    error
+	File   string
+	Header *tar.Header
+}
+
+func (e Error) Error() string {
+	return e.Err.Error()
+}
 
 func GetFileWriter(filePath string, gZip bool) (io.WriteCloser, error) {
 	file, err := os.Create(filePath)
@@ -29,12 +46,12 @@ func GetFileWriter(filePath string, gZip bool) (io.WriteCloser, error) {
 
 	var writer io.WriteCloser
 	if gZip {
-		writer = pgzip.NewWriter(file)
+		writer, err = pgzip.NewWriterLevel(file, pgzip.BestCompression)
 	} else {
 		writer = file
 	}
 
-	return writer, nil
+	return writer, err
 }
 
 func GZip(src, dst string) error {
@@ -54,7 +71,7 @@ func GZip(src, dst string) error {
 	return err
 }
 
-func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error {
+func Tar(src, dst string, gz, saveAbsPath bool, excludes []string) error {
 
 	fileWriter, err := GetFileWriter(dst, gz)
 	if err != nil {
@@ -78,7 +95,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 	hLinks := make(map[uint64]string)
 
 	return filepath.Walk(src,
-		func(path string, info os.FileInfo, err error) error {
+		func(fPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				// skip removed file
 				if errors.Is(err, fs.ErrNotExist) {
@@ -87,8 +104,8 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				return err
 			}
 
-			for _, excl := range excludes {
-				if excl.MatchString(path) {
+			for _, pattern := range excludes {
+				if match, _ := glob.Match(pattern, fPath); match {
 					return nil
 				}
 			}
@@ -98,7 +115,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				return nil
 			}
 
-			link, _ := os.Readlink(path)
+			link, _ := os.Readlink(fPath)
 			header, err := tar.FileInfoHeader(info, link)
 			if err != nil {
 				return err
@@ -108,7 +125,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 			if stat.Nlink > 1 {
 				l, ok := hLinks[stat.Ino]
 				if ok {
-					link, err = filepath.Rel(filepath.Dir(path), l)
+					link, err = filepath.Rel(filepath.Dir(fPath), l)
 					if err != nil {
 						return err
 					}
@@ -116,14 +133,14 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 					header.Typeflag = tar.TypeLink
 					header.Size = 0
 				} else {
-					hLinks[stat.Ino] = path
+					hLinks[stat.Ino] = fPath
 				}
 			}
 
 			if saveAbsPath {
-				header.Name = path
+				header.Name = fPath
 			} else if baseDir != "" {
-				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
+				header.Name = filepath.Join(baseDir, strings.TrimPrefix(fPath, src))
 			}
 
 			header.Format = tar.FormatPAX
@@ -134,7 +151,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 			}
 
 			if info.IsDir() {
-				header.Name += "/"
+				header.Name = misc.DirNormalize(header.Name)
 			}
 
 			if err = tarWriter.WriteHeader(header); err != nil {
@@ -145,7 +162,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 				return nil
 			}
 
-			file, err := os.Open(path)
+			file, err := os.Open(fPath)
 			if err != nil {
 				return err
 			}
@@ -159,10 +176,7 @@ func Tar(src, dst string, gz, saveAbsPath bool, excludes []*regexp.Regexp) error
 		})
 }
 
-func TarIncremental(src, dst string, gz, saveAbsPath, initMtd bool, excludes []*regexp.Regexp, prevMtd Metadata) error {
-	// create new index
-	mtd := make(Metadata)
-
+func TarIncremental(src, dst string, gz, saveAbsPath, inc bool, excludes []string, prevMtd Metadata) error {
 	fileWriter, err := GetFileWriter(dst, gz)
 	if err != nil {
 		return err
@@ -182,143 +196,164 @@ func TarIncremental(src, dst string, gz, saveAbsPath, initMtd bool, excludes []*
 		baseDir = path.Base(src)
 	}
 
-	hLinks := make(map[uint64]string)
+	// create new metadata index and dumpdirs
+	mtd := make(Metadata)
+	dd := make(dumpDirs)
 
-	err = filepath.Walk(src,
-		func(path string, info os.FileInfo, err error) error {
+	// index files and prepare "GNU.dumpdir" PAX header
+	if err = filepath.WalkDir(src,
+		func(fPath string, dir fs.DirEntry, err error) error {
 			if err != nil {
+				// skip removed file
+				if errors.Is(err, fs.ErrNotExist) {
+					return nil
+				}
 				return err
 			}
 
-			for _, excl := range excludes {
-				if excl.MatchString(path) {
+			for _, pattern := range excludes {
+				if match, _ := glob.Match(pattern, fPath); match {
 					return nil
 				}
 			}
 
+			info, err = dir.Info()
+			if err != nil {
+				return err
+			}
 			// skipping sockets
 			if info.Mode()&fs.ModeSocket != 0 {
 				return nil
 			}
 
-			link, _ := os.Readlink(path)
-			header, err := tar.FileInfoHeader(info, link)
-			if err != nil {
-				return err
-			}
+			mTime := float64(info.ModTime().UnixNano()) / float64(time.Second)
+			mtd[fPath] = mTime
 
-			stat := info.Sys().(*syscall.Stat_t)
-			if stat.Nlink > 1 {
-				l, ok := hLinks[stat.Ino]
-				if ok {
-					link, err = filepath.Rel(filepath.Dir(path), l)
-					if err != nil {
-						return err
-					}
-					header.Linkname = link
-					header.Typeflag = tar.TypeLink
-					header.Size = 0
+			if _, ok := dd[path.Dir(fPath)]; ok {
+				flag := ""
+				if info.IsDir() {
+					flag += "D"
+				} else if prevMtd[fPath] == mTime {
+					flag += "N"
 				} else {
-					hLinks[stat.Ino] = path
+					flag += "Y"
 				}
+				dd[path.Dir(fPath)] += flag + info.Name() + delimiterSymbol
 			}
 
-			if saveAbsPath {
-				header.Name = path
-			} else if baseDir != "" {
-				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
-			}
-			header.Format = tar.FormatPAX
-
-			mTime := float64(header.ModTime.UnixNano()) / float64(time.Second)
-			aTime := float64(header.AccessTime.UnixNano()) / float64(time.Second)
-			cTime := float64(header.ChangeTime.UnixNano()) / float64(time.Second)
-
-			paxRecs := map[string]string{
-				"mtime": fmt.Sprintf("%f", mTime),
-				"atime": fmt.Sprintf("%f", aTime),
-				"ctime": fmt.Sprintf("%f", cTime),
-			}
-
-			if info.IsDir() {
-				var (
-					files   []fs.FileInfo
-					dumpDir string
-				)
-				delimiterSymbol := "\u0000"
-				header.Name += "/"
-
-				files, err = ioutil.ReadDir(path)
-				if err != nil {
-					return err
-				}
-				for _, fi := range files {
-					excluded := false
-					for _, excl := range excludes {
-						if excl.MatchString(filepath.Join(path, fi.Name())) {
-							excluded = true
-							break
-						}
-					}
-					if excluded {
-						continue
-					}
-
-					if fi.IsDir() {
-						dumpDir += "D"
-					} else if prevMtd[path] == mtd[path] {
-						dumpDir += "N"
-					} else {
-						dumpDir += "Y"
-					}
-					dumpDir += fi.Name() + delimiterSymbol
-				}
-				paxRecs["GNU.dumpdir"] = dumpDir + delimiterSymbol
-			} else {
-				mtd[path] = mTime
-			}
-			header.PAXRecords = paxRecs
-
-			// skip unchanged regular files
-			if header.Typeflag == tar.TypeReg && prevMtd[path] == mtd[path] {
-				return nil
-			}
-			if err = tarWriter.WriteHeader(header); err != nil {
-				return err
-			}
-			// skip not regular files
-			if header.Typeflag != tar.TypeReg {
-				return nil
-			}
-			return func() error {
-				var file fs.File
-				file, err = os.Open(path)
-				defer func() { _ = file.Close() }()
-				if err != nil {
-					return err
-				}
-				_, err = io.CopyN(tarWriter, file, header.Size)
-				if err != nil {
-					return err
-				}
-				return nil
-			}()
-		})
-	if err != nil {
+			return nil
+		}); err != nil {
 		return err
+	}
+
+	hLinks := make(hardLinks)
+	for fPath := range mtd {
+		var headerName string
+		if saveAbsPath {
+			headerName = fPath
+		} else if baseDir != "" {
+			headerName = path.Join(baseDir, strings.TrimPrefix(fPath, src))
+		}
+		err = writeToTar(tarWriter, fPath, headerName, hLinks, dd, prevMtd, inc)
+		if err != nil {
+			return err
+		}
 	}
 
 	file, err := json.Marshal(mtd)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(path.Dir(dst), path.Base(dst)+".inc"), file, 0644)
+	err = os.WriteFile(path.Join(path.Dir(dst), path.Base(dst)+".inc"), file, 0644)
 	if err != nil {
 		return err
 	}
 
-	if initMtd {
-		_, err = os.Create(path.Join(path.Dir(dst), path.Base(dst)+".init"))
+	return nil
+}
+
+func writeToTar(tw *tar.Writer, fPath, headerName string, hLinks hardLinks, dd dumpDirs, prevMtd Metadata, inc bool) error {
+	info, err := os.Lstat(fPath)
+	if err != nil {
+		return err
 	}
-	return err
+
+	link, _ := os.Readlink(fPath)
+	header, err := tar.FileInfoHeader(info, link)
+	if err != nil {
+		return Error{
+			Err:    err,
+			File:   fPath,
+			Header: header,
+		}
+	}
+
+	stat := info.Sys().(*syscall.Stat_t)
+	if stat.Nlink > 1 {
+		if l, ok := hLinks[stat.Ino]; ok {
+			link, err = filepath.Rel(path.Dir(fPath), l)
+			if err != nil {
+				return Error{
+					Err:    err,
+					File:   fPath,
+					Header: header,
+				}
+			}
+			header.Linkname = link
+			header.Typeflag = tar.TypeLink
+			header.Size = 0
+		} else {
+			hLinks[stat.Ino] = fPath
+		}
+	}
+
+	if info.IsDir() {
+		headerName = misc.DirNormalize(headerName)
+	}
+	header.Name = headerName
+	header.Format = tar.FormatPAX
+
+	mTime := float64(header.ModTime.UnixNano()) / float64(time.Second)
+	aTime := float64(header.AccessTime.UnixNano()) / float64(time.Second)
+	cTime := float64(header.ChangeTime.UnixNano()) / float64(time.Second)
+
+	paxRecs := map[string]string{
+		"mtime": fmt.Sprintf("%f", mTime),
+		"atime": fmt.Sprintf("%f", aTime),
+		"ctime": fmt.Sprintf("%f", cTime),
+	}
+
+	if dumpDir, ok := dd[fPath]; ok {
+		paxRecs["GNU.dumpdir"] = dumpDir + delimiterSymbol
+	}
+	header.PAXRecords = paxRecs
+
+	// skip unchanged regular files for incremental tar archives
+	if inc && header.Typeflag == tar.TypeReg && prevMtd[fPath] == mTime {
+		return nil
+	}
+
+	if err = tw.WriteHeader(header); err != nil {
+		return Error{
+			Err:    err,
+			File:   fPath,
+			Header: header,
+		}
+	}
+	// skip non regular files
+	if header.Typeflag != tar.TypeReg {
+		return nil
+	}
+
+	file, err := os.Open(fPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file.Close() }()
+
+	_, err = io.CopyN(tw, file, header.Size)
+	if err != nil {
+		return fmt.Errorf("failed to archivate file %s: %v", file.Name(), err)
+	}
+	return nil
 }

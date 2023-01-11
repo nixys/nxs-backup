@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
@@ -90,8 +91,15 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		var databases []string
 		var connUrl *url.URL
 		var dbConn *sqlx.DB
+		udb := strings.Split(src.ConnectParams.User, "@")
+
 		if misc.Contains(src.TargetDBs, "all") {
-			dbConn, _, err = psql_connect.GetConnect(src.ConnectParams)
+			cp := src.ConnectParams
+			if len(udb) > 1 {
+				cp.Database = udb[1]
+				cp.User = udb[0]
+			}
+			dbConn, _, err = psql_connect.GetConnect(cp)
 			if err != nil {
 				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
 			}
@@ -110,6 +118,9 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 			cp := src.ConnectParams
 			cp.Database = db
+			if len(udb) > 1 {
+				cp.User = udb[0]
+			}
 			dbConn, connUrl, err = psql_connect.GetConnect(cp)
 			if err != nil {
 				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)

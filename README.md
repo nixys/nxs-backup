@@ -290,16 +290,16 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 
 ##### File types
 
-| Name                    | Description                |
-|-------------------------|----------------------------|
-| `desc_files`            | Files discrete backup      |
-| `inc_files`             | Files incremental backup   |
+| Name         | Description              |
+|--------------|--------------------------|
+| `desc_files` | Files discrete backup    |
+| `inc_files`  | Files incremental backup |
 
 ##### Other types
 
-| Name                    | Description                |
-|-------------------------|----------------------------|
-| `external`              | External backup script     |
+| Name       | Description            |
+|------------|------------------------|
+| `external` | External backup script |
 
 ## Useful information
 
@@ -348,13 +348,16 @@ percona-xtrabackup**. *Supports only backup of local instance*.
 
 ### PostgreSQL(logical) nxs-backup module
 
-Works on top of `pg_dump`, so for the correct work of the module you have to install compatible **postgresql-client**.
+Works on top of `pg_dump`, so for the correct work of the module you have to install compatible **postgresql-client**.  
+If there is no database with the same name for the user, you must specify the name of the database, which will be used
+to connect to the PSQL instance, after the `@` symbol as part of the username. Example: `backup@postgres`.
 
 ### PostgreSQL(physical) nxs-backup module
 
 Works on top of `pg_basebackup`, so for the correct work of the module you have to install compatible **
-postgresql-client**.
-
+postgresql-client**.  
+If there is no database with the same name for the user, you must specify the name of the database, which will be used
+to connect to the PSQL instance, after the `@` symbol as part of the username. Example: `backup@postgres`.
 ### MongoDB nxs-backup module
 
 Works on top of `mongodump`, so for the correct work of the module you have to install compatible **
@@ -385,5 +388,6 @@ IMPORTANT:
 * the successfully completed program should finish with exit code 0
 
 If the module used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running
-the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is expected to be a
+the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is
+expected to be a
 standard output to stdout.

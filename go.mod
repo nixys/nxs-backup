@@ -1,6 +1,6 @@
 module nxs-backup
 
-go 1.17
+go 1.19
 
 require (
 	github.com/alexflint/go-arg v1.4.3
@@ -12,6 +12,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/klauspost/pgzip v1.2.5
 	github.com/lib/pq v1.2.0
+	github.com/mb0/glob v0.0.0-20160210091149-1eb79d2de6c4
 	github.com/minio/minio-go/v7 v7.0.24
 	github.com/nightlyone/lockfile v1.0.0
 	github.com/nixys/nxs-go-appctx/v2 v2.0.0

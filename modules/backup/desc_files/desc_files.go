@@ -5,10 +5,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/glob"
+
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
 	"nxs-backup/modules/backend/targz"
@@ -30,7 +31,7 @@ type target struct {
 	path        string
 	gzip        bool
 	saveAbsPath bool
-	excludes    []*regexp.Regexp
+	excludes    []string
 }
 
 type JobParams struct {
@@ -78,22 +79,22 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			}
 
 			for _, ofs := range targetOfsList {
-				var excludes []*regexp.Regexp
+				var excludes []string
 
-				excluded := false
-				for _, exclPattern := range src.Excludes {
-					excl, err := regexp.CompilePOSIX(exclPattern)
+				skipOfs := false
+				for _, pattern := range src.Excludes {
+					match, err := glob.Match(pattern, ofs)
 					if err != nil {
-						return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, exclPattern, err)
+						return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, pattern, err)
 					}
-					excludes = append(excludes, excl)
+					if match {
+						skipOfs = true
+					}
 
-					if excl.MatchString(ofs) {
-						excluded = true
-					}
+					excludes = append(excludes, pattern)
 				}
 
-				if !excluded {
+				if !skipOfs {
 					ofsPart := src.Name + "/" + misc.GetOfsPart(targetPattern, ofs)
 
 					j.targets[ofsPart] = target{

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -310,7 +309,7 @@ func (wd *webDav) GetFileReader(ofsPath string) (io.Reader, error) {
 	defer func() { _ = f.Close() }()
 
 	var buf []byte
-	buf, err = ioutil.ReadAll(f)
+	buf, err = io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

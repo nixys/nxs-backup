@@ -15,4 +15,5 @@ cmake_install.cmake
 /py_src/version.go
 nxs-backup.code-workspace
 /.vscode
+.idea
 version.go

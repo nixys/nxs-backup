@@ -7,7 +7,6 @@ import (
 
 // PathNormalize normalizes the path
 func PathNormalize(path string) (string, error) {
-
 	if strings.HasPrefix(path, "~/") {
 		usr, err := user.Current()
 		if err != nil {
@@ -18,4 +17,14 @@ func PathNormalize(path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+// DirNormalize normalizes the directory path
+func DirNormalize(path string) string {
+	for strings.HasSuffix(path, "/") {
+		path = strings.TrimSuffix(path, "/")
+	}
+	path += "/"
+
+	return path
 }

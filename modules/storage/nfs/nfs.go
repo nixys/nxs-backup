@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -321,7 +320,7 @@ func (n *NFS) GetFileReader(ofsPath string) (io.Reader, error) {
 	defer func() { _ = file.Close() }()
 
 	var buf []byte
-	buf, err = ioutil.ReadAll(file)
+	buf, err = io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}

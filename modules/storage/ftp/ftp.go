@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -316,12 +315,16 @@ func (f *FTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 	defer func() { _ = r.Close() }()
 
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
+	// some ftp servers returns empty reader without error if file doesn't exist
+	if len(buf) == 0 {
+		return nil, errors.New("File empty or doesn't exist ")
+	}
 
-	return bytes.NewReader(buf), err
+	return bytes.NewReader(buf), nil
 }
 
 func (f *FTP) Close() error {

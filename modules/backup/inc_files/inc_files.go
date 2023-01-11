@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"io"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/glob"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
@@ -33,7 +34,7 @@ type target struct {
 	path        string
 	gzip        bool
 	saveAbsPath bool
-	excludes    []*regexp.Regexp
+	excludes    []string
 }
 
 type JobParams struct {
@@ -79,22 +80,22 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			}
 
 			for _, ofs := range targetOfsList {
-				var excludes []*regexp.Regexp
+				var excludes []string
 
-				excluded := false
-				for _, exclPattern := range src.Excludes {
-					excl, err := regexp.CompilePOSIX(exclPattern)
+				skipOfs := false
+				for _, pattern := range src.Excludes {
+					match, err := glob.Match(pattern, ofs)
 					if err != nil {
-						return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, exclPattern, err)
+						return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, pattern, err)
 					}
-					excludes = append(excludes, excl)
+					if match {
+						skipOfs = true
+					}
 
-					if excl.MatchString(ofs) {
-						excluded = true
-					}
+					excludes = append(excludes, pattern)
 				}
 
-				if !excluded {
+				if !skipOfs {
 					ofsPart := src.Name + "/" + misc.GetOfsPart(targetPattern, ofs)
 					j.targets[ofsPart] = target{
 						path:        ofs,
@@ -173,14 +174,6 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
-		if initMeta {
-			logCh <- logger.Log(j.name, "").Info("Incremental backup will be reinitialized.")
-
-			if err = j.DeleteOldBackups(logCh, ofsPart); err != nil {
-				errs = multierror.Append(errs, err)
-			}
-		}
-
 		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "tar", "", tgt.gzip)
 		err = os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
@@ -189,14 +182,29 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
+		if initMeta {
+			logCh <- logger.Log(j.name, "").Info("Incremental backup will be reinitialized.")
+
+			if err = j.DeleteOldBackups(logCh, ofsPart); err != nil {
+				errs = multierror.Append(errs, err)
+			}
+			if _, err = os.Create(tmpBackupFile + ".init"); err != nil {
+				errs = multierror.Append(errs, err)
+			}
+		}
+
 		if err = targz.TarIncremental(tgt.path, tmpBackupFile, tgt.gzip, tgt.saveAbsPath, initMeta, tgt.excludes, mtd); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 			logCh <- logger.Log(j.name, "").Error(err)
+			if serr, ok := err.(targz.Error); ok {
+				logCh <- logger.Log(j.name, "").Debugf("file: %s", serr.File)
+				logCh <- logger.Log(j.name, "").Debugf("header: %+v", serr.Header)
+			}
 			errs = multierror.Append(errs, err)
 			continue
 		}
 
-		logCh <- logger.Log(j.name, "").Debugf("Created temp backups %s", tmpBackupFile)
+		logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s", tmpBackupFile)
 
 		j.dumpedObjects[ofsPart] = interfaces.DumpObject{TmpFile: tmpBackupFile}
 		if !j.deferredCopying {

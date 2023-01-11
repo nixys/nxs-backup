@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -37,13 +36,14 @@ type Params struct {
 	SecretKey   string
 	Endpoint    string
 	Region      string
+	Secure      bool
 }
 
 func Init(name string, params Params) (*s3, error) {
 
 	s3Client, err := minio.New(params.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(params.AccessKeyID, params.SecretKey, ""),
-		Secure: true,
+		Secure: params.Secure,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' S3 storage. Error: %v ", name, err)
@@ -199,7 +199,7 @@ func (s *s3) GetFileReader(ofsPath string) (io.Reader, error) {
 	defer func() { _ = o.Close() }()
 
 	var buf []byte
-	buf, err = ioutil.ReadAll(o)
+	buf, err = io.ReadAll(o)
 	if err != nil {
 		return nil, err
 	}

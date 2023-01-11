@@ -123,6 +123,7 @@ type s3Params struct {
 	SecretKey   string `conf:"secret_access_key"`
 	Endpoint    string `conf:"endpoint" conf_extraopts:"required"`
 	Region      string `conf:"region" conf_extraopts:"required"`
+	Secure      bool   `conf:"secure" conf_extraopts:"default=true"`
 }
 
 type sftpParams struct {

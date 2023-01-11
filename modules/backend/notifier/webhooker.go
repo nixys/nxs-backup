@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -85,7 +85,7 @@ func (wh *webhook) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	appCtx.Log().Debugf("HTTP response code: %d, body: %v", resp.StatusCode, string(body))
 
 	if resp.StatusCode != 200 {

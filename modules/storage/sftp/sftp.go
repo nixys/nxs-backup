@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -56,7 +55,7 @@ func Init(name string, params Params) (*SFTP, error) {
 
 	// Load key file if specified
 	if params.KeyFile != "" {
-		key, err := ioutil.ReadFile(params.KeyFile)
+		key, err := os.ReadFile(params.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to init '%s' SFTP storage. Error: %v ", name, fmt.Errorf("failed to read private key file: %w", err))
 		}
@@ -316,7 +315,7 @@ func (s *SFTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	defer func() { _ = f.Close() }()
 
 	var buf []byte
-	buf, err = ioutil.ReadAll(f)
+	buf, err = io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
