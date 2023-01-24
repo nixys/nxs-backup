@@ -57,9 +57,15 @@ type SourceParams struct {
 func Init(jp JobParams) (interfaces.Job, error) {
 
 	// check if mysqldump available
-	_, err := exec_cmd.Exec("pg_basebackup", "--version")
-	if err != nil {
+	if _, err := exec_cmd.Exec("pg_basebackup", "--version"); err != nil {
 		return nil, fmt.Errorf("Job `%s` init failed. Can't check `pg_basebackup` version. Please cinstall `pg_basebackup`. Error: %s ", jp.Name, err)
+	}
+	// check if tar and gzip available
+	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `tar` version. Please install `tar`. Error: %s ", jp.Name, err)
+	}
+	if _, err := exec_cmd.Exec("gzip", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `gzip` version. Please install `gzip`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -223,7 +229,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		return err
 	}
 
-	if err := targz.Tar(tmpBasebackupPath, tmpBackupFile, tgt.gzip, false, nil); err != nil {
+	if err := targz.Tar(tmpBasebackupPath, tmpBackupFile, false, tgt.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		return err
 	}

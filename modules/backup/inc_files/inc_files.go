@@ -1,11 +1,11 @@
 package inc_files
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"nxs-backup/modules/backend/exec_cmd"
 	"os"
 	"path"
 	"path/filepath"
@@ -55,6 +55,13 @@ type SourceParams struct {
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
+	// check if tar and gzip available
+	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `tar` version. Please install `tar`. Error: %s ", jp.Name, err)
+	}
+	if _, err := exec_cmd.Exec("gzip", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `gzip` version. Please install `gzip`. Error: %s ", jp.Name, err)
+	}
 
 	j := &job{
 		name:            jp.Name,
@@ -168,16 +175,16 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	var errs *multierror.Error
 
 	for ofsPart, tgt := range j.targets {
-		mtd, initMeta, err := j.getMetadata(logCh, ofsPart)
+		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "tar", "", tgt.gzip)
+		err := os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp dir with next error: %s", err)
 			errs = multierror.Append(errs, err)
 			continue
 		}
 
-		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "tar", "", tgt.gzip)
-		err = os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
+		initMeta, err := j.getPreviousMetadata(logCh, ofsPart, tmpBackupFile)
 		if err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp dir with next error: %s", err)
 			errs = multierror.Append(errs, err)
 			continue
 		}
@@ -193,12 +200,12 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			}
 		}
 
-		if err = targz.TarIncremental(tgt.path, tmpBackupFile, tgt.gzip, tgt.saveAbsPath, initMeta, tgt.excludes, mtd); err != nil {
+		if err = targz.Tar(tgt.path, tmpBackupFile, true, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 			logCh <- logger.Log(j.name, "").Error(err)
 			if serr, ok := err.(targz.Error); ok {
-				logCh <- logger.Log(j.name, "").Debugf("file: %s", serr.File)
-				logCh <- logger.Log(j.name, "").Debugf("header: %+v", serr.Header)
+				logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)
+				logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
 			}
 			errs = multierror.Append(errs, err)
 			continue
@@ -223,10 +230,8 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	return errs.ErrorOrNil()
 }
 
-func (j *job) getMetadata(logCh chan logger.LogRecord, ofsPart string) (mtd targz.Metadata, initMeta bool, err error) {
+func (j *job) getPreviousMetadata(logCh chan logger.LogRecord, ofsPart, tmpBackupFile string) (initMeta bool, err error) {
 	var yearMetaFile, monthMetaFile, dayMetaFile io.Reader
-
-	mtd = make(targz.Metadata)
 
 	//year := misc.GetDateTimeNow("year")
 	moy := misc.GetDateTimeNow("moy")
@@ -244,15 +249,22 @@ func (j *job) getMetadata(logCh chan logger.LogRecord, ofsPart string) (mtd targ
 	}
 
 	if !initMeta {
+		var dstMtdFile *os.File
+		dstMtdFile, err = os.Create(tmpBackupFile + ".inc")
+		if err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Failed to create new metadata file. Error: %v", err)
+			return
+		}
+
 		if !misc.Contains(misc.DecadesBackupDays, dom) {
 			dayMetaFile, err = j.getMetadataFile(logCh, ofsPart, "day.inc")
 			if err != nil {
 				logCh <- logger.Log(j.name, "").Error("Failed to find backup day metadata.")
 				return
 			} else {
-				mtd, err = j.readMetadata(logCh, dayMetaFile)
+				_, err = io.Copy(dstMtdFile, dayMetaFile)
 				if err != nil {
-					logCh <- logger.Log(j.name, "").Error("Failed to read backup day metadata.")
+					logCh <- logger.Log(j.name, "").Errorf("Failed to copy `day` metadata. Error: %v", err)
 					return
 				}
 			}
@@ -262,16 +274,16 @@ func (j *job) getMetadata(logCh chan logger.LogRecord, ofsPart string) (mtd targ
 				logCh <- logger.Log(j.name, "").Error("Failed to find backup month metadata.")
 				return
 			} else {
-				mtd, err = j.readMetadata(logCh, monthMetaFile)
+				_, err = io.Copy(dstMtdFile, monthMetaFile)
 				if err != nil {
-					logCh <- logger.Log(j.name, "").Error("Failed to read backup month metadata")
+					logCh <- logger.Log(j.name, "").Errorf("Failed to copy `month` metadata. Error: %v", err)
 					return
 				}
 			}
 		} else {
-			mtd, err = j.readMetadata(logCh, yearMetaFile)
+			_, err = io.Copy(dstMtdFile, yearMetaFile)
 			if err != nil {
-				logCh <- logger.Log(j.name, "").Error("Failed to read backup year metadata.")
+				logCh <- logger.Log(j.name, "").Errorf("Failed to copy `year` metadata. Error: %v", err)
 				return
 			}
 		}
@@ -296,24 +308,6 @@ func (j *job) getMetadataFile(logCh chan logger.LogRecord, ofsPart, metadata str
 
 	if reader == nil {
 		err = fs.ErrNotExist
-	}
-
-	return
-}
-
-// read metadata from file
-func (j *job) readMetadata(logCh chan logger.LogRecord, fileReader io.Reader) (mtd targz.Metadata, err error) {
-	mtd = make(targz.Metadata)
-
-	byteValue, err := io.ReadAll(fileReader)
-	if err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Failed to read metadata file. Error: %s", err)
-		return
-	}
-
-	err = json.Unmarshal(byteValue, &mtd)
-	if err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Failed to parse metadata file. Error: %s", err)
 	}
 
 	return

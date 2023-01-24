@@ -2,6 +2,7 @@ package desc_files
 
 import (
 	"fmt"
+	"nxs-backup/modules/backend/exec_cmd"
 	"os"
 	"path"
 	"path/filepath"
@@ -53,6 +54,14 @@ type SourceParams struct {
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
+
+	// check if tar and gzip available
+	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `tar` version. Please install `tar`. Error: %s ", jp.Name, err)
+	}
+	if _, err := exec_cmd.Exec("gzip", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `gzip` version. Please install `gzip`. Error: %s ", jp.Name, err)
+	}
 
 	j := &job{
 		name:             jp.Name,
@@ -177,7 +186,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
-		if err = targz.Tar(tgt.path, tmpBackupFile, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
+		if err = targz.Tar(tgt.path, tmpBackupFile, false, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 		} else {
