@@ -63,9 +63,15 @@ type SourceParams struct {
 func Init(jp JobParams) (interfaces.Job, error) {
 
 	// check if xtrabackup available
-	_, err := exec_cmd.Exec("xtrabackup", "--version")
-	if err != nil {
+	if _, err := exec_cmd.Exec("xtrabackup", "--version"); err != nil {
 		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `xtrabackup` version. Please install `xtrabackup`. Error: %s ", jp.Name, err)
+	}
+	// check if tar and gzip available
+	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `tar` version. Please install `tar`. Error: %s ", jp.Name, err)
+	}
+	if _, err := exec_cmd.Exec("gzip", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `gzip` version. Please install `gzip`. Error: %s ", jp.Name, err)
 	}
 
 	j := &job{
@@ -291,7 +297,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		}
 	}
 
-	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, target.gzip, false, nil); err != nil {
+	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		return err
 	}

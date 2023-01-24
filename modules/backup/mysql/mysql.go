@@ -63,8 +63,7 @@ type SourceParams struct {
 func Init(jp JobParams) (interfaces.Job, error) {
 
 	// check if mysqldump available
-	_, err := exec_cmd.Exec("mysqldump", "--version")
-	if err != nil {
+	if _, err := exec_cmd.Exec("mysqldump", "--version"); err != nil {
 		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `mysqldump` version. Please install `mysqldump`. Error: %s ", jp.Name, err)
 	}
 
