@@ -45,11 +45,12 @@ func WebhookInit(opts WebhookOpts) (*webhook, error) {
 		return wh, err
 	}
 
+	d := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
 	wh.hc = &http.Client{
 		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: 5 * time.Second,
-			}).DialContext,
+			DialContext: d.DialContext,
 			//ResponseHeaderTimeout: 60 * time.Second,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: opts.InsecureTLS,

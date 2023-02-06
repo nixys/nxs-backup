@@ -124,20 +124,20 @@ func (f *FTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile
 }
 
 func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
+
+	// Make remote directories
+	dstDir := path.Dir(dst)
+	if err := f.mkDir(dstDir); err != nil {
+		logCh <- logger.Log(job, f.name).Errorf("Unable to create remote directory '%s': '%s'", dstDir, err)
+		return err
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		logCh <- logger.Log(job, f.name).Errorf("Unable to open file: '%s'", err)
 		return err
 	}
 	defer func() { _ = srcFile.Close() }()
-
-	// Make remote directories
-	dstDir := path.Dir(dst)
-	err = f.mkDir(dstDir)
-	if err != nil {
-		logCh <- logger.Log(job, f.name).Errorf("Unable to create remote directory '%s': '%s'", dstDir, err)
-		return err
-	}
 
 	err = f.conn.Stor(dst, srcFile)
 	if err != nil {

@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"nxs-backup/misc"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
-
-	"nxs-backup/misc"
 )
 
 type Retention struct {
@@ -144,7 +142,7 @@ func GetIncBackupDstAndLinks(tmpBackupFile, ofs, bakPath string) (bakDst, mtdDst
 func GetDescBackupDstList(tmpBackupFile, ofs, bakPath string, retention Retention) (dst []string) {
 
 	bakFile := path.Base(tmpBackupFile)
-	basePath := strings.TrimPrefix(path.Join(bakPath, ofs), "/")
+	basePath := path.Join(bakPath, ofs)
 
 	if misc.GetDateTimeNow("dom") == misc.MonthlyBackupDay && retention.Months > 0 {
 		dst = append(dst, path.Join(basePath, "monthly", bakFile))

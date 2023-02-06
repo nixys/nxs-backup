@@ -210,7 +210,7 @@ Nxs-backup job settings block description.
 
 | Name                 | Description                                                                                                                                                                                                                                                                     | Value   |
 |----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `job`                | Job name. This value is used to run the specific job                                                                                                                                                                                                                            | `""`    |
+| `job_name`           | Job name. This value is used to run the specific job                                                                                                                                                                                                                            | `""`    |
 | `type`               | Backup type. [Supported backup types](#backup-types)                                                                                                                                                                                                                            | `""`    |
 | `tmp_dir`            | A local path to the directory for temporary backups files                                                                                                                                                                                                                       | `""`    |
 | `safety_backup`      | Delete outdated backups after creating a new one. **IMPORTANT** Using of this option requires more disk space.<br> Perform sure there is enough free space on the device where temporary backups stores                                                                         | `false` |
@@ -326,14 +326,14 @@ Therefore, the commands to restore a backup for a specific date are the followin
 * First, unpack the full year copy with the follow command:
 
 ```bash
-tar xf /path/to/full/year/backup
+tar xGf /path/to/full/year/backup
 ```
 
-* Then alternately unpack the monthly, ten-day, day incremental backups, specifying a special key -G, for example:
+* Then alternately unpack the monthly, decade, day incremental backups, specifying a special key -G, for example:
 
 ```bash
 tar xGf /path/to/monthly/backup
-tar xGf /path/to/ten-day/backup
+tar xGf /path/to/decade/backup
 tar xGf /path/to/day/backup
 ```
 

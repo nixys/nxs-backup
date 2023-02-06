@@ -67,24 +67,29 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		return err
 	}
 
-	bakDst, err := os.Create(bakDstPath)
-	if err != nil {
-		return
-	}
-	defer func() { _ = bakDst.Close() }()
+	if err = os.Rename(tmpBackupFile, bakDstPath); err != nil {
+		logCh <- logger.Log(jobName, "local").Debugf("Unable to move temp backup: %s", err)
+		bakDst, err := os.Create(bakDstPath)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = bakDst.Close() }()
 
-	bakSrc, err := os.Open(tmpBackupFile)
-	if err != nil {
-		return
-	}
-	defer func() { _ = bakSrc.Close() }()
+		bakSrc, err := os.Open(tmpBackupFile)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = bakSrc.Close() }()
 
-	_, err = io.Copy(bakDst, bakSrc)
-	if err != nil {
-		logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
-		return
+		_, err = io.Copy(bakDst, bakSrc)
+		if err != nil {
+			logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
+			return err
+		}
+		logCh <- logger.Log(jobName, "local").Infof("Successfully copied temp backup to %s", bakDstPath)
+	} else {
+		logCh <- logger.Log(jobName, "local").Infof("Successfully moved temp backup to %s", bakDstPath)
 	}
-	logCh <- logger.Log(jobName, "local").Infof("Successfully copied temp backup to %s", bakDstPath)
 
 	for dst, src := range links {
 		err = os.MkdirAll(path.Dir(dst), os.ModePerm)
@@ -112,25 +117,31 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 	}
 
 	_ = os.Remove(mtdDstPath)
-	mtdDst, err := os.Create(mtdDstPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = mtdDst.Close() }()
 
-	mtdSrc, err := os.Open(mtdSrcPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = mtdSrc.Close() }()
+	if err = os.Rename(mtdSrcPath, mtdDstPath); err != nil {
+		logCh <- logger.Log(jobName, "local").Debugf("Unable to move temp backup: %s", err)
 
-	_, err = io.Copy(mtdDst, mtdSrc)
-	if err != nil {
-		logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
-		return err
-	}
-	logCh <- logger.Log(jobName, "local").Infof("Successfully copied metadata to %s", mtdDstPath)
+		mtdDst, err := os.Create(mtdDstPath)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = mtdDst.Close() }()
 
+		mtdSrc, err := os.Open(mtdSrcPath)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = mtdSrc.Close() }()
+
+		_, err = io.Copy(mtdDst, mtdSrc)
+		if err != nil {
+			logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
+			return err
+		}
+		logCh <- logger.Log(jobName, "local").Infof("Successfully copied metadata to %s", mtdDstPath)
+	} else {
+		logCh <- logger.Log(jobName, "local").Infof("Successfully moved metadata to %s", mtdDstPath)
+	}
 	return nil
 }
 
