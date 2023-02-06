@@ -34,7 +34,7 @@ func (f *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if storage != "" {
 		out += fmt.Sprintf("(%s)", storage)
 	}
-	out += fmt.Sprintf(": %s", entry.Message)
+	out += fmt.Sprintf(" %s", entry.Message)
 	if len(s) > 0 {
 		out += fmt.Sprintf(" (%s)\n", strings.Join(s, ", "))
 	} else {

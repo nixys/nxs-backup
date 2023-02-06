@@ -69,6 +69,6 @@ func Start(appCtx *appctx.AppContext) error {
 		return fmt.Errorf("Some of backups failed with next errors:\n%v", errs)
 	}
 
-	cc.LogCh <- logger.Log("", "").Info("Backup finished.")
+	cc.LogCh <- logger.Log("", "").Infof("Backup finished.\n")
 	return nil
 }
