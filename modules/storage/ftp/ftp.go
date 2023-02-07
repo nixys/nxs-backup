@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/textproto"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -178,7 +178,8 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string)
 		bakDir := path.Join(f.backupPath, ofsPart, period)
 		files, err := f.conn.List(bakDir)
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) || strings.Contains(strings.ToLower(err.Error()), syscall.ENOENT.Error()) {
+			protoErr := err.(*textproto.Error)
+			if protoErr.Code == 550 {
 				continue
 			}
 			logCh <- logger.Log(job, f.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
@@ -225,10 +226,9 @@ func (f *FTP) deleteIncBackup(logCh chan logger.LogRecord, job, ofsPart string, 
 	if full {
 		backupDir := path.Join(f.backupPath, ofsPart)
 
-		err := f.conn.ChangeDir(backupDir)
-		if err != nil {
-			rx := regexp.MustCompile("550")
-			if rx.MatchString(err.Error()) {
+		if err := f.conn.ChangeDir(backupDir); err != nil {
+			protoErr := err.(*textproto.Error)
+			if protoErr.Code == 550 {
 				return nil
 			} else {
 				logCh <- logger.Log(job, f.name).Errorf("Failed to get access to directory '%s' with next error: %v", backupDir, err)
@@ -236,7 +236,7 @@ func (f *FTP) deleteIncBackup(logCh chan logger.LogRecord, job, ofsPart string, 
 			}
 		}
 
-		if err = f.conn.RemoveDirRecur(backupDir); err != nil {
+		if err := f.conn.RemoveDirRecur(backupDir); err != nil {
 			logCh <- logger.Log(job, f.name).Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
 			errs = multierror.Append(errs, err)
 		}
@@ -293,20 +293,30 @@ func (f *FTP) mkDir(dstPath string) error {
 			return err
 		}
 	}
-	err := f.conn.MakeDir(dstPath)
-	if err != nil {
-		rx := regexp.MustCompile("exist")
-		if rx.MatchString(err.Error()) {
-			err = nil
-		}
+
+	// skip if dir entry already exist
+	if e, err := f.conn.GetEntry(dstPath); err == nil && e.Type == ftp.EntryTypeFolder {
+		return nil
+	} else if e != nil {
+		return errors.New("Can't crate directory. File with the same name already exist. ")
 	}
 
-	return err
+	return f.conn.MakeDir(dstPath)
 }
 
 func (f *FTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	if err := f.updateConn(); err != nil {
 		return nil, err
+	}
+
+	// return fs.ErrNotExist if entry not available
+	if _, err := f.conn.GetEntry(ofsPath); err != nil {
+		protoErr := err.(*textproto.Error)
+		if protoErr.Code == 550 {
+			return nil, fs.ErrNotExist
+		} else {
+			return nil, err
+		}
 	}
 
 	r, err := f.conn.Retr(path.Join(f.backupPath, ofsPath))
