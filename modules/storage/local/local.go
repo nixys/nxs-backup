@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -169,17 +168,30 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 
 	for _, period := range []string{"daily", "weekly", "monthly"} {
 		bakDir := path.Join(l.backupPath, ofsPart, period)
-		files, err := ioutil.ReadDir(bakDir)
+
+		dir, err := os.Open(bakDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
 			}
+			logCh <- logger.Log(jobName, "local").Errorf("Failed to open directory '%s' with next error: %s", bakDir, err)
+			return err
+		}
+
+		files, err := dir.ReadDir(-1)
+		if err != nil {
 			logCh <- logger.Log(jobName, "local").Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
 		for _, file := range files {
-			fileDate := file.ModTime()
+			inf, err := file.Info()
+			if err != nil {
+				logCh <- logger.Log(jobName, "local").Errorf("Failed to get file info for '%s' with next error: %s",
+					file.Name(), err)
+				errs = multierror.Append(errs, err)
+			}
+			fileDate := inf.ModTime()
 			var retentionDate time.Time
 
 			switch period {

@@ -49,20 +49,17 @@ func (s Storages) DeleteOldBackups(logCh chan logger.LogRecord, j Job, ofsPath s
 
 func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
 
-	var errs *multierror.Error
+	errs := new(multierror.Error)
 
 	for ofs, dumpObj := range job.GetDumpObjects() {
 		if !dumpObj.Delivered {
-			var errsDelivery []error
 			for _, st := range s {
 				if err := st.DeliveryBackup(logCh, job.GetName(), dumpObj.TmpFile, ofs, job.GetType()); err != nil {
-					errsDelivery = append(errsDelivery, err)
+					errs = multierror.Append(errs, err)
 				}
 			}
-			if len(errsDelivery) == 0 {
+			if errs.Len() < len(s) {
 				job.SetDumpObjectDelivered(ofs)
-			} else {
-				errs = multierror.Append(errs, errsDelivery...)
 			}
 		}
 	}
