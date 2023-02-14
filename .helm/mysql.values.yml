@@ -1,0 +1,81 @@
+releasePrefix: "-"
+
+secretEnvs:
+  ALERT_AUTH_KEY: ""
+  DB_USER: ""
+  DB_PASS: ""
+  S3_ACCESS_KEY: ""
+  S3_SECRET_KEY: ""
+
+defaultImage: registry.nixys.ru/public/nxs-backup
+defaultImageTag: 3-alpine
+
+configMaps:
+  config:
+    data:
+      nxs-backup.conf: |-
+        project_name: "My Project"
+        server_name: backup-in-k8s
+        notifications:
+          mail:
+            enabled: false
+          webhooks:
+          - webhook_url: "https://my-alert.com/v2/alert"
+            extra_headers:
+              "Auth-Key": ENV:ALERT_AUTH_KEY
+            payload_message_key: "triggerMessage"
+            extra_payload:
+              "isEmergencyAlert":  false
+        storage_connects:
+        - name: ya_cloud_s3
+          s3_params:
+            bucket_name: nxs-backup-site-dev
+            access_key_id: ENV:S3_ACCESS_KEY
+            secret_access_key: ENV:S3_SECRET_KEY
+            endpoint: storage.yandexcloud.net
+            region: ru-central1
+        jobs:
+        - job_name: backup-mysql
+          type: mysql
+          tmp_dir: /var/nxs-backup/dump_tmp
+          sources:
+          - name: mysql
+            connect:
+              db_host: prod-db.pxc.svc
+              db_port: "3306"
+              db_user: ENV:DB_USER
+              db_password: ENV:DB_PASS
+            target_dbs:
+            - project-db
+            gzip: true
+            db_extra_keys: '--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction'
+          storages_options:
+          - storage_name: ya_cloud_s3
+            backup_path: /nxs-backup/databases
+            retention:
+              days: 14
+              weeks: 6
+              months: 6
+
+cronJobs:
+
+  nxs-backup-database-hourly:
+    affinity:
+      nodeAffinity: {}
+      podAntiAffinity: {}
+      podAffinity: {}
+    schedule: "0 * * * *"
+    containers:
+    - name: nxs-backup
+      command: nxs-backup start databases
+      envSecrets:
+      - secret-envs
+      volumeMounts:
+      - name: config
+        mountPath: /etc/nxs-backup
+    volumes:
+    - type: configMap
+      name: config
+    restartPolicy: Never
+    nodeSelector:
+      kind: infra-apps
