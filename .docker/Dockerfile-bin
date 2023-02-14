@@ -1,0 +1,18 @@
+FROM golang:alpine AS builder
+
+ENV CGO_ENABLED 0
+LABEL stage=gobuilder
+
+RUN apk update --no-cache && apk add --no-cache upx
+
+WORKDIR /build
+
+ADD .. .
+RUN go mod download
+RUN go build -ldflags="-s -w" -o /app/nxs-backup-go . && upx -9 -o /app/nxs-backup /app/nxs-backup-go
+
+
+FROM scratch
+
+COPY --from=builder /app/nxs-backup /nxs-backup
+ENTRYPOINT ["/nxs-backup"]

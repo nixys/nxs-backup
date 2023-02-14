@@ -1,0 +1,195 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+
+  build-and-publish-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          TARGET: arm
+
+        - os: ubuntu-latest
+          TARGET: arm64
+
+        - os: ubuntu-latest
+          TARGET: amd64
+
+    steps:
+    - name: Building ${{ matrix.TARGET }}
+      run: echo "${{ matrix.TARGET }}"
+
+    - uses: actions/checkout@master
+
+    - uses: actions/setup-go@v3
+      name: Set up Go
+      with:
+        go-version: 1.19
+
+    - name: Set version
+      run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
+
+    - name: Build
+      run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w" -v -o nxs-backup
+
+    - name: Run UPX
+      uses: crazy-max/ghaction-upx@v2
+      with:
+        version: latest
+        files: |
+          ./nxs-backup
+        args: --best
+
+    - name: Compress
+      uses: a7ul/tar-action@v1.1.2
+      id: compress
+      with:
+        command: c
+        files: |
+          ./nxs-backup
+          ./README.md
+          ./LICENSE
+        outPath: nxs-backup-${{ matrix.TARGET }}.tar.gz
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: nxs-backup-${{ matrix.TARGET }}.tar.gz
+        path: nxs-backup-${{ matrix.TARGET }}.tar.gz
+
+    - uses: softprops/action-gh-release@v1
+      name: Upload binaries to release
+      if: github.ref_type == 'tag'
+      with:
+        files: nxs-backup-${{ matrix.TARGET }}.tar.gz
+        prerelease: ${{ contains(github.ref_name, 'rc') }}
+        generate_release_notes: true
+        append_body: true
+
+  build-and-push-docker:
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.ref_name, 'rc') }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set app version
+      run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to Registry Hub
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ secrets.REGISTRY_URL }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_TOKEN }}
+
+    - name: Docker meta for binary
+      id: meta-bin
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          registry.nixys.ru/public/nxs-backup
+        tags: |
+          type=semver,pattern={{version}}
+          type=sha,prefix=,format=long
+
+    - name: Docker meta for alpine
+      id: meta-alpine
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          registry.nixys.ru/public/nxs-backup
+        flavor: |
+          latest=auto
+          prefix=
+          suffix=-alpine,onlatest=false
+        tags: |
+          type=semver,pattern={{version}}
+          type=sha,prefix=,format=long
+
+    - name: Build and push binary
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: .docker/Dockerfile-bin
+        platforms: linux/amd64,linux/arm64,linux/arm/v8
+        push: true
+        tags: ${{ steps.meta-bin.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push alpine
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: .docker/Dockerfile-alpine
+        build-contexts: |
+          nxs-backup=docker-image://registry.nixys.ru/public/nxs-backup:${{ github.sha }}
+        platforms: linux/amd64,linux/arm64,linux/arm/v8
+        push: true
+        tags: ${{ steps.meta-alpine.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  docker-tag-update:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    steps:
+    - name: Login Dockerhub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Docker meta for binary
+      id: meta-bin
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          registry.nixys.ru/public/nxs-backup
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix=,format=long
+
+    - name: Docker meta for alpine
+      id: meta-alpine
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          registry.nixys.ru/public/nxs-backup
+        flavor: |
+          latest=auto
+          prefix=
+          suffix=-alpine,onlatest=false
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix=,format=long
+
+    - name: Push image tags binary
+      uses: akhilerm/tag-push-action@v2.1.0
+      with:
+        src: registry.nixys.ru/public/nxs-backup:${{ github.sha }}
+        dst: |
+          ${{ steps.meta-bin.outputs.tags }}
+
+    - name: Push image tags alpine
+      uses: akhilerm/tag-push-action@v2.1.0
+      with:
+        src: registry.nixys.ru/public/nxs-backup:${{ github.sha }}-alpine
+        dst: |
+          ${{ steps.meta-alpine.outputs.tags }}
