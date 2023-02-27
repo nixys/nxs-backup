@@ -201,7 +201,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		}
 
 		if err = targz.Tar(tgt.path, tmpBackupFile, true, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
+			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backup %s", tmpBackupFile)
 			logCh <- logger.Log(j.name, "").Error(err)
 			if serr, ok := err.(targz.Error); ok {
 				logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)

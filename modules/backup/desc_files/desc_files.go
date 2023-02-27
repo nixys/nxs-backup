@@ -187,11 +187,16 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		}
 
 		if err = targz.Tar(tgt.path, tmpBackupFile, false, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
-			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
-		} else {
-			logCh <- logger.Log(j.name, "").Debugf("Created temp backups %s", tmpBackupFile)
+			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backup %s", tmpBackupFile)
+			logCh <- logger.Log(j.name, "").Error(err)
+			if serr, ok := err.(targz.Error); ok {
+				logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)
+				logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
+			}
+			errs = multierror.Append(errs, err)
+			continue
 		}
+		logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s", tmpBackupFile)
 
 		j.dumpedObjects[ofsPart] = interfaces.DumpObject{TmpFile: tmpBackupFile}
 		if !j.deferredCopying {
