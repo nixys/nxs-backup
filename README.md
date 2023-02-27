@@ -358,6 +358,7 @@ Works on top of `pg_basebackup`, so for the correct work of the module you have 
 postgresql-client**.  
 If there is no database with the same name for the user, you must specify the name of the database, which will be used
 to connect to the PSQL instance, after the `@` symbol as part of the username. Example: `backup@postgres`.
+
 ### MongoDB nxs-backup module
 
 Works on top of `mongodump`, so for the correct work of the module you have to install compatible **

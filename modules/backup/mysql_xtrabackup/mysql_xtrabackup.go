@@ -30,13 +30,12 @@ type job struct {
 }
 
 type target struct {
-	authFile     string
-	dbName       string
-	ignoreTables []string
-	extraKeys    []string
-	gzip         bool
-	isSlave      bool
-	prepare      bool
+	authFile        string
+	ignoreDatabases []string
+	extraKeys       []string
+	gzip            bool
+	isSlave         bool
+	prepare         bool
 }
 
 type JobParams struct {
@@ -87,46 +86,22 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 	for _, src := range jp.Sources {
 
-		dbConn, authFile, err := mysql_connect.GetConnectAndCnfFile(src.ConnectParams, "xtrabackup")
+		_, authFile, err := mysql_connect.GetConnectAndCnfFile(src.ConnectParams, "xtrabackup")
 		if err != nil {
 			return nil, err
 		}
 
-		// fetch all databases
-		var databases []string
-		if misc.Contains(src.TargetDBs, "all") {
-			err = dbConn.Select(&databases, "show databases")
-			if err != nil {
-				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
-			}
-			_ = dbConn.Close()
-		} else {
-			databases = src.TargetDBs
+		var ignoreDBs []string
+		for _, excl := range src.Excludes {
+			ignoreDBs = append(ignoreDBs, "--databases-exclude="+excl)
 		}
-
-		for _, db := range databases {
-			if misc.Contains(src.Excludes, db) {
-				continue
-			}
-
-			var ignoreTables []string
-			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
-			for _, excl := range src.Excludes {
-				if matched, _ := regexp.MatchString(`^\^`+db+`\[\.\].*$`, excl); matched {
-					ignoreTables = append(ignoreTables, "--tables-exclude="+excl)
-				} else if match := compRegEx.FindStringSubmatch(excl); len(match) > 0 {
-					ignoreTables = append(ignoreTables, "--tables-exclude=^"+db+"[.]"+match[2])
-				}
-			}
-			j.targets[src.Name+"/"+db] = target{
-				authFile:     authFile,
-				dbName:       db,
-				ignoreTables: ignoreTables,
-				extraKeys:    src.ExtraKeys,
-				gzip:         src.Gzip,
-				isSlave:      src.IsSlave,
-				prepare:      src.Prepare,
-			}
+		j.targets[src.Name] = target{
+			authFile:        authFile,
+			ignoreDatabases: ignoreDBs,
+			extraKeys:       src.ExtraKeys,
+			gzip:            src.Gzip,
+			isSlave:         src.IsSlave,
+			prepare:         src.Prepare,
 		}
 	}
 
@@ -199,7 +174,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
-		if err = j.createTmpBackup(logCh, tmpBackupFile, tgt); err != nil {
+		if err = j.createTmpBackup(logCh, tmpBackupFile, ofsPart, tgt); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 			errs = multierror.Append(errs, err)
 			continue
@@ -225,23 +200,22 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	return errs.ErrorOrNil()
 }
 
-func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string, target target) error {
+func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, target target) error {
 
 	var (
 		stderr, stdout          bytes.Buffer
 		backupArgs, prepareArgs []string
 	)
 
-	tmpXtrabackupPath := path.Join(path.Dir(tmpBackupFile), "xtrabackup_"+target.dbName+"_"+misc.GetDateTimeNow(""))
+	tmpXtrabackupPath := path.Join(path.Dir(tmpBackupFile), "xtrabackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
 
 	// define commands args with auth options
-	backupArgs = append(backupArgs, "--defaults-file="+target.authFile)
+	backupArgs = append(backupArgs, "--defaults-extra-file="+target.authFile)
 	prepareArgs = backupArgs
 	// add backup options
 	backupArgs = append(backupArgs, "--backup", "--target-dir="+tmpXtrabackupPath)
-	backupArgs = append(backupArgs, "--databases="+target.dbName)
-	if len(target.ignoreTables) > 0 {
-		backupArgs = append(backupArgs, target.ignoreTables...)
+	if len(target.ignoreDatabases) > 0 {
+		backupArgs = append(backupArgs, target.ignoreDatabases...)
 	}
 	if target.isSlave {
 		backupArgs = append(backupArgs, "--safe-slave-backup")
@@ -261,11 +235,11 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		logCh <- logger.Log(j.name, "").Errorf("Unable to start xtrabackup. Error: %s", err)
 		return err
 	}
-	logCh <- logger.Log(j.name, "").Infof("Starting `%s` dump", target.dbName)
+	logCh <- logger.Log(j.name, "").Infof("Starting `%s` dump", tgtName)
 
 	if err := cmd.Wait(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to dump `%s`. Error: %s", target.dbName, err)
-		logCh <- logger.Log(j.name, "").Error(stderr)
+		logCh <- logger.Log(j.name, "").Errorf("Unable to dump `%s`. Error: %s", tgtName, err)
+		logCh <- logger.Log(j.name, "").Error(stderr.String())
 		return err
 	}
 
@@ -280,14 +254,14 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 
 	if target.prepare {
 		// add prepare options
-		prepareArgs = append(prepareArgs, "--prepare", "--export", "--target-dir="+tmpXtrabackupPath)
+		prepareArgs = append(prepareArgs, "--prepare", "--target-dir="+tmpXtrabackupPath)
 		cmd = exec.Command("xtrabackup", prepareArgs...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
 		if err := cmd.Run(); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Unable to run xtrabackup. Error: %s", err)
-			logCh <- logger.Log(j.name, "").Error(stderr)
+			logCh <- logger.Log(j.name, "").Errorf("Unable to prepare xtrabackup. Error: %s", err)
+			logCh <- logger.Log(j.name, "").Error(stderr.String())
 			return err
 		}
 
@@ -299,11 +273,15 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 
 	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
+		if serr, ok := err.(targz.Error); ok {
+			logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)
+			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
+		}
 		return err
 	}
 	_ = os.RemoveAll(tmpXtrabackupPath)
 
-	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", target.dbName)
+	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", tgtName)
 
 	return nil
 }

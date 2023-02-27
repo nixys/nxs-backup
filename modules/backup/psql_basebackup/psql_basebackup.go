@@ -231,6 +231,10 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 
 	if err := targz.Tar(tmpBasebackupPath, tmpBackupFile, false, tgt.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
+		if serr, ok := err.(targz.Error); ok {
+			logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)
+			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
+		}
 		return err
 	}
 	_ = os.RemoveAll(tmpBasebackupPath)
