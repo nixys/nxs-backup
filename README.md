@@ -392,3 +392,25 @@ If the module used with the `skip_backup_rotate` parameter, the standard output 
 the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is
 expected to be a
 standard output to stdout.
+
+### Run in Kubernetes
+
+For running nxs-backup in Kubernetes you can use already available docker
+image with client apps `registry.nixys.ru/public/nxs-backup:latest-alpine` or build your own image containing only the
+client applications you need.
+
+Here is example of making alpine image with client apps:
+
+```dockerfile
+FROM registry.nixys.ru/public/nxs-backup:latest AS bin
+FROM alpine
+
+RUN apk update --no-cache && apk add --no-cache tar gzip mysql-client postgresql-client mongodb-tools redis
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start
+```
+
+If you are using Helm to deploy your apps to Kubernetes, you can
+use [universal chart](https://github.com/nixys/nxs-universal-chart) with [values examples](.helm) that uses CronJosb to
+make backups.
