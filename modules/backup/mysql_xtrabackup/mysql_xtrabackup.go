@@ -3,12 +3,10 @@ package mysql_xtrabackup
 import (
 	"bytes"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"os"
 	"os/exec"
 	"path"
-	"regexp"
-
-	"github.com/hashicorp/go-multierror"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
@@ -243,9 +241,9 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		return err
 	}
 
-	if err := checkXtrabackupStatus(stderr.String()); err != nil {
-		_ = os.WriteFile("/home/r.andreev/Projects/NxsProjects/nxs-backup/tmp/test/file.log", stderr.Bytes(), 0644)
-		logCh <- logger.Log(j.name, "").Errorf("Dump create fail. Error: %s", err)
+	if cmd.ProcessState.ExitCode() != 0 {
+		err := xtrabackupStatusErr(stderr.String())
+		logCh <- logger.Log(j.name, "").Error(err)
 		return err
 	}
 
@@ -265,8 +263,9 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 			return err
 		}
 
-		if err := checkXtrabackupStatus(stderr.String()); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Xtrabackup prepare fail. Error: %s", err)
+		if cmd.ProcessState.ExitCode() != 0 {
+			err := xtrabackupStatusErr(stderr.String())
+			logCh <- logger.Log(j.name, "").Error(err)
 			return err
 		}
 	}
@@ -286,11 +285,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	return nil
 }
 
-func checkXtrabackupStatus(out string) error {
-	if matched, _ := regexp.MatchString(`.*completed OK!\n$`, out); matched {
-		return nil
-	}
-
+func xtrabackupStatusErr(out string) error {
 	return fmt.Errorf("xtrabackup finished not success. Please check result:\n%s", out)
 }
 
