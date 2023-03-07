@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
@@ -28,9 +29,9 @@ type job struct {
 }
 
 type target struct {
-	authFile        string
-	ignoreDatabases []string
 	extraKeys       []string
+	authFile        string
+	ignoreDatabases string
 	gzip            bool
 	isSlave         bool
 	prepare         bool
@@ -67,9 +68,6 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
 		return nil, fmt.Errorf("Job `%s` init failed. Can't check `tar` version. Please install `tar`. Error: %s ", jp.Name, err)
 	}
-	if _, err := exec_cmd.Exec("gzip", "--version"); err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Can't check `gzip` version. Please install `gzip`. Error: %s ", jp.Name, err)
-	}
 
 	j := &job{
 		name:             jp.Name,
@@ -89,10 +87,15 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			return nil, err
 		}
 
-		var ignoreDBs []string
-		for _, excl := range src.Excludes {
-			ignoreDBs = append(ignoreDBs, "--databases-exclude="+excl)
+		var ignoreDBs string
+		if len(src.Excludes) > 0 {
+			ignoreDBs = "--databases-exclude="
+			for _, excl := range src.Excludes {
+				ignoreDBs += excl + " "
+			}
 		}
+		ignoreDBs = strings.TrimSuffix(ignoreDBs, " ")
+
 		j.targets[src.Name] = target{
 			authFile:        authFile,
 			ignoreDatabases: ignoreDBs,
@@ -212,8 +215,8 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	prepareArgs = backupArgs
 	// add backup options
 	backupArgs = append(backupArgs, "--backup", "--target-dir="+tmpXtrabackupPath)
-	if len(target.ignoreDatabases) > 0 {
-		backupArgs = append(backupArgs, target.ignoreDatabases...)
+	if target.ignoreDatabases != "" {
+		backupArgs = append(backupArgs, target.ignoreDatabases)
 	}
 	if target.isSlave {
 		backupArgs = append(backupArgs, "--safe-slave-backup")
@@ -241,6 +244,9 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		return err
 	}
 
+	logCh <- logger.Log(j.name, "").Debugf("Exit code: %d", cmd.ProcessState.ExitCode())
+	logCh <- logger.Log(j.name, "").Debugf("STDERR:\n%s", stderr.String())
+
 	if cmd.ProcessState.ExitCode() != 0 {
 		err := xtrabackupStatusErr(stderr.String())
 		logCh <- logger.Log(j.name, "").Error(err)
@@ -263,6 +269,9 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 			return err
 		}
 
+		logCh <- logger.Log(j.name, "").Debugf("Exit code: %d", cmd.ProcessState.ExitCode())
+		logCh <- logger.Log(j.name, "").Debugf("STDERR:\n%s", stderr.String())
+
 		if cmd.ProcessState.ExitCode() != 0 {
 			err := xtrabackupStatusErr(stderr.String())
 			logCh <- logger.Log(j.name, "").Error(err)
@@ -273,7 +282,6 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		if serr, ok := err.(targz.Error); ok {
-			logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", serr.Stdout)
 			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
 		}
 		return err

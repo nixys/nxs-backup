@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"github.com/klauspost/pgzip"
 	"io"
-	"nxs-backup/modules/backend/exec_cmd"
 	"os"
 	"os/exec"
 	"path"
@@ -12,7 +11,6 @@ import (
 
 type Error struct {
 	Err    error
-	Stdout string
 	Stderr string
 }
 
@@ -55,17 +53,17 @@ func GZip(src, dst string) error {
 
 func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string) error {
 
-	var stderr, stdout bytes.Buffer
+	tarWriter, err := GetFileWriter(dst, gzip)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tarWriter.Close() }()
+
+	var stderr bytes.Buffer
 	var args []string
 
 	args = append(args, "--format=pax")
-	if gzip {
-		if _, err := exec_cmd.Exec("pigz", "--version"); err == nil {
-			args = append(args, "--use-compress-program=pigz --best --recursive")
-		} else {
-			args = append(args, "--gzip")
-		}
-	}
+
 	if incremental {
 		args = append(args, "--listed-incremental="+dst+".inc")
 	}
@@ -74,7 +72,7 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string
 
 	}
 	args = append(args, "--create")
-	args = append(args, "--file="+dst)
+	args = append(args, "--file=-")
 	if saveAbsPath {
 		args = append(args, src)
 	} else {
@@ -83,13 +81,12 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string
 	}
 
 	cmd := exec.Command("tar", args...)
-	cmd.Stdout = &stdout
+	cmd.Stdout = tarWriter
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return Error{
 			Err:    err,
-			Stdout: stdout.String(),
 			Stderr: stderr.String(),
 		}
 	}
