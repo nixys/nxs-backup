@@ -84,9 +84,13 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			}
 		}
 
-		conn, connUrl, err := psql_connect.GetConnect(src.ConnectParams)
+		connUrl := psql_connect.GetConnUrl(src.ConnectParams)
+		conn, err := psql_connect.GetConnect(connUrl)
 		if err != nil {
 			return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
+		}
+		if err = conn.Ping(); err != nil {
+			return nil, fmt.Errorf("Job `%s` init failed. PSQL ping check error: %s ", jp.Name, err)
 		}
 		_ = conn.Close()
 
