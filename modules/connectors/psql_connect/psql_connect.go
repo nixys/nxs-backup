@@ -2,9 +2,9 @@ package psql_connect
 
 import (
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"net/url"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -20,7 +20,7 @@ type Params struct {
 	SSLCrl      string // SSL crl path
 }
 
-func GetConnect(params Params) (*sqlx.DB, *url.URL, error) {
+func GetConnUrl(params Params) *url.URL {
 
 	connUrl := url.URL{}
 	opts := url.Values{}
@@ -48,7 +48,9 @@ func GetConnect(params Params) (*sqlx.DB, *url.URL, error) {
 
 	connUrl.RawQuery = opts.Encode()
 
-	db, err := sqlx.Connect("postgres", connUrl.String())
+	return &connUrl
+}
 
-	return db, &connUrl, err
+func GetConnect(connUrl *url.URL) (*sqlx.DB, error) {
+	return sqlx.Connect("postgres", connUrl.String())
 }

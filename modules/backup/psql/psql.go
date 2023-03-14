@@ -99,13 +99,21 @@ func Init(jp JobParams) (interfaces.Job, error) {
 				cp.Database = udb[1]
 				cp.User = udb[0]
 			}
-			dbConn, _, err = psql_connect.GetConnect(cp)
-			if err != nil {
-				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
-			}
-			defer func() { _ = dbConn.Close() }()
-			if err = dbConn.Select(&databases, "SELECT datname FROM pg_database WHERE datistemplate = false;"); err != nil {
-				return nil, fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+			if err = func() error {
+				dbConn, err = psql_connect.GetConnect(psql_connect.GetConnUrl(cp))
+				if err != nil {
+					return fmt.Errorf("Job `%s` init failed. User: `%s`, db: `%s`, PSQL connect error: %s ", jp.Name, cp.User, cp.Database, err)
+				}
+				if err = dbConn.Ping(); err != nil {
+					return fmt.Errorf("Job `%s` init failed. PSQL ping check error: %s ", jp.Name, err)
+				}
+				defer func() { _ = dbConn.Close() }()
+				if err = dbConn.Select(&databases, "SELECT datname FROM pg_database WHERE datistemplate = false;"); err != nil {
+					return fmt.Errorf("Job `%s` init failed. Unable to list databases. Error: %s ", jp.Name, err)
+				}
+				return nil
+			}(); err != nil {
+				return nil, err
 			}
 		} else {
 			databases = src.TargetDBs
@@ -121,11 +129,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			if len(udb) > 1 {
 				cp.User = udb[0]
 			}
-			dbConn, connUrl, err = psql_connect.GetConnect(cp)
-			if err != nil {
-				return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
-			}
-			_ = dbConn.Close()
+			connUrl = psql_connect.GetConnUrl(cp)
 
 			var ignoreTables []string
 			compRegEx := regexp.MustCompile(`^(?P<db>` + db + `)\.(?P<table>.*$)`)
