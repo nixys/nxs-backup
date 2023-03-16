@@ -36,7 +36,6 @@ type Params struct {
 	Target string
 	UID    uint32
 	GID    uint32
-	Port   int
 }
 
 func Init(name string, params Params) (*NFS, error) {
@@ -57,9 +56,12 @@ func Init(name string, params Params) (*NFS, error) {
 		return nil, fmt.Errorf("Failed to init '%s' NFS storage. Mount volume error: %v ", name, err)
 	}
 
-	_, err = target.FSInfo()
-	if err != nil {
+	if _, err = target.FSInfo(); err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' NFS storage. Get target status error: %v ", name, err)
+	}
+
+	if _, err = target.ReadDirPlus("/"); err != nil {
+		return nil, fmt.Errorf("Failed to init '%s' NFS storage. Get files error: %v ", name, err)
 	}
 
 	return &NFS{

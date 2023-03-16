@@ -147,9 +147,8 @@ type ftpParams struct {
 type nfsParams struct {
 	Host   string `conf:"host"  conf_extraopts:"required"`
 	Target string `conf:"target"`
-	UID    uint32 `conf:"uid" conf_extraopts:"default=1000"`
-	GID    uint32 `conf:"gid" conf_extraopts:"default=1000"`
-	Port   int    `conf:"port" conf_extraopts:"default=111"`
+	UID    uint32 `conf:"uid" conf_extraopts:"default=0"`
+	GID    uint32 `conf:"gid" conf_extraopts:"default=0"`
 }
 
 type webDavParams struct {
