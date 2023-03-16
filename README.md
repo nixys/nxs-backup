@@ -174,13 +174,12 @@ Nxs-backup storage connect settings block description.
 
 #### NFS connection params
 
-| Name     | Description                                     | Value  |
-|----------|-------------------------------------------------|--------|
-| `host`   | NFS host                                        | `""`   |
-| `port`   | NFS port (optional)                             | `111`  |
-| `target` | Path on NFS server where backups will be stored | `""`   |
-| `UID`    | UID of NFS server user (optional)               | `1000` |
-| `GID`    | GID of NFS server user (optional)               | `1000` |
+| Name     | Description                                     | Value |
+|----------|-------------------------------------------------|-------|
+| `host`   | NFS host                                        | `""`  |
+| `target` | Path on NFS server where backups will be stored | `""`  |
+| `UID`    | UID of NFS server user (optional)               | `0`   |
+| `GID`    | GID of NFS server user (optional)               | `0`   |
 
 #### SMB connection params
 
