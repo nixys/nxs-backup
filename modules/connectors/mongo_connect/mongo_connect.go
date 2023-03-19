@@ -11,12 +11,14 @@ import (
 )
 
 type Params struct {
-	User   string // Username
-	Passwd string // Password (requires User)
-	Host   string // Network host
-	Port   string // Network port
-	RSName string // Replica set name
-	RSAddr string // Replica set address (requires RSName)
+	User      string // Username
+	Passwd    string // Password (requires User)
+	Host      string // Network host
+	Port      string // Network port
+	RSName    string // Replica set name
+	RSAddr    string // Replica set address (requires RSName)
+	TLSCAFile string // Path to TLS CA file
+	AuthDB    string // Auth db name
 }
 
 // GetConnectAndHost returns connect to mongo instance and dsn string
@@ -30,13 +32,24 @@ func GetConnectAndHost(params Params) (*mongo.Client, string, error) {
 	connUrl.Scheme = "mongodb"
 	connUrl.Path = "/"
 
+	if params.RSName != "" {
+		opts.Set("replicaSet", params.RSName)
+	}
 	if params.RSAddr != "" {
 		connUrl.Host = params.RSAddr
-		opts.Set("replicaSet", params.RSName)
 		host = params.RSName + `/` + params.RSAddr
 	} else {
 		host = fmt.Sprintf("%s:%s", params.Host, params.Port)
 		connUrl.Host = host
+	}
+
+	if params.TLSCAFile != "" {
+		opts.Set("tls", "true")
+		opts.Set("tlsCAFile", params.TLSCAFile)
+	}
+
+	if params.AuthDB != "" {
+		opts.Set("authSource", params.AuthDB)
 	}
 
 	connUrl.RawQuery = opts.Encode()
