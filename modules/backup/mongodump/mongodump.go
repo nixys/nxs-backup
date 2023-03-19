@@ -250,12 +250,20 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 	// define command args
 	// auth url
 	args = append(args, "--host="+target.host)
-	args = append(args, "--authenticationDatabase=admin")
+	if target.connOpts.AuthDB != "" {
+		args = append(args, "--authenticationDatabase="+target.connOpts.AuthDB)
+	} else {
+		args = append(args, "--authenticationDatabase=admin")
+	}
 	args = append(args, "--username="+target.connOpts.User)
 	args = append(args, "--password="+target.connOpts.Passwd)
 	// add db name
 	args = append(args, "--db="+target.dbName)
 
+	if target.connOpts.TLSCAFile != "" {
+		args = append(args, "--ssl")
+		args = append(args, "--sslCAFile="+target.connOpts.TLSCAFile)
+	}
 	// add extra dump cmd options
 	if len(target.extraKeys) > 0 {
 		args = append(args, target.extraKeys...)

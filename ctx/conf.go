@@ -81,17 +81,19 @@ type sourceCfg struct {
 }
 
 type sourceConnect struct {
-	DBHost        string `conf:"db_host"`
-	DBPort        string `conf:"db_port"`
-	Socket        string `conf:"socket"`
-	DBUser        string `conf:"db_user"`
-	DBPassword    string `conf:"db_password"`
-	MySQLAuthFile string `conf:"mysql_auth_file"`
-	SSLMode       string `conf:"psql_ssl_mode" conf_extraopts:"default=require"`
-	SSlRootCert   string `conf:"psql_ssl_root_cert"`
-	SSlCrl        string `conf:"psql_ssl_crl"`
-	MongoRSName   string `conf:"mongo_replica_set_name"`
-	MongoRSAddr   string `conf:"mongo_replica_set_address"`
+	DBHost          string `conf:"db_host"`
+	DBPort          string `conf:"db_port"`
+	Socket          string `conf:"socket"`
+	DBUser          string `conf:"db_user"`
+	DBPassword      string `conf:"db_password"`
+	MySQLAuthFile   string `conf:"mysql_auth_file"`
+	PsqlSSLMode     string `conf:"psql_ssl_mode" conf_extraopts:"default=require"`
+	PsqlSSlRootCert string `conf:"psql_ssl_root_cert"`
+	PsqlSSlCrl      string `conf:"psql_ssl_crl"`
+	MongoRSName     string `conf:"mongo_replica_set_name"`
+	MongoRSAddr     string `conf:"mongo_replica_set_address"`
+	MongoTLSCAFile  string `conf:"mongo_tls_CA_file"`
+	MongoAuthDB     string `conf:"mongo_auth_db"`
 }
 
 type storageOpts struct {
