@@ -228,6 +228,10 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 		}
 
 		for _, file := range files {
+			if file.Name() == ".." || file.Name() == "." {
+				continue
+			}
+
 			fileDate := file.ModTime()
 			var retentionDate time.Time
 

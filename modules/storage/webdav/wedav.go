@@ -173,6 +173,10 @@ func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 		}
 
 		for _, file := range files {
+			if file.Name() == ".." || file.Name() == "." {
+				continue
+			}
+
 			fileDate := file.ModTime()
 			var retentionDate time.Time
 
