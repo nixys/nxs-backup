@@ -191,6 +191,10 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 					file.Name(), err)
 				errs = multierror.Append(errs, err)
 			}
+			if inf.Name() == ".." || inf.Name() == "." {
+				continue
+			}
+
 			fileDate := inf.ModTime()
 			var retentionDate time.Time
 
