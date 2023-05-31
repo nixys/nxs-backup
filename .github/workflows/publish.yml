@@ -99,11 +99,10 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          registry.nixys.ru/public/nxs-backup
+          registry.nixys.ru/public/nxs-backup-bin
         tags: |
           type=semver,pattern={{version}}
           type=sha,prefix=,format=long
-
     - name: Docker meta for alpine
       id: meta-alpine
       uses: docker/metadata-action@v4
@@ -117,7 +116,6 @@ jobs:
         tags: |
           type=semver,pattern={{version}}
           type=sha,prefix=,format=long
-
     - name: Build and push binary
       uses: docker/build-push-action@v4
       with:
@@ -135,7 +133,7 @@ jobs:
         context: .
         file: .docker/Dockerfile-alpine
         build-contexts: |
-          nxs-backup=docker-image://registry.nixys.ru/public/nxs-backup:${{ github.sha }}
+          nxs-backup=docker-image://registry.nixys.ru/public/nxs-backup-bin:${{ github.sha }}
         platforms: linux/amd64,linux/arm64,linux/arm/v8
         push: true
         tags: ${{ steps.meta-alpine.outputs.tags }}

@@ -1,11 +1,11 @@
 package ctx
 
 import (
-	"os"
 	"path"
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	conf "github.com/nixys/nxs-go-conf"
 
 	"nxs-backup/misc"
@@ -217,33 +217,29 @@ func (c *confOpts) extraCfgsRead() error {
 			p = cp
 		}
 
-		err = filepath.Walk(filepath.Dir(p),
-			func(fp string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				match, err := path.Match(path.Base(pathRegexp), path.Base(fp))
-				if err != nil {
-					return err
-				}
-				if match && !info.IsDir() {
-					var j jobCfg
-
-					err = conf.Load(&j, conf.Settings{
-						ConfPath:    fp,
-						ConfType:    conf.ConfigTypeYAML,
-						UnknownDeny: true,
-					})
-					if err != nil {
-						return err
-					}
-
-					c.Jobs = append(c.Jobs, j)
-				}
-				return nil
-			})
+		confs, err := filepath.Glob(p)
 		if err != nil {
 			return err
+		}
+
+		var errs *multierror.Error
+		for _, cfgFile := range confs {
+			var j jobCfg
+
+			err = conf.Load(&j, conf.Settings{
+				ConfPath:    cfgFile,
+				ConfType:    conf.ConfigTypeYAML,
+				UnknownDeny: true,
+			})
+			if err != nil {
+				errs = multierror.Append(errs, err)
+			}
+
+			c.Jobs = append(c.Jobs, j)
+		}
+
+		if errs != nil {
+			return errs
 		}
 	}
 
