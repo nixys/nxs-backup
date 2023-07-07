@@ -7,7 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 )
+
+const regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
 
 type Error struct {
 	Err    error
@@ -71,6 +74,7 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string
 		args = append(args, "--exclude="+ex)
 
 	}
+	args = append(args, "--ignore-failed-read")
 	args = append(args, "--create")
 	args = append(args, "--file=-")
 	if saveAbsPath {
@@ -85,11 +89,28 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string
 	cmd.Stderr = &stderr
 
 	if err = cmd.Run(); err != nil {
-		return Error{
-			Err:    err,
-			Stderr: stderr.String(),
+		if cmd.ProcessState.ExitCode() == 2 || checkIsRealError(stderr.String()) {
+			return Error{
+				Err:    err,
+				Stderr: stderr.String(),
+			}
 		}
 	}
 
 	return nil
+}
+
+func checkIsRealError(stderr string) bool {
+	realErr := false
+	reTar := regexp.MustCompile("^tar:.*\n")
+	reErr := regexp.MustCompile(regexToIgnoreErr)
+	strTupl := reTar.FindAllString(stderr, -1)
+	for _, s := range strTupl {
+		if match := reErr.MatchString(s); !match {
+			realErr = true
+			break
+		}
+	}
+
+	return realErr
 }
