@@ -1,6 +1,6 @@
-FROM nxs-backup AS bin
+FROM nixyslab/nxs-backup-bin AS bin
 
-FROM alpine
+FROM alpine:3
 
 RUN apk update --no-cache && apk add --no-cache tar mysql-client postgresql-client mongodb-tools redis
 COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup

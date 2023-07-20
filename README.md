@@ -1,63 +1,152 @@
-# Nxs-backup
+# nxs-backup
 
-Nxs-backup is an open source backup software for most popular GNU/Linux distributions. Features of Nxs-backup include
-amongst others:
+Что делает эта тулза, для чего она нужна?
+The nxs-backup creates backups using standard tools, uploads them to remote storages and rotates them according to
+specified rules.
 
-* Support of the most popular storages: local, s3, ssh(sftp), ftp, cifs(smb), nfs, webdav
-* Database backups, such as MySQL(logical/physical), PostgreSQL(logical/physical), MongoDB, Redis
-* Possibility to specify extra options for collecting database dumps to fine-tune backup process and minimize load on
-  the server
-* Incremental files backups
-* Easy to read and maintain configuration files with clear transparent structure
+## Introduction
+
+### Features
+
+* Discrete and incremental files backups
+* Database backups:
+    * Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
+    * Xtrabackup (2.4/8.0) of MySQL/Mariadb/Percona (5.7/8.0/all versions)
+    * Regular backups of PostgreSQL (9/10/11/12/13/14/15/_all versions_)
+    * Basebackups of PostgreSQL (9/10/11/12/13/14/15/_all versions_)
+    * Backups of MongoDB (3.0/3.2/3.4/3.6/4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
+    * Backups of Redis (_all versions_)
+* Fine-tune the database backup process with additional options for optimization purposes
+* Notifications via email and webhooks about events in the backup process
+* Upload and manage backups to the remote storages:
+    * s3
+    * ssh(sftp)
+    * ftp
+    * cifs(smb)
+    * nfs
+    * webdav
 * Built-in generator of the configuration files to expedite initial setup
-* Support of user-defined custom scripts to extend functionality
-* Possibility to restore backups with standard tools (no extra software including Nxs-backup is required)
-* Email and webhooks notifications about status and errors during backup process
+* Easy to read and maintain configuration files with clear transparent structure
+* Possibility to restore backups with standard file/database tools (Nxs-backup is not required)
+* Support of user-defined scripts that extend functionality
 
-The source code of Nxs-backup is available at https://github.com/nixys/go-nxs-backup under the license.
-Nxs-backup offers binary files for the Linux distributions https://github.com/nixys/go-nxs-backup/releases.
+### Who can the tool help? or mission
 
-## Getting started
+Anybody who need to do regular backups and manage dumps local and on remote storages.
 
-### Understanding Jobs, Type, Sources and Storages
+### Who can use the tool? or audience
 
-In order to make nxs-backup as ﬂexible as possible, the directions given to nxs-backup are speciﬁed in several pieces.
-The main instruction is the job resource, which deﬁnes a job. A backup job generally consists of a Type, a Sources and
-Storages.
-The Type deﬁnes what type of backup shall run (e.g. MySQL "physical" backups), the Sources defines the target and
-exceptions (for each job at least one target must be specified), the Storages define storages where to store backups and
-at what quantity (for each job at least one storage must be specified). Work with remote storage is performed by local
-mounting of the FS with special tools.
+* System Administrators
+* DevOps Engineers
+* Developers
+* Anybody who need to do regular backups
 
-### Setting Up Nxs-backup Conﬁguration Files
+### Supported versions and requirements
 
-Nxs-backup conﬁguration ﬁles are usually located in the */etc/nxs-backup/* directory. The default configuration has only
-one configuration file *nxs-backup.conf* and the *conf.d* subdirectory that stores files with descriptions of jobs (one
-file per job). Config files are in YAML format. For details, see Settings.
+Nxs-backup can be run on any GNU/Linux distribution with a kernel above 2.6. The set of dependencies depends on what
+exactly you want to back up.
 
-### Generate your Configurations Files for job
+#### Files backups
 
-You can generate your conﬁguration ﬁle for a job by running the script with the command ***generate*** and *-S*/*
---storages* (map of storages), *-T*/*--type* (type of backup), *-P*/*--path* (path to generated file) options. The
-script will generate conﬁguration ﬁle for the job and print result:
+To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
 
- ```bash
-# nxs-backup generate -S store=scp s3_store=s3 -T mysql -P /etc/nxs-backup/conf.d/mysql.conf
+#### MySQL/Mariadb/Percona backups
+
+For regular backups is used `mysqldump`. Therefore, you have to ensure that you have a version of `mysqldump` that is
+compatible with your database.
+
+For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `xtrabackup`.
+
+#### PostgreSQL backups
+
+For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
+compatible with your database version.
+
+#### MongoDB backups
+
+For backups of MongoDB is used `mongodump` tool. You have to ensure that you have a version of `mongodump` that is
+compatible with your database version.
+
+#### Redis backups
+
+For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
+compatible with your Redis version.
+
+## Quickstart
+
+### Installation on-premise (bare-metal or virtual machine)
+
+The nxs-backup is provided for the following processor architectures: amd64(x86_64), arm(armv7/armv8), arm64(aarch64).
+
+To install latest version just download and unpack archive for your CPU architecture.
+
+```bash
+curl -L https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup-amd64.tar.gz -o /tmp/nxs-backup.tar.gz
+tar xf /tmp/nxs-backup.tar.gz –C /tmp
+sudo mv /tmp/nxs-backup /usr/sbin/nxs-backup
+sudo chown root:root /usr/sbin/nxs-backup
+```
+
+If you need specific version of nxs-backup, or different architecture, you can find it
+on [release page](https://github.com/nixys/nxs-backup/releases).
+
+### Run in Docker
+
+Instruction how to run with docker or docker-compose with link to example.
+
+### Run in Kubernetes
+
+Instruction how to run in k8s with link to example.
+
+## Configuration
+
+### Getting started
+
+#### Nxs-backup Conﬁguration Files
+
+To make nxs-backup as flexible as possible, the instructions passed to nxs-backup consist of several parts. The main
+instruction is the Job resource, which defines what the backup job is for and how it should be backed up. A backup job
+typically consists of Type, Sources, and Storages resources.
+
+Type defines the backup kind (for example, "physical" MySQL backups), Sources defines the targets and excludes (at least
+one target must be specified for each job), Storages defines the repositories where and how many backups to store (at
+least one storage must be specified for each job). Working with remote storages is performed through the corresponding
+APIs.
+
+Nxs-backup configuration files are located in the */etc/nxs-backup/* directory by default. If these files do not exist,
+you will be prompted to add them at the first startup.
+
+The basic configuration has only the main configuration file *nxs-backup.conf* and an empty subdirectory *conf.d*, where
+files with job descriptions should be stored (one file per job). All configuration files are in YAML format.
+For more details, see [Settings](#settings).
+
+#### Generate Configurations Files
+
+You can generate a configuration file for a job by running nxs-backup with the ***generate*** command and the options
+*-T*[*--backup-type*] (required, backup type), *-S*[*--storage-types*] (optional, map of storages), *-O*[*--out-path*] (
+optional, path to the generated conf file). This will generate a configuration file for the job and output the details:
+
+ ```
+# nxs-backup generate -T mysql -S minio=s3 aws=s3 share=nfs dumps=scp 
 nxs-backup: Successfully generated '/etc/nxs-backup/conf.d/mysql.conf' configuration file!
 ```
 
-### Testing your Conﬁguration Files
+In this case, the listed storages will be added to the main config. It is recommended to configure their connection
+parameters at once.
 
-You can test if conﬁguration correct running the script with the ***-t*** option and
-optional *-c*/*--config* (path to main conf file). The script will process the conﬁg ﬁles and print any error
-messages and then terminate:
+#### Testing of Conﬁguration
 
-```bash
+You can verify that the configuration is correct by running nxs-backup with the ***-t*** option and the optional
+parameter *-c*/*--config* (the path to the main conf file). The program will process all configurations and display
+error messages and then terminate:
+
+```
 # nxs-backup -t
-nxs-backup: The configuration is correct.
+The configuration is correct.
 ```
 
-### Start your jobs
+#### Starting backups
 
 You cat start your jobs by running the script with the command ***start*** and optional *-c*/*--config* (path to main
 conf file). The script will execute the job passed by the argument. It should be noted that there are several reserved
@@ -68,14 +157,15 @@ job names:
 + `databases` - random execution of all jobs of types *mysql*, *mysql_xtrabackup*, *postgresql*, *
   postgresql_basebackup*, *mongodb*, *redis*
 + `external` - random execution of all jobs of type *external*
++ `<some_job_name>` - the name of one of the jobs to be executed
 
-```bash
+```
 # nxs-backup start all
 ```
 
-## Settings
+### Settings
 
-### `main`
+#### `main`
 
 Nxs-backup main settings block description.
 
@@ -92,7 +182,7 @@ Nxs-backup main settings block description.
 | `logfile`                | Path to log file                                                                       | `/var/log/nxs-backup/nxs-backup.log` |
 | `loglevel`               | Level of messages to be logged. [Supported levels](#notification-levels)               | `info`                               |
 
-#### Webhook parameters
+##### Webhook parameters
 
 | Name                  | Description                                                                      | Value       |
 |-----------------------|----------------------------------------------------------------------------------|-------------|
@@ -104,7 +194,7 @@ Nxs-backup main settings block description.
 | `insecure_tls`        | Allows to skip invalid certificates on webhook service side                      | `false`     |
 | `message_level`       | Level of messages to be notified about. [Supported levels](#notification-levels) | `"warning"` |
 
-#### Email parameters
+##### Email parameters
 
 | Name            | Description                                                                      | Value       |
 |-----------------|----------------------------------------------------------------------------------|-------------|
@@ -117,7 +207,7 @@ Nxs-backup main settings block description.
 | `recipients`    | List of notifications recipients emails                                          | `[]`        |
 | `message_level` | Level of messages to be notified about. [Supported levels](#notification-levels) | `"warning"` |
 
-#### Notification levels
+##### Notification levels
 
 | Name      | Description                                                          |
 |-----------|----------------------------------------------------------------------|
@@ -126,7 +216,7 @@ Nxs-backup main settings block description.
 | `warning` | Information about the backup process that requires special attention |
 | `error`   | Only critical information about failures in the backup process       |
 
-#### Storage connection options
+##### Storage connection options
 
 Nxs-backup storage connect settings block description.
 
@@ -140,7 +230,7 @@ Nxs-backup storage connect settings block description.
 | `smb_params`    | Connection parameters for [smb/cifs storage type](#smb-connection-params) (optional)  | `{}`  |
 | `webdav_params` | Connection parameters for [webdav storage type](#webdav-connection-params) (optional) | `{}`  |
 
-#### S3 connection params
+##### S3 connection params
 
 | Name                | Description    | Value |
 |---------------------|----------------|-------|
@@ -150,7 +240,7 @@ Nxs-backup storage connect settings block description.
 | `access_key_id`     | S3 access key  | `""`  |
 | `secret_access_key` | S3 secret key  | `""`  |
 
-#### SFTP connection params
+##### SFTP connection params
 
 | Name                 | Description                                 | Value |
 |----------------------|---------------------------------------------|-------|
@@ -161,7 +251,7 @@ Nxs-backup storage connect settings block description.
 | `key_file`           | Path to SSH private key instead of password | `""`  |
 | `connection_timeout` | SSH connection timeout seconds (optional)   | `10`  |
 
-#### FTP connection params
+##### FTP connection params
 
 | Name                 | Description                                        | Value |
 |----------------------|----------------------------------------------------|-------|
@@ -172,7 +262,7 @@ Nxs-backup storage connect settings block description.
 | `connect_count`      | Count of FTP connections opens to sever (optional) | `5`   |
 | `connection_timeout` | FTP connection timeout seconds (optional)          | `10`  |
 
-#### NFS connection params
+##### NFS connection params
 
 | Name     | Description                                     | Value |
 |----------|-------------------------------------------------|-------|
@@ -181,7 +271,7 @@ Nxs-backup storage connect settings block description.
 | `UID`    | UID of NFS server user (optional)               | `0`   |
 | `GID`    | GID of NFS server user (optional)               | `0`   |
 
-#### SMB connection params
+##### SMB connection params
 
 | Name                 | Description                               | Value     |
 |----------------------|-------------------------------------------|-----------|
@@ -193,7 +283,7 @@ Nxs-backup storage connect settings block description.
 | `domain`             | SMB domain (optional)                     | `""`      |
 | `connection_timeout` | SMB connection timeout seconds (optional) | `10`      |
 
-#### WebDav connection params
+##### WebDav connection params
 
 | Name                 | Description                                  | Value |
 |----------------------|----------------------------------------------|-------|
@@ -203,7 +293,7 @@ Nxs-backup storage connect settings block description.
 | `oauth_token`        | WebDav OAuth token (optional)                | `""`  |
 | `connection_timeout` | WebDav connection timeout seconds (optional) | `10`  |
 
-### Backup job options
+#### Backup job options
 
 Nxs-backup job settings block description.
 
@@ -222,7 +312,7 @@ Nxs-backup job settings block description.
 Option `skip_backup_rotate` may be used if creation of a local copy is not required. For example, in case when script
 copying data to a remote server, rotation of backups may be skipped with this option.
 
-#### Source parameters
+##### Source parameters
 
 | Name                  | Description                                                                                                                                                                      | Value   |
 |-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
@@ -239,7 +329,7 @@ copying data to a remote server, rotation of backups may be skipped with this op
 | `save_abs_path`       | Whether you need to save absolute path in tar archives **Only for [*file*](#file-types) types**                                                                                  | `true`  |
 | `prepare_xtrabackup`  | Whether you need to make [xtrabackup prepare](https://www.percona.com/doc/percona-xtrabackup/2.2/xtrabackup_bin/preparing_the_backup.html). **Only for *mysql_xtrabackup* type** | `true`  |
 
-#### Database connection params
+##### Database connection params
 
 | Name                        | Description                                                                          | Value       |
 |-----------------------------|--------------------------------------------------------------------------------------|-------------|
@@ -258,7 +348,7 @@ copying data to a remote server, rotation of backups may be skipped with this op
 You may use either `auth_file` or `db_host` or `socket` options. Options priority follows:
 `auth_file` → `db_host` → `socket`
 
-#### Storage options
+##### Storage options
 
 | Name           | Description                                                                           | Value |
 |----------------|---------------------------------------------------------------------------------------|-------|
@@ -266,7 +356,7 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 | `backup_path`  | Path to directory for storing backups                                                 | `""`  |
 | `retention`    | Defines [retention](#storage-retention) for backups on current storage                | `{}`  |
 
-#### Storage retention
+##### Storage retention
 
 | Name     | Description                                                                                                                                                                          | Value |
 |----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
@@ -274,9 +364,9 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 | `weeks`  | Weeks to store backups                                                                                                                                                               | `5`   |
 | `months` | Months to store backups. For *inc_files* backup type determines how many months of incremental copies<br> will be stored relative to the current month. Can take values from 0 to 12 | `12`  |
 
-#### Backup types
+##### Backup types
 
-##### Database types
+###### Database types
 
 | Name                    | Description                |
 |-------------------------|----------------------------|
@@ -287,129 +377,40 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 | `mongodb`               | MongoDB backup             |
 | `redis`                 | Redis backup               |
 
-##### File types
+###### File types
 
 | Name         | Description              |
 |--------------|--------------------------|
 | `desc_files` | Files discrete backup    |
 | `inc_files`  | Files incremental backup |
 
-##### Other types
+###### Other types
 
 | Name       | Description            |
 |------------|------------------------|
 | `external` | External backup script |
 
-## Useful information
+## Roadmap
 
-### Desc files nxs-backup module
+Following features are already in backlog for our development team and will be released soon:
 
-Identical to creating a backup using `tar`.
+* Encrypting of backups
+* Restore from backup using nxs-backup
+* API for remote management and metrics monitoring
+* Web interface for management
+* Proprietary startup scheduler
+* New backup types (Clickhouse, Elastic, lvm, etc).
+* Programmatic implementation of backup creation instead of calling external utilities
+* Ability to set limits on resource utilization
 
-### Incremental files nxs-backup module
+## Feedback
 
-Identical to creating a backup using `tar`.
+For support and feedback please contact me:
 
-Incremental copies of files are made according to the following scheme:
-![Incremental backup scheme](https://image.ibb.co/dtLn2p/nxs_inc_backup_scheme_last_version.jpg)
+* [feedback form](https://nixys.ru/feedback/)
+* telegram: [@r_andreev](https://t.me/r_andreev)
+* e-mail: r.andreev@nixys.ru
 
-At the beginning of the year or on the first start of nxs-backup, a full initial backup is created. Then at the
-beginning of each month - an incremental monthly copy from a yearly copy is created. Inside each month there are
-incremental ten-day copies. Within each ten-day copy incremental day copies are created.
+## License
 
-In this case, since now the tar file is in the PAX format, when you deploy the incremental backup, you do not need to
-specify the path to inc-files. All the info is stored in the PAX header of the `GNU.dumpdir` directory inside the
-archive.
-Therefore, the commands to restore a backup for a specific date are the following:
-
-* First, unpack the full year copy with the follow command:
-
-```bash
-tar xGf /path/to/full/year/backup
-```
-
-* Then alternately unpack the monthly, decade, day incremental backups, specifying a special key -G, for example:
-
-```bash
-tar xGf /path/to/monthly/backup
-tar xGf /path/to/decade/backup
-tar xGf /path/to/day/backup
-```
-
-### MySQL(logical) nxs-backup module
-
-Works on top of `mysqldump`, so for the correct work of the module you have to install compatible **mysql-client**.
-
-### MySQL(physical) nxs-backup module
-
-Works on top of `xtrabackup`, so for the correct work of the module you have to install compatible **
-percona-xtrabackup**. *Supports only backup of local instance*.
-
-### PostgreSQL(logical) nxs-backup module
-
-Works on top of `pg_dump`, so for the correct work of the module you have to install compatible **postgresql-client**.  
-If there is no database with the same name for the user, you must specify the name of the database, which will be used
-to connect to the PSQL instance, after the `@` symbol as part of the username. Example: `backup@postgres`.
-
-### PostgreSQL(physical) nxs-backup module
-
-Works on top of `pg_basebackup`, so for the correct work of the module you have to install compatible **
-postgresql-client**.  
-If there is no database with the same name for the user, you must specify the name of the database, which will be used
-to connect to the PSQL instance, after the `@` symbol as part of the username. Example: `backup@postgres`.
-
-### MongoDB nxs-backup module
-
-Works on top of `mongodump`, so for the correct work of the module you have to install compatible **
-mongodb-clients**.
-
-### Redis nxs-backup module
-
-Works on top of `redis-cli` with `--rdb` option, so for the correct work of the module you have to install compatible **
-redis-tools**.
-
-### External nxs-backup module
-
-In this module, an external script is executed passed to the program via the key "dump_cmd".  
-By default at the completion of this command, it is expected that:
-
-* A complete backup file with data will be collected
-* The stdout will send data in json format, like:
-
-```json
-{
-  "full_path": "/abs/path/to/backup.file"
-}
-```
-
-IMPORTANT:
-
-* make sure that there is no unnecessary information in stdout
-* the successfully completed program should finish with exit code 0
-
-If the module used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running
-the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is
-expected to be a
-standard output to stdout.
-
-### Run in Kubernetes
-
-For running nxs-backup in Kubernetes you can use already available docker
-image with client apps `registry.nixys.ru/public/nxs-backup:latest-alpine` or build your own image containing only the
-client applications you need.
-
-Here is example of making alpine image with client apps:
-
-```dockerfile
-FROM registry.nixys.ru/public/nxs-backup:latest AS bin
-FROM alpine
-
-RUN apk update --no-cache && apk add --no-cache tar gzip mysql-client postgresql-client mongodb-tools redis
-COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
-
-CMD nxs-backup start
-```
-
-If you are using Helm to deploy your apps to Kubernetes, you can
-use [universal chart](https://github.com/nixys/nxs-universal-chart) with [values examples](.helm) that uses CronJosb to
-make backups.
+The Nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).

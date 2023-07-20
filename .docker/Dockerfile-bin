@@ -1,18 +1,17 @@
-FROM golang:1.19-alpine AS builder
+FROM alpine AS builder
 
-ENV CGO_ENABLED 0
-LABEL stage=gobuilder
+ARG VERSION
 
-RUN apk update --no-cache && apk add --no-cache upx
-
-WORKDIR /build
-
-ADD .. .
-RUN go mod download
-RUN go build -ldflags="-s -w" -o /app/nxs-backup-go . && upx -9 -o /app/nxs-backup /app/nxs-backup-go
+RUN case "$(apk --print-arch)" in \
+      x86_64) export ARCH='amd64' ;; \
+      aarch64) export ARCH='arm64' ;; \
+      armv7) export ARCH='arm' ;; \
+    esac; \
+    wget -O /tmp/nxsb.tgz "https://github.com/nixys/nxs-backup/releases/download/$VERSION/nxs-backup-$ARCH.tar.gz"; \
+    tar xf /tmp/nxsb.tgz
 
 
 FROM scratch
 
-COPY --from=builder /app/nxs-backup /nxs-backup
+COPY --from=builder /nxs-backup /nxs-backup
 ENTRYPOINT ["/nxs-backup"]

@@ -47,7 +47,7 @@ jobs:
         args: --best
 
     - name: Compress
-      uses: a7ul/tar-action@v1.1.2
+      uses: a7ul/tar-action@v1.1.3
       id: compress
       with:
         command: c
@@ -90,7 +90,6 @@ jobs:
     - name: Login to Registry Hub
       uses: docker/login-action@v2
       with:
-        registry: ${{ secrets.REGISTRY_URL }}
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_TOKEN }}
 
@@ -99,23 +98,37 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          registry.nixys.ru/public/nxs-backup-bin
+          nixyslab/nxs-backup-bin
         tags: |
           type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
           type=sha,prefix=,format=long
+
     - name: Docker meta for alpine
       id: meta-alpine
       uses: docker/metadata-action@v4
       with:
         images: |
-          registry.nixys.ru/public/nxs-backup
-        flavor: |
-          latest=auto
-          prefix=
-          suffix=-alpine,onlatest=false
+          nixyslab/nxs-backup-alpine
         tags: |
           type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
           type=sha,prefix=,format=long
+
+    - name: Docker meta for debian
+      id: meta-debian
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          nixyslab/nxs-backup
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix=,format=long
+
     - name: Build and push binary
       uses: docker/build-push-action@v4
       with:
@@ -133,7 +146,20 @@ jobs:
         context: .
         file: .docker/Dockerfile-alpine
         build-contexts: |
-          nxs-backup=docker-image://registry.nixys.ru/public/nxs-backup-bin:${{ github.sha }}
+          nixyslab/nxs-backup-bin=docker-image://nixyslab/nxs-backup-bin:${{ github.sha }}
+        platforms: linux/amd64,linux/arm64,linux/arm/v8
+        push: true
+        tags: ${{ steps.meta-alpine.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push debian
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: .docker/Dockerfile-debian
+        build-contexts: |
+          nixyslab/nxs-backup-bin=docker-image://nixyslab/nxs-backup-bin:${{ github.sha }}
         platforms: linux/amd64,linux/arm64,linux/arm/v8
         push: true
         tags: ${{ steps.meta-alpine.outputs.tags }}
