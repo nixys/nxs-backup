@@ -143,7 +143,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	var errs *multierror.Error
 
 	for ofsPart, tgt := range j.targets {
-		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "tar", "", tgt.gzip)
+		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "rdb", "", tgt.gzip)
 		err := os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp dir with next error: %s", err)
@@ -173,11 +173,9 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	return errs.ErrorOrNil()
 }
 
-func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpDir, tgtName string, tgt target) error {
+func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, tgt target) error {
 
 	var stderr, stdout bytes.Buffer
-
-	tmpBackupFile := misc.GetFileFullPath(tmpDir, tgtName, "rdb", "", tgt.gzip)
 
 	tmpBackupRdb := strings.TrimSuffix(tmpBackupFile, ".gz")
 

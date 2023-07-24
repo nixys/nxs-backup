@@ -20,8 +20,6 @@ func GetConnectAndDSN(params Params) (rdb *redis.Client, dsn string, err error) 
 	connUrl := url.URL{}
 	opts := url.Values{}
 
-	connUrl.User = url.UserPassword("", params.Passwd)
-
 	if params.Socket != "" {
 		connUrl.Scheme = "unix"
 		connUrl.Path = params.Socket
@@ -49,7 +47,9 @@ func GetConnectAndDSN(params Params) (rdb *redis.Client, dsn string, err error) 
 	err = rdb.Ping(context.Background()).Err()
 
 	// this is not a bug, this is strange behavior of redis-cli uri usage
-	connUrl.User = url.User(params.Passwd)
+	if params.Passwd != "" {
+		connUrl.User = url.User(params.Passwd)
+	}
 	dsn = connUrl.String()
 
 	return
