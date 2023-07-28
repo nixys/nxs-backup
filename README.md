@@ -1,6 +1,5 @@
 # nxs-backup
 
-Что делает эта тулза, для чего она нужна?
 The nxs-backup creates backups using standard tools, uploads them to remote storages and rotates them according to
 specified rules.
 
@@ -56,12 +55,15 @@ For regular backups is used `mysqldump`. Therefore, you have to ensure that you 
 compatible with your database.
 
 For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
-database version of Percona `xtrabackup`.
+database version of Percona `xtrabackup`. *Supports only backup of local database instance*.
 
 #### PostgreSQL backups
 
 For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
 compatible with your database version.
+
+For physical files backups is used `pg_basebackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `pg_basebackup`.
 
 #### MongoDB backups
 
@@ -95,9 +97,29 @@ on [release page](https://github.com/nixys/nxs-backup/releases).
 
 Instruction how to run with docker or docker-compose with link to example.
 
+Here is example of making alpine image with client apps:
+
+```dockerfile
+FROM registry.nixys.ru/public/nxs-backup:latest AS bin
+FROM alpine
+
+RUN apk update --no-cache && apk add --no-cache tar gzip mysql-client postgresql-client mongodb-tools redis
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start
+```
+
 ### Run in Kubernetes
 
 Instruction how to run in k8s with link to example.
+
+For running nxs-backup in Kubernetes you can use already available docker
+image with client apps `registry.nixys.ru/public/nxs-backup:latest-alpine` or build your own image containing only the
+client applications you need.
+
+If you are using Helm to deploy your apps to Kubernetes, you can
+use [universal chart](https://github.com/nixys/nxs-universal-chart) with [values examples](.deploy/helm) that uses
+CronJosb to make backups.
 
 ## Configuration
 
@@ -389,6 +411,68 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 | Name       | Description            |
 |------------|------------------------|
 | `external` | External backup script |
+
+### Useful information
+
+#### Incremental files backup
+
+Works identical like creating a backup using `tar`.
+
+Incremental copies of files are made according to the following scheme:
+![Incremental backup scheme](https://image.ibb.co/dtLn2p/nxs_inc_backup_scheme_last_version.jpg)
+
+At the beginning of the year or on the first start of nxs-backup, a full initial backup is created. Then at the
+beginning of each month - an incremental monthly copy from a yearly copy is created. Inside each month there are
+incremental ten-day copies. Within each ten-day copy incremental day copies are created.
+
+In this case, since now the tar file is in the PAX format, when you deploy the incremental backup, you do not need to
+specify the path to inc-files. All the info is stored in the PAX header of the `GNU.dumpdir` directory inside the
+archive.
+Therefore, the commands to restore a backup for a specific date are the following:
+
+* First, unpack the `full year` copy with the follow command:
+
+```bash
+tar xGf /path/to/full/year/backup
+```
+
+* Then alternately unpack the `monthly`, `decade` and `day` incremental backups, specifying a special key -G, for
+  example:
+
+```bash
+tar xGf /path/to/monthly/backup
+tar xGf /path/to/decade/backup
+tar xGf /path/to/day/backup
+```
+
+#### PostgreSQL use user without database for backups
+
+If there is no database with the same name for the user, used for creating backups, you must specify the name of the
+database, which will be used to connect to the PSQL instance, after the `@` symbol as part of the `username`.
+Example: `username: backup@db_prod`.
+
+#### External nxs-backup module
+
+In this module, an external script is executed passed to the program via the key "dump_cmd".  
+By default at the completion of this command, it is expected that:
+
+* A complete backup file with data will be collected
+* The stdout will send data in json format, like:
+
+```json
+{
+  "full_path": "/abs/path/to/backup.file"
+}
+```
+
+IMPORTANT:
+
+* make sure that there is no unnecessary information in stdout
+* the successfully completed program should finish with exit code 0
+
+If the module used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running
+the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is
+expected to be a standard output to stdout.
 
 ## Roadmap
 
