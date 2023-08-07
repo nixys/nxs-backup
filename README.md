@@ -1,13 +1,20 @@
 # nxs-backup
 
-The nxs-backup creates backups using standard tools, uploads them to remote storages and rotates them according to
-specified rules.
+The nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It using for creating backups, uploading them to external storages and rotates them according to specified rules.
 
 ## Introduction
 
 ### Features
 
+* Full data backup
 * Discrete and incremental files backups
+* Upload and manage backups to the remote storages:
+    * S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS, GCP)
+    * ssh (sftp)
+    * ftp
+    * cifs (smb)
+    * nfs
+    * WebDAV
 * Database backups:
     * Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
     * Xtrabackup (2.4/8.0) of MySQL/Mariadb/Percona (5.7/8.0/all versions)
@@ -17,179 +24,84 @@ specified rules.
     * Backups of Redis (_all versions_)
 * Fine-tune the database backup process with additional options for optimization purposes
 * Notifications via email and webhooks about events in the backup process
-* Upload and manage backups to the remote storages:
-    * s3
-    * ssh(sftp)
-    * ftp
-    * cifs(smb)
-    * nfs
-    * webdav
 * Built-in generator of the configuration files to expedite initial setup
 * Easy to read and maintain configuration files with clear transparent structure
-* Possibility to restore backups with standard file/database tools (Nxs-backup is not required)
+* Possibility to restore backups with standard file/database tools (nxs-backup is not required)
 * Support of user-defined scripts that extend functionality
 
-### Who can the tool help? or mission
 
-Anybody who need to do regular backups and manage dumps local and on remote storages.
+### Who can the tool help?
+  * who need to do regular backups
+  * who need to manage dumps local and on remote storages
+  * who need to keep the RTO RPO indicators under control
 
-### Who can use the tool? or audience
+### Who can use the tool?
 
 * System Administrators
 * DevOps Engineers
 * Developers
 * Anybody who need to do regular backups
 
-### Supported versions and requirements
-
-Nxs-backup can be run on any GNU/Linux distribution with a kernel above 2.6. The set of dependencies depends on what
-exactly you want to back up.
-
-#### Files backups
-
-To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
-
-#### MySQL/Mariadb/Percona backups
-
-For regular backups is used `mysqldump`. Therefore, you have to ensure that you have a version of `mysqldump` that is
-compatible with your database.
-
-For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
-database version of Percona `xtrabackup`. *Supports only backup of local database instance*.
-
-#### PostgreSQL backups
-
-For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
-compatible with your database version.
-
-For physical files backups is used `pg_basebackup`. So, you have to ensure that you have a compatible with your
-database version of Percona `pg_basebackup`.
-
-#### MongoDB backups
-
-For backups of MongoDB is used `mongodump` tool. You have to ensure that you have a version of `mongodump` that is
-compatible with your database version.
-
-#### Redis backups
-
-For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
-compatible with your Redis version.
-
 ## Quickstart
 
-### Installation on-premise (bare-metal or virtual machine)
+### Install
 
-The nxs-backup is provided for the following processor architectures: amd64(x86_64), arm(armv7/armv8), arm64(aarch64).
+### On-premise (bare-metal or virtual machine)
+
+The nxs-backup is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
 
 To install latest version just download and unpack archive for your CPU architecture.
 
 ```bash
 curl -L https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup-amd64.tar.gz -o /tmp/nxs-backup.tar.gz
-tar xf /tmp/nxs-backup.tar.gz –C /tmp
+tar xf /tmp/nxs-backup.tar.gz -C /tmp
 sudo mv /tmp/nxs-backup /usr/sbin/nxs-backup
 sudo chown root:root /usr/sbin/nxs-backup
+```
+
+Than check that installation succesfull:
+
+```bash
+sudo nxs-backup --version
 ```
 
 If you need specific version of nxs-backup, or different architecture, you can find it
 on [release page](https://github.com/nixys/nxs-backup/releases).
 
-### Run in Docker
+### Docker-compose
 
-Instruction how to run with docker or docker-compose with link to example.
+- Use provided base docker-compose.yml file is located in `.docker/compose` path.
 
-Here is example of making alpine image with client apps:
+  ```bash
+  curl -sSL https://raw.githubusercontent.com/nixys/nxs-backup/main/.docker/compose/docker-compose.yml > docker-compose.yml
+  ```
+- Launch the nxs-backup with command:
 
-```dockerfile
-FROM registry.nixys.ru/public/nxs-backup:latest AS bin
-FROM alpine
+  ```bash
+  docker compose up -d
+  ```
 
-RUN apk update --no-cache && apk add --no-cache tar gzip mysql-client postgresql-client mongodb-tools redis
-COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+- Configure nxs-backup (see [Configure](#configure) section for details)
 
-CMD nxs-backup start
-```
+### Kubernetes
 
-### Run in Kubernetes
-
-Instruction how to run in k8s with link to example.
-
-For running nxs-backup in Kubernetes you can use already available docker
-image with client apps `registry.nixys.ru/public/nxs-backup:latest-alpine` or build your own image containing only the
-client applications you need.
-
-If you are using Helm to deploy your apps to Kubernetes, you can
-use [universal chart](https://github.com/nixys/nxs-universal-chart) with [values examples](.deploy/helm) that uses
-CronJosb to make backups.
-
-## Configuration
-
-### Getting started
-
-#### Nxs-backup Conﬁguration Files
-
-To make nxs-backup as flexible as possible, the instructions passed to nxs-backup consist of several parts. The main
-instruction is the Job resource, which defines what the backup job is for and how it should be backed up. A backup job
-typically consists of Type, Sources, and Storages resources.
-
-Type defines the backup kind (for example, "physical" MySQL backups), Sources defines the targets and excludes (at least
-one target must be specified for each job), Storages defines the repositories where and how many backups to store (at
-least one storage must be specified for each job). Working with remote storages is performed through the corresponding
-APIs.
-
-Nxs-backup configuration files are located in the */etc/nxs-backup/* directory by default. If these files do not exist,
-you will be prompted to add them at the first startup.
-
-The basic configuration has only the main configuration file *nxs-backup.conf* and an empty subdirectory *conf.d*, where
-files with job descriptions should be stored (one file per job). All configuration files are in YAML format.
-For more details, see [Settings](#settings).
-
-#### Generate Configurations Files
-
-You can generate a configuration file for a job by running nxs-backup with the ***generate*** command and the options
-*-T*[*--backup-type*] (required, backup type), *-S*[*--storage-types*] (optional, map of storages), *-O*[*--out-path*] (
-optional, path to the generated conf file). This will generate a configuration file for the job and output the details:
-
- ```
-# nxs-backup generate -T mysql -S minio=s3 aws=s3 share=nfs dumps=scp 
-nxs-backup: Successfully generated '/etc/nxs-backup/conf.d/mysql.conf' configuration file!
-```
-
-In this case, the listed storages will be added to the main config. It is recommended to configure their connection
-parameters at once.
-
-#### Testing of Conﬁguration
-
-You can verify that the configuration is correct by running nxs-backup with the ***-t*** option and the optional
-parameter *-c*/*--config* (the path to the main conf file). The program will process all configurations and display
-error messages and then terminate:
-
-```
-# nxs-backup -t
-The configuration is correct.
-```
-
-#### Starting backups
-
-You cat start your jobs by running the script with the command ***start*** and optional *-c*/*--config* (path to main
-conf file). The script will execute the job passed by the argument. It should be noted that there are several reserved
-job names:
-
-+ `all` - simulates the sequential execution of *external*, *databases*, *files* jobs (default value)
-+ `files` - random execution of all jobs of types *desc_files*, *inc_files*
-+ `databases` - random execution of all jobs of types *mysql*, *mysql_xtrabackup*, *postgresql*, *
-  postgresql_basebackup*, *mongodb*, *redis*
-+ `external` - random execution of all jobs of type *external*
-+ `<some_job_name>` - the name of one of the jobs to be executed
-
-```
-# nxs-backup start all
-```
+Do the following steps:
+- Install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
+  ```
+  helm repo add nixys https://registry.nixys.ru/chartrepo/public
+  ```
+- Configure nxs-backup (see [Configure](#configure) section for details)
+- Launch the Bot with command:
+  ```
+  helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/universal-chart -f values.yaml
+  ```
+  Where $NAMESPACE_SERVICE_NAME is namespace with your application launched.
 
 ### Settings
 
-#### `main`
+Default configuration file path: `/etc/nxs-backup/nxs-backup.conf`. File represented in yaml.
 
-Nxs-backup main settings block description.
+#### General settings
 
 | Name                     | Description                                                                            | Value                                |
 |--------------------------|----------------------------------------------------------------------------------------|--------------------------------------|
@@ -240,7 +152,7 @@ Nxs-backup main settings block description.
 
 ##### Storage connection options
 
-Nxs-backup storage connect settings block description.
+nxs-backup storage connect settings block description.
 
 | Name            | Description                                                                           | Value |
 |-----------------|---------------------------------------------------------------------------------------|-------|
@@ -315,9 +227,8 @@ Nxs-backup storage connect settings block description.
 | `oauth_token`        | WebDav OAuth token (optional)                | `""`  |
 | `connection_timeout` | WebDav connection timeout seconds (optional) | `10`  |
 
-#### Backup job options
+#### Backup job settings
 
-Nxs-backup job settings block description.
 
 | Name                 | Description                                                                                                                                                                                                                                                                     | Value   |
 |----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
@@ -351,7 +262,7 @@ copying data to a remote server, rotation of backups may be skipped with this op
 | `save_abs_path`       | Whether you need to save absolute path in tar archives **Only for [*file*](#file-types) types**                                                                                  | `true`  |
 | `prepare_xtrabackup`  | Whether you need to make [xtrabackup prepare](https://www.percona.com/doc/percona-xtrabackup/2.2/xtrabackup_bin/preparing_the_backup.html). **Only for *mysql_xtrabackup* type** | `true`  |
 
-##### Database connection params
+##### Database connection parameters
 
 | Name                        | Description                                                                          | Value       |
 |-----------------------------|--------------------------------------------------------------------------------------|-------------|
@@ -412,6 +323,98 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 |------------|------------------------|
 | `external` | External backup script |
 
+
+### Configure
+
+#### On-premise (bare-metal or virtual machine)
+
+After nxs-backup installation to an server/virtual machine need to generate configuration as the config does not appear automatically.
+
+You can generate a configuration file by running nxs-backup with the ***generate*** command and the options:
+ * *-T*[*--backup-type*] (required, backup type)
+ * *-S*[*--storage-types*] (optional, map of storages),
+ * *-O*[*--out-path*] (optional, path to the generated conf file).
+ This will generate a configuration file for the job and output the details. For example:
+
+```bash
+$ sudo nxs-backup generate -T mysql -S minio=s3 aws=s3 share=nfs dumps=scp
+
+nxs-backup: Successfully generated '/etc/nxs-backup/conf.d/mysql.conf' configuration file!
+```
+
+nxs-backup configuration files are located in the */etc/nxs-backup/* directory by default. If these files do not exist,
+you will be prompted to add them at the first startup.
+
+The basic configuration has only the main configuration file *nxs-backup.conf* and an empty subdirectory *conf.d*, where
+files with job descriptions should be stored (one file per job). All configuration files are in YAML format.
+For more details, see [Settings](#settings).
+
+##### Testing of Conﬁguration
+
+You can verify that the configuration is correct by running nxs-backup with the ***-t*** option and the optional
+parameter *-c*/*--config* (the path to the main conf file). The program will process all configurations and display
+error messages and then terminate:
+
+```bash
+$ sudo nxs-backup -t
+The configuration is correct.
+```
+
+##### Starting backups
+
+for starting nxs-backup process please do the following:
+
+```bash
+$ sudo nxs-backup start all
+```
+Please note there are several options for nxs-backup running:
+
++ `all` - simulates the sequential execution of *external*, *databases*, *files* jobs (default value)
++ `files` - random execution of all jobs of types *desc_files*, *inc_files*
++ `databases` - random execution of all jobs of types *mysql*, *mysql_xtrabackup*, *postgresql*, *
+  postgresql_basebackup*, *mongodb*, *redis*
++ `external` - random execution of all jobs of type *external*
++ `<some_job_name>` - the name of one of the jobs to be executed
+
+#### Docker-compose
+
+* сreate config file e.g. `nxs-backup.conf`
+* fill in the file with correct [Settings](#settings)
+* put at the same path as `docker-compose.yaml`
+* pay your attention that nxs-backup in docker better to start on the same host where the backed up system is located
+* run docker compose as it described in [quickstart](#docker-compose)
+* there is a working `docker-compose.yml` file example below
+
+```yml
+services:
+  nxs-backup:
+    image: nxs-backup:latest
+    container_name: nxs-backup
+    volumes:
+    - /var/www/site:/var/www/site:ro
+    command:
+    - nxs-backup
+    - -c
+    - /nxs-backup.conf
+    - start
+    - all
+    configs:
+    - nxs-backup.conf
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+configs:
+  nxs-backup.conf:
+    file: ./nxs-backup.conf
+```
+
+#### Kubernetes
+
+* fill in a `values.yaml` with correct [Settings](#settings)
+* perform actions described in [quickstart](#kubernetes)
+* check that application started correct and running
+
+
 ### Useful information
 
 #### Incremental files backup
@@ -453,7 +456,7 @@ Example: `username: backup@db_prod`.
 
 #### External nxs-backup module
 
-In this module, an external script is executed passed to the program via the key "dump_cmd".  
+In this module, an external script is executed passed to the program via the key "dump_cmd".
 By default at the completion of this command, it is expected that:
 
 * A complete backup file with data will be collected
@@ -491,10 +494,46 @@ Following features are already in backlog for our development team and will be r
 
 For support and feedback please contact me:
 
-* [feedback form](https://nixys.ru/feedback/)
 * telegram: [@r_andreev](https://t.me/r_andreev)
 * e-mail: r.andreev@nixys.ru
 
 ## License
 
-The Nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
+The nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
+
+
+### Supported versions and requirements
+
+nxs-backup can be run on any GNU/Linux distribution with a kernel above 2.6. The set of dependencies depends on what
+exactly you want to back up.
+
+#### Files backups
+
+To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
+
+#### MySQL/Mariadb/Percona backups
+
+For regular backups is used `mysqldump`. Therefore, you have to ensure that you have a version of `mysqldump` that is
+compatible with your database.
+
+For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `xtrabackup`. *Supports only backup of local database instance*.
+
+#### PostgreSQL backups
+
+For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
+compatible with your database version.
+
+For physical files backups is used `pg_basebackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `pg_basebackup`.
+
+#### MongoDB backups
+
+For backups of MongoDB is used `mongodump` tool. You have to ensure that you have a version of `mongodump` that is
+compatible with your database version.
+
+#### Redis backups
+
+For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
+compatible with your Redis version.
+
