@@ -1,0 +1,83 @@
+  server_name: nxs-k8s
+  project_name: nxs-site-dev
+  notifications:
+    mail:
+      enabled: false
+      mail_from: backup@localhost
+      smtp_server: ''
+      smtp_port: 465
+      smtp_user: ''
+      smtp_password: ''
+      recipients:
+        - root@localhost
+    webhooks:
+    - webhook_url: "https://nxs-alert.nixys.ru/v2/alert/pool"
+      message_level: "warning"
+      extra_headers:
+        "X-Auth-Key": "blalallaalalalalal"
+      payload_message_key: "triggerMessage"
+      extra_payload:
+        "isEmergencyAlert": false
+        "rawTriggerMessage": false
+        "monitoringURL": "-"
+        "alertChannel": "telegram"
+  storage_connects:
+    - name: yandex
+      s3_params:
+        bucket_name: nxs-backup-site-dev
+        access_key_id: blalallaalalalalal-blalallaalalalalal
+        secret_access_key: blalallaalalalalal
+        endpoint: storage.yandexcloud.net
+        region: ru-central1
+  jobs:
+    - job_name: NXS-hourly-desc-files
+      type: desc_files
+      tmp_dir: /var/nxs-backup/dump_tmp
+      safety_backup: false
+      deferred_copying: false
+      sources:
+        - name: desc_files
+          targets:
+            - /mnt/html
+          excludes:
+            - tmp
+            - log
+          gzip: true
+          save_abs_path: true
+      storages_options:
+        - storage_name: yandex
+          backup_path: /nxs-backup/dump
+          retention:
+            days: 60
+            weeks: 0
+            months: 6
+    - job_name: NXS-mysql
+      type: mysql
+      tmp_dir: /var/nxs-backup/dump_tmp
+      safety_backup: false
+      deferred_copying: false
+      sources:
+        - name: mysql
+          connect:
+            db_host: prod-db-pxc.pxc.svc
+            db_port: "3306"
+            db_user: nixys-site-dev-user
+            db_password: "6XE3XfNpYNVUoX7C51gEId9FgeXpzs1o"
+          target_dbs:
+            - nixys-site-dev
+          excludes:
+            - mysql
+            - information_schema
+            - performance_schema
+            - sys
+          gzip: true
+          db_extra_keys: --opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction
+      storages_options:
+        - storage_name: yandex
+          backup_path: /nxs-backup/dump
+          retention:
+            days: 60
+            weeks: 0
+            months: 6
+  include_jobs_configs: []
+  logfile: /dev/stdout

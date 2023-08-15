@@ -1,6 +1,6 @@
 # nxs-backup
 
-The nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It using for creating backups, uploading them to external storages and rotates them according to specified rules.
+nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It using for creating backups, uploading them to external storages and rotates them according to specified rules.
 
 ## Introduction
 
@@ -29,12 +29,6 @@ The nxs-backup is a tool compatible  with the most popular GNU/Linux distributio
 * Possibility to restore backups with standard file/database tools (nxs-backup is not required)
 * Support of user-defined scripts that extend functionality
 
-
-### Who can the tool help?
-  * who need to do regular backups
-  * who need to manage dumps local and on remote storages
-  * who need to keep the RTO RPO indicators under control
-
 ### Who can use the tool?
 
 * System Administrators
@@ -48,7 +42,7 @@ The nxs-backup is a tool compatible  with the most popular GNU/Linux distributio
 
 ### On-premise (bare-metal or virtual machine)
 
-The nxs-backup is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
+nxs-backup is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
 
 To install latest version just download and unpack archive for your CPU architecture.
 
@@ -90,12 +84,13 @@ Do the following steps:
   ```
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
   ```
-- Configure nxs-backup (see [Configure](#configure) section for details)
-- Launch the Bot with command:
+- Launch nxs-backup with command:
   ```
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/universal-chart -f values.yaml
   ```
   Where $NAMESPACE_SERVICE_NAME is namespace with your application launched.
+
+- Configure nxs-backup (see [Configure](#configure) section for details)
 
 ### Settings
 
@@ -388,7 +383,7 @@ Please note there are several options for nxs-backup running:
 ```yml
 services:
   nxs-backup:
-    image: nxs-backup:latest
+    image: nxs-backup:$IMAGE_VERSION
     container_name: nxs-backup
     volumes:
     - /var/www/site:/var/www/site:ro
@@ -408,51 +403,19 @@ configs:
     file: ./nxs-backup.conf
 ```
 
+$IMAGE_VERSION - you can discover on [releases page](https://github.com/nixys/go-nxs-backup/releases)
+
 #### Kubernetes
 
 * fill in a `values.yaml` with correct [Settings](#settings)
 * perform actions described in [quickstart](#kubernetes)
 * check that application started correct and running
 
+### Database restore
+
+As built-in backups restoring tools are under development. You can discover a few tricks in [our documentation](docs/backup_restore)
 
 ### Useful information
-
-#### Incremental files backup
-
-Works identical like creating a backup using `tar`.
-
-Incremental copies of files are made according to the following scheme:
-![Incremental backup scheme](https://image.ibb.co/dtLn2p/nxs_inc_backup_scheme_last_version.jpg)
-
-At the beginning of the year or on the first start of nxs-backup, a full initial backup is created. Then at the
-beginning of each month - an incremental monthly copy from a yearly copy is created. Inside each month there are
-incremental ten-day copies. Within each ten-day copy incremental day copies are created.
-
-In this case, since now the tar file is in the PAX format, when you deploy the incremental backup, you do not need to
-specify the path to inc-files. All the info is stored in the PAX header of the `GNU.dumpdir` directory inside the
-archive.
-Therefore, the commands to restore a backup for a specific date are the following:
-
-* First, unpack the `full year` copy with the follow command:
-
-```bash
-tar xGf /path/to/full/year/backup
-```
-
-* Then alternately unpack the `monthly`, `decade` and `day` incremental backups, specifying a special key -G, for
-  example:
-
-```bash
-tar xGf /path/to/monthly/backup
-tar xGf /path/to/decade/backup
-tar xGf /path/to/day/backup
-```
-
-#### PostgreSQL use user without database for backups
-
-If there is no database with the same name for the user, used for creating backups, you must specify the name of the
-database, which will be used to connect to the PSQL instance, after the `@` symbol as part of the `username`.
-Example: `username: backup@db_prod`.
 
 #### External nxs-backup module
 
@@ -489,6 +452,9 @@ Following features are already in backlog for our development team and will be r
 * New backup types (Clickhouse, Elastic, lvm, etc).
 * Programmatic implementation of backup creation instead of calling external utilities
 * Ability to set limits on resource utilization
+* Update help info
+* Add environment variables support
+* Built-in tools for restoring backups
 
 ## Feedback
 
@@ -499,7 +465,7 @@ For support and feedback please contact me:
 
 ## License
 
-The nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
+nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
 
 
 ### Supported versions and requirements
