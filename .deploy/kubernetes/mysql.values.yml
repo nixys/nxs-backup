@@ -2,8 +2,10 @@ releasePrefix: "-"
 
 secretEnvs:
   ALERT_AUTH_KEY: ""
+  DB_HOST: ""
   DB_USER: ""
   DB_PASS: ""
+  DB_PORT: ""
   S3_ACCESS_KEY: ""
   S3_SECRET_KEY: ""
 
@@ -41,8 +43,8 @@ configMaps:
           sources:
           - name: mysql
             connect:
-              db_host: prod-db.pxc.svc
-              db_port: "3306"
+              db_host: ENV:DB_HOST
+              db_port: ENV:DB_PORT
               db_user: ENV:DB_USER
               db_password: ENV:DB_PASS
             target_dbs:

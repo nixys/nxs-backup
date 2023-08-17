@@ -75,7 +75,7 @@ on [release page](https://github.com/nixys/nxs-backup/releases).
   docker compose up -d
   ```
 
-- Configure nxs-backup (see [Configure](#configure) section for details)
+- Configure nxs-backup (see [Configure](#Kubernetes) section for details)
 
 ### Kubernetes
 
@@ -319,6 +319,11 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 | `external` | External backup script |
 
 
+### Example
+Base nxs-backup config file should be like the following example:
+
+
+
 ### Configure
 
 #### On-premise (bare-metal or virtual machine)
@@ -407,9 +412,19 @@ $IMAGE_VERSION - you can discover on [releases page](https://github.com/nixys/go
 
 #### Kubernetes
 
-* fill in a `values.yaml` with correct [Settings](#settings)
+* fill in a `values.yaml` with correct values from [Settings](#settings) see examples [here](.deploy/kubernetes)
 * perform actions described in [quickstart](#kubernetes)
-* check that application started correct and running
+* check that application started correct and running:
+* * connect to your kubernetes cluster
+* * get cronjobs list:
+
+    ```sh
+    $ kubectl -n $NAMESPACE get cronjobs
+    ```
+    $NAMESPACE - namespace where you installed nxs-backup
+
+* * check that nxs-backup exists in the list of cronjobs
+
 
 ### Database restore
 
