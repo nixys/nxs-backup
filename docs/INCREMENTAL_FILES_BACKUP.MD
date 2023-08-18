@@ -1,3 +1,7 @@
+## Introduction
+
+To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
+
 ## Incremental files backup
 
 Works identical like creating a backup using `tar`.

@@ -36,6 +36,44 @@ nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. 
 * Developers
 * Anybody who need to do regular backups
 
+## IMPORTANT! Read it before start
+
+### Supported versions and requirements
+
+nxs-backup can be run on any GNU/Linux distribution with a kernel above 2.6. The set of dependencies depends on what
+exactly you want to back up.
+
+#### Files backups
+
+To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
+More about incremental files backup you can find in our [documentation](docs/INCREMENTAL_FILES_BACKUP.MD)
+
+#### MySQL/Mariadb/Percona backups
+
+For regular backups is used `mysqldump`. Therefore, you have to ensure that you have a version of `mysqldump` that is
+compatible with your database.
+
+For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `xtrabackup`. *Supports only backup of local database instance*.
+
+#### PostgreSQL backups
+
+For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
+compatible with your database version.
+
+For physical files backups is used `pg_basebackup`. So, you have to ensure that you have a compatible with your
+database version of Percona `pg_basebackup`.
+
+#### MongoDB backups
+
+For backups of MongoDB is used `mongodump` tool. You have to ensure that you have a version of `mongodump` that is
+compatible with your database version.
+
+#### Redis backups
+
+For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
+compatible with your Redis version.
+
 ## Quickstart
 
 ### Install
@@ -64,18 +102,26 @@ on [release page](https://github.com/nixys/nxs-backup/releases).
 
 ### Docker-compose
 
-- Use provided base docker-compose.yml file is located in `.docker/compose` path.
+- clone the repo
 
   ```bash
-  curl -sSL https://raw.githubusercontent.com/nixys/nxs-backup/main/.docker/compose/docker-compose.yml > docker-compose.yml
+  $ git clone https://github.com/nixys/go-nxs-backup.git
   ```
+
+- go to docker compose directory
+
+  ```bash
+  $ cd nxs-backup/.deploy/docker-compose/
+  ```
+
+- update provided `nxs-backup.conf` file with your paramethers (see [Settings](#Settings) section for details)
+
 - Launch the nxs-backup with command:
 
   ```bash
-  docker compose up -d
+  docker compose up -d --build
   ```
 
-- Configure nxs-backup (see [Configure](#Kubernetes) section for details)
 
 ### Kubernetes
 
@@ -89,6 +135,10 @@ Do the following steps:
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/universal-chart -f values.yaml
   ```
   Where $NAMESPACE_SERVICE_NAME is namespace with your application launched.
+
+- find example `values.yaml` file in [.deploy/kubernetes](.deploy/kubernetes) path
+
+- update it according [Settings](#Settings) section
 
 - Configure nxs-backup (see [Configure](#configure) section for details)
 
@@ -400,9 +450,6 @@ services:
     - all
     configs:
     - nxs-backup.conf
-    depends_on:
-      migration:
-        condition: service_completed_successfully
 configs:
   nxs-backup.conf:
     file: ./nxs-backup.conf
@@ -481,40 +528,3 @@ For support and feedback please contact me:
 ## License
 
 nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
-
-
-### Supported versions and requirements
-
-nxs-backup can be run on any GNU/Linux distribution with a kernel above 2.6. The set of dependencies depends on what
-exactly you want to back up.
-
-#### Files backups
-
-To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
-
-#### MySQL/Mariadb/Percona backups
-
-For regular backups is used `mysqldump`. Therefore, you have to ensure that you have a version of `mysqldump` that is
-compatible with your database.
-
-For physical files backups is used Percona `xtrabackup`. So, you have to ensure that you have a compatible with your
-database version of Percona `xtrabackup`. *Supports only backup of local database instance*.
-
-#### PostgreSQL backups
-
-For regular and physical backups is used `pg_dump`. You have to ensure that you have a version of `pg_dump` that is
-compatible with your database version.
-
-For physical files backups is used `pg_basebackup`. So, you have to ensure that you have a compatible with your
-database version of Percona `pg_basebackup`.
-
-#### MongoDB backups
-
-For backups of MongoDB is used `mongodump` tool. You have to ensure that you have a version of `mongodump` that is
-compatible with your database version.
-
-#### Redis backups
-
-For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
-compatible with your Redis version.
-

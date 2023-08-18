@@ -1,21 +1,19 @@
-version: "3"
 services:
   nxs-backup:
-    image: nxs-backup:$IMAGE_VERSION
+    image: registry.nixys.ru/public/nxs-backup:latest
     container_name: nxs-backup
-    volumes:
-    - /var/www/site:/var/www/site:ro
     command:
     - nxs-backup
     - -c
     - /nxs-backup.conf
     - start
     - all
+    volumes:
+    - type: bind
+      source: ./backup
+      target: /var/nxs-backup/dump_tmp
     configs:
     - nxs-backup.conf
-    depends_on:
-      migration:
-        condition: service_completed_successfully
 configs:
   nxs-backup.conf:
     file: ./nxs-backup.conf
