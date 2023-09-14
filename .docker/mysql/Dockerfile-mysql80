@@ -1,0 +1,21 @@
+FROM nixyslab/nxs-backup-bin AS bin
+
+FROM debian:11-slim
+
+RUN apt update \
+    && apt install -yq \
+      wget \
+      lsb-release \
+      gnupg \
+    && wget -O /tmp/mcc.deb https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-client_8.0.34-1debian11_amd64.deb \
+    && wget -O /tmp/mccc.deb https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-client-core_8.0.34-1debian11_amd64.deb \
+    && wget -O /tmp/mccp.deb https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-client-plugins_8.0.34-1debian11_amd64.deb \
+    && wget -O /tmp/mc.deb https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-common_8.0.34-1debian11_amd64.deb \
+    && apt -yq purge wget  && apt -yq autoremove && apt -yq install /tmp/mccp.deb /tmp/mccc.deb /tmp/mc.deb /tmp/mcc.deb \
+    && rm /tmp/*.deb \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start

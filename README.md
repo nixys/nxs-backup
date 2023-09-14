@@ -1,6 +1,6 @@
 # nxs-backup
 
-nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It using for creating backups, uploading them to external storages and rotates them according to specified rules.
+nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It's using for creating backups, uploading them to external storages and rotates them according to specified rules.
 
 ## Introduction
 
@@ -91,7 +91,7 @@ sudo mv /tmp/nxs-backup /usr/sbin/nxs-backup
 sudo chown root:root /usr/sbin/nxs-backup
 ```
 
-Than check that installation succesfull:
+Then check that installation succesfull:
 
 ```bash
 sudo nxs-backup --version
@@ -148,18 +148,18 @@ Default configuration file path: `/etc/nxs-backup/nxs-backup.conf`. File represe
 
 #### General settings
 
-| Name                     | Description                                                                            | Value                                |
-|--------------------------|----------------------------------------------------------------------------------------|--------------------------------------|
-| `server_name`            | The name of the server on which the nxs-backup is started                              | `""`                                 |
-| `project_name`           | The name of the project, used for notifications (optional)                             | `""`                                 |
-| `notifications.webhooks` | Contains list of [webhook notification channel parameters](#webhook-parameters)        | `[]`                                 |
-| `notifications.mail`     | Contains [email notification channel parameters](#email-parameters)                    | `{}`                                 |
-| `storage_connects`       | Contains list of [remote storages connections](#storage-connection-options)            | `[]`                                 |
-| `jobs`                   | Contains list of [backup jobs](#backup-job-options)                                    | `[]`                                 |
-| `include_jobs_configs`   | Contains list of filepaths or glob patterns to [job config files](#backup-job-options) | `["conf.d/*.conf"]`                  |
-| `waiting_timeout`        | Time to waite in minutes for another nxs-backup to be completed (optional)             | `0`                                  |
-| `logfile`                | Path to log file                                                                       | `/var/log/nxs-backup/nxs-backup.log` |
-| `loglevel`               | Level of messages to be logged. [Supported levels](#notification-levels)               | `info`                               |
+| Name                     | Description                                                                             | Value                                |
+|--------------------------|-----------------------------------------------------------------------------------------|--------------------------------------|
+| `server_name`            | The name of the server on which the nxs-backup is started                               | `""`                                 |
+| `project_name`           | The name of the project, used for notifications (optional)                              | `""`                                 |
+| `notifications.webhooks` | Contains list of [webhook notification channel parameters](#webhook-parameters)         | `[]`                                 |
+| `notifications.mail`     | Contains [email notification channel parameters](#email-parameters)                     | `{}`                                 |
+| `storage_connects`       | Contains list of [remote storages connections](#storage-connection-options)             | `[]`                                 |
+| `jobs`                   | Contains list of [backup jobs](#backup-job-settings)                                    | `[]`                                 |
+| `include_jobs_configs`   | Contains list of filepaths or glob patterns to [job config files](#backup-job-settings) | `["conf.d/*.conf"]`                  |
+| `waiting_timeout`        | Time to waite in minutes for another nxs-backup to be completed (optional)              | `0`                                  |
+| `logfile`                | Path to log file                                                                        | `/var/log/nxs-backup/nxs-backup.log` |
+| `loglevel`               | Level of messages to be logged. [Supported levels](#notification-levels)                | `info`                               |
 
 ##### Webhook parameters
 
@@ -295,7 +295,7 @@ copying data to a remote server, rotation of backups may be skipped with this op
 | Name                  | Description                                                                                                                                                                      | Value   |
 |-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
 | `name`                | Used to differentiate backups in the target directory                                                                                                                            | `""`    |
-| `connect`             | Defines a [set of parameters](#database-connection-params) for connecting to the database. **Only for [*databases*](#database-types) types**                                     | `{}`    |
+| `connect`             | Defines a [set of parameters](#database-connection-parameters) for connecting to the database. **Only for [*databases*](#database-types) types**                                 | `{}`    |
 | `targets`             | List of directories/files to be backed up. Glob patterns are supported                                                                                                           | `[]`    |
 | `target_dbs`          | List of databases to be backed up. Use the keyword **all** for backup all databases. **Only for [*databases*](#database-types) types**                                           | `[]`    |
 | `target_collections`  | List of collections to be backed up. Use the keyword **all** for backup all collections in all dbs. **Only for *mongodb* type**                                                  | `[]`    |
@@ -378,7 +378,7 @@ Base nxs-backup config file should be like the following example:
 
 #### On-premise (bare-metal or virtual machine)
 
-After nxs-backup installation to an server/virtual machine need to generate configuration as the config does not appear automatically.
+After nxs-backup installation to a server/virtual machine need to generate configuration as the config does not appear automatically.
 
 You can generate a configuration file by running nxs-backup with the ***generate*** command and the options:
  * *-T*[*--backup-type*] (required, backup type)
@@ -428,7 +428,7 @@ Please note there are several options for nxs-backup running:
 
 #### Docker-compose
 
-* сreate config file e.g. `nxs-backup.conf`
+* create config file e.g. `nxs-backup.conf`
 * fill in the file with correct [Settings](#settings)
 * put at the same path as `docker-compose.yaml`
 * pay your attention that nxs-backup in docker better to start on the same host where the backed up system is located
@@ -482,7 +482,7 @@ As built-in backups restoring tools are under development. You can discover a fe
 #### External nxs-backup module
 
 In this module, an external script is executed passed to the program via the key "dump_cmd".
-By default at the completion of this command, it is expected that:
+By default, at the completion of this command, it is expected that:
 
 * A complete backup file with data will be collected
 * The stdout will send data in json format, like:
@@ -511,7 +511,7 @@ Following features are already in backlog for our development team and will be r
 * API for remote management and metrics monitoring
 * Web interface for management
 * Proprietary startup scheduler
-* New backup types (Clickhouse, Elastic, lvm, etc).
+* New backup types (Clickhouse, Elastic, lvm, etc.)
 * Programmatic implementation of backup creation instead of calling external utilities
 * Ability to set limits on resource utilization
 * Update help info
