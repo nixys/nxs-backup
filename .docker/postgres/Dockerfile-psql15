@@ -1,0 +1,19 @@
+FROM nixyslab/nxs-backup-bin AS bin
+
+FROM debian:11-slim
+
+RUN apt update \
+    && apt install -yq \
+      wget \
+      lsb-release \
+      gnupg \
+    && echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+    && apt -yq purge wget  && apt -yq autoremove && apt update \
+    && apt -yq install postgresql-client-15 \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start
