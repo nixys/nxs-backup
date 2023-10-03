@@ -1,0 +1,20 @@
+FROM nixyslab/nxs-backup-bin AS bin
+
+FROM debian:11-slim
+
+RUN apt update \
+    && apt install -yq \
+      wget \
+      make \
+      gcc \
+    && wget -O /tmp/redis.tar.gz https://download.redis.io/releases/redis-6.2.13.tar.gz \
+    && tar xvzf /tmp/redis.tar.gz -C /tmp \
+    && cd /tmp/redis-6.2.13 \
+    && make \
+    && cp src/redis-cli /usr/local/bin/ \
+    && chmod 755 /usr/local/bin/redis-cli \
+    && cd && rm -rf /tmp/redis-6.2.13*
+
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start
