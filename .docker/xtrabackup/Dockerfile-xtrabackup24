@@ -1,0 +1,21 @@
+FROM nixyslab/nxs-backup-bin AS bin
+
+FROM debian:11-slim
+
+RUN apt update \
+    && apt install -yq \
+      lsb-release \
+      wget \
+      gnupg \
+    && wget -O /tmp/xtrabackup.deb https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb \
+    && apt -fyq install /tmp/xtrabackup.deb \
+    && rm /tmp/xtrabackup.deb \
+    && percona-release enable-only tools \
+    && apt update \
+    && apt install percona-xtrabackup-24 -yq \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+CMD nxs-backup start
