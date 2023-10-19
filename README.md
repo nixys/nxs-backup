@@ -1,6 +1,7 @@
 # nxs-backup
 
-nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. It's using for creating backups, uploading them to external storages and rotates them according to specified rules.
+nxs-backup is a tool for creating and rotating backups locally and on remote storages, compatible with GNU/Linux
+distributions.
 
 ## Introduction
 
@@ -9,7 +10,8 @@ nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. 
 * Full data backup
 * Discrete and incremental files backups
 * Upload and manage backups to the remote storages:
-    * S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS, GCP)
+    * S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS,
+      GCP)
     * ssh (sftp)
     * ftp
     * cifs (smb)
@@ -28,6 +30,7 @@ nxs-backup is a tool compatible  with the most popular GNU/Linux distributions. 
 * Easy to read and maintain configuration files with clear transparent structure
 * Possibility to restore backups with standard file/database tools (nxs-backup is not required)
 * Support of user-defined scripts that extend functionality
+* Support of Environment variables in config files
 
 ### Who can use the tool?
 
@@ -122,10 +125,10 @@ on [release page](https://github.com/nixys/nxs-backup/releases).
   docker compose up -d --build
   ```
 
-
 ### Kubernetes
 
 Do the following steps:
+
 - Install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
   ```
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
@@ -274,7 +277,6 @@ nxs-backup storage connect settings block description.
 
 #### Backup job settings
 
-
 | Name                 | Description                                                                                                                                                                                                                                                                     | Value   |
 |----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
 | `job_name`           | Job name. This value is used to run the specific job                                                                                                                                                                                                                            | `""`    |
@@ -368,23 +370,141 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 |------------|------------------------|
 | `external` | External backup script |
 
+#### Environment variables support
 
-### Example
-Base nxs-backup config file should be like the following example:
+Each parameter in configuration files can be defined using environment variables.  
+To do this, use the value of parameter
+in the following pattern, where `<ENV_NAME>` is the name of the environment variable.
 
+```yaml
+param: ENV:<ENV_NAME>
+```
 
+**Example:**
+
+```yaml
+...
+loglevel: ENV:LOG_LEVEL
+...
+```
+
+### Configuration files example
+
+Here is example of configs for create backups of files and databases for projects located in directory `/var/www` with
+exclude of `bitrix` files.
+
+Main config file at `/etc/nxs-backup/nxs-backup.conf`
+
+```yaml
+server_name: project-data-server
+project_name: My best Project
+
+loglevel: debug
+
+notifications:
+  mail:
+    enabled: false
+  webhooks:
+  - webhook_url: https://hooks.slack.com/services/B04AUP00QRX/OkMtk1cq307silFb3rc13W44
+    message_level: error
+    payload_message_key: "text"
+storage_connects:
+- name: s3
+  s3_params:
+    bucket_name: backups_bucket
+    access_key_id: my_s3_ak_id
+    secret_access_key: ENV:S3_SECRET_KEY
+    endpoint: my.s3.endpoint
+    region: my-s3-region
+jobs: [ ]
+include_jobs_configs: [ "conf.d/*.conf" ]
+```
+
+Files backup job config at `/etc/nxs-backup/conf.d/files.conf`
+
+```yaml
+job_name: files
+type: desc_files
+tmp_dir: /var/backups/tmp_dump
+
+sources:
+- name: "prod_data"
+  save_abs_path: yes
+  targets:
+  - /var/www/*/data/
+  - /var/www/*/uploads/
+  - /var/www/*/conf/
+  excludes:
+  - '**/bitrix**'
+  gzip: true
+
+storages_options:
+- storage_name: local
+  backup_path: /var/backups/files
+  retention:
+    days: 1
+    weeks: 0
+    months: 0
+- storage_name: s3
+  backup_path: files
+  retention:
+    days: 30
+    weeks: 0
+    months: 12
+```
+
+Database backup job config at `/etc/nxs-backup/conf.d/mysql.conf`
+
+```yaml
+job_name: mysql
+type: mysql
+tmp_dir: /var/backups/tmp_dump
+
+sources:
+- name: prod
+  connect:
+    db_host: 'db_host'
+    db_port: '3306'
+    db_user: 'root'
+    db_password: 'some$tr0ngP4ss'
+  targets:
+  - all
+  excludes:
+  - mysql
+  - information_schema
+  - performance_schema
+  - sys
+  gzip: true
+  db_extra_keys: '--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction'
+
+storages_options:
+- storage_name: local
+  backup_path: /var/backups/databases
+  retention:
+    days: 1
+    weeks: 0
+    months: 0
+- storage_name: s3
+  backup_path: databases
+  retention:
+    days: 30
+    weeks: 0
+    months: 12
+```
 
 ### Configure
 
 #### On-premise (bare-metal or virtual machine)
 
-After nxs-backup installation to a server/virtual machine need to generate configuration as the config does not appear automatically.
+After nxs-backup installation to a server/virtual machine need to generate configuration as the config does not appear
+automatically.
 
 You can generate a configuration file by running nxs-backup with the ***generate*** command and the options:
- * *-T*[*--backup-type*] (required, backup type)
- * *-S*[*--storage-types*] (optional, map of storages),
- * *-O*[*--out-path*] (optional, path to the generated conf file).
- This will generate a configuration file for the job and output the details. For example:
+
+* *-T*[*--backup-type*] (required, backup type)
+* *-S*[*--storage-types*] (optional, map of storages),
+* *-O*[*--out-path*] (optional, path to the generated conf file).
+  This will generate a configuration file for the job and output the details. For example:
 
 ```bash
 $ sudo nxs-backup generate -T mysql -S minio=s3 aws=s3 share=nfs dumps=scp
@@ -417,6 +537,7 @@ for starting nxs-backup process please do the following:
 ```bash
 $ sudo nxs-backup start all
 ```
+
 Please note there are several options for nxs-backup running:
 
 + `all` - simulates the sequential execution of *external*, *databases*, *files* jobs (default value)
@@ -462,20 +583,19 @@ $IMAGE_VERSION - you can discover on [releases page](https://github.com/nixys/go
 * fill in a `values.yaml` with correct values from [Settings](#settings) see examples [here](.deploy/kubernetes)
 * perform actions described in [quickstart](#kubernetes)
 * check that application started correct and running:
-* * connect to your kubernetes cluster
-* * get cronjobs list:
+    * connect to your kubernetes cluster
+    * get cronjobs list:
 
-    ```sh
-    $ kubectl -n $NAMESPACE get cronjobs
-    ```
-    $NAMESPACE - namespace where you installed nxs-backup
-
-* * check that nxs-backup exists in the list of cronjobs
-
+      ```sh
+      $ kubectl -n $NAMESPACE get cronjobs
+      ```
+      $NAMESPACE - namespace where you installed nxs-backup
+    * check that nxs-backup exists in the list of cronjobs
 
 ### Database restore
 
-As built-in backups restoring tools are under development. You can discover a few tricks in [our documentation](docs/backup_restore)
+As built-in backups restoring tools are under development. You can discover a few tricks
+in [our documentation](docs/backup_restore)
 
 ### Useful information
 
@@ -507,7 +627,7 @@ expected to be a standard output to stdout.
 Following features are already in backlog for our development team and will be released soon:
 
 * Encrypting of backups
-* Restore from backup using nxs-backup
+* Restore backups by nxs-backup
 * API for remote management and metrics monitoring
 * Web interface for management
 * Proprietary startup scheduler
@@ -515,8 +635,6 @@ Following features are already in backlog for our development team and will be r
 * Programmatic implementation of backup creation instead of calling external utilities
 * Ability to set limits on resource utilization
 * Update help info
-* Add environment variables support
-* Built-in tools for restoring backups
 
 ## Feedback
 
