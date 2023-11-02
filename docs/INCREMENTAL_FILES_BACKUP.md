@@ -1,3 +1,5 @@
+# Incremental files
+
 ## Introduction
 
 To make backups of your files, you have to ensure that you have **GNU tar** of whatever version is available on your OS.
@@ -17,19 +19,3 @@ incremental ten-day copies. Within each ten-day copy incremental day copies are 
 In this case, since now the tar file is in the PAX format, when you deploy the incremental backup, you do not need to
 specify the path to inc-files. All the info is stored in the PAX header of the `GNU.dumpdir` directory inside the
 archive.
-Therefore, the commands to restore a backup for a specific date are the following:
-
-* First, unpack the `full year` copy with the follow command:
-
-```bash
-tar xGf /path/to/full/year/backup
-```
-
-* Then alternately unpack the `monthly`, `decade` and `day` incremental backups, specifying a special key -G, for
-  example:
-
-```bash
-tar xGf /path/to/monthly/backup
-tar xGf /path/to/decade/backup
-tar xGf /path/to/day/backup
-```
