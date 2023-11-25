@@ -1,7 +1,7 @@
 # nxs-backup
 
-nxs-backup is a tool for creating and rotating backups locally and on remote storages, compatible with GNU/Linux
-distributions.
+`nxs-backup` is a tool for creating and delivery backus, rotating it locally and on remote storages, compatible with 
+GNU/Linux distributions.
 
 ## Introduction
 
@@ -12,10 +12,10 @@ distributions.
 * Upload and manage backups to the remote storages:
     * S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS,
       GCP)
-    * ssh (sftp)
-    * ftp
-    * cifs (smb)
-    * nfs
+    * SSH (SFTP)
+    * FTP
+    * CIFS (SMB)
+    * NFS
     * WebDAV
 * Database backups:
     * Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
@@ -25,12 +25,12 @@ distributions.
     * Backups of MongoDB (3.0/3.2/3.4/3.6/4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
     * Backups of Redis (_all versions_)
 * Fine-tune the database backup process with additional options for optimization purposes
-* Notifications via email and webhooks about events in the backup process
+* Notifications via email and webhooks about events of the backup process
 * Built-in generator of the configuration files to expedite initial setup
 * Easy to read and maintain configuration files with clear transparent structure
-* Possibility to restore backups with standard file/database tools (nxs-backup is not required)
+* Possibility to restore backups by standard file/database tools (nxs-backup is not required)
 * Support of user-defined scripts that extend functionality
-* Support of Environment variables in config files
+* Support of Environment variables in configuration files
 
 ### Who can use the tool?
 
@@ -43,7 +43,7 @@ distributions.
 
 ### On-premise (bare-metal or virtual machine)
 
-nxs-backup is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
+`nxs-backup` is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
 
 To install latest version just download and unpack archive for your CPU architecture.
 
@@ -63,7 +63,7 @@ Then check that installation successful:
 sudo nxs-backup --version
 ```
 
-For starting nxs-backup process run:
+For starting `nxs-backup` process run:
 
 ```sh
 sudo nxs-backup start
@@ -113,7 +113,7 @@ Following features are already in backlog for our development team and will be r
 * Proprietary startup scheduler
 * New backup types (Clickhouse, Elastic, lvm, etc.)
 * Programmatic implementation of backup creation instead of calling external utilities
-* Ability to set limits on resource utilization
+* Ability to set limits on resources utilization
 * Update help info
 
 ## Feedback
@@ -123,6 +123,11 @@ For support and feedback please contact me:
 * telegram: [@r_andreev](https://t.me/r_andreev)
 * e-mail: r.andreev@nixys.io
 
+For news and discussions subscribe the channels:
+
+* telegram community (news): [@nxs_backup](https://t.me/nxs_backup)
+* telegram community (chat): [@nxs_backup_chat](https://t.me/nxs_backup_chat)
+
 ## License
 
-nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
+`nxs-backup` is released under the [GNU GPL-3.0 license](LICENSE).
