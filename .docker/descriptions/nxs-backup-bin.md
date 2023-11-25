@@ -1,4 +1,4 @@
-_[Logo picture]_
+![nxs-backup](https://github.com/nixys/go-nxs-backup/assets/28505813/6aa03e3a-db3d-4f34-952b-91cab5fbe49e)
 
 # Quick reference
 
