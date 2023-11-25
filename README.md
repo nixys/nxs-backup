@@ -1,3 +1,5 @@
+![nxs-backup](https://github.com/nixys/go-nxs-backup/assets/28505813/6aa03e3a-db3d-4f34-952b-91cab5fbe49e)
+
 # nxs-backup
 
 nxs-backup is a tool for creating and delivery backus, rotating it locally and on remote storages, compatible with 
