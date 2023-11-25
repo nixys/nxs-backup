@@ -23,7 +23,7 @@ you will be prompted to add them at the first startup.
 
 The basic configuration has only the main configuration file *nxs-backup.conf* and an empty subdirectory *conf.d*, where
 files with job descriptions should be stored (one file per job). All configuration files are in YAML format.
-For more details, see [Settings](/docs/settings/README.md).
+For more details, see [settings](/docs/settings/README.md).
 
 You can find the example of on-premise config files [here](./on-premise/README.md).
 
@@ -41,18 +41,18 @@ The configuration is correct.
 ## Docker-compose
 
 * create config file e.g. `nxs-backup.conf`
-* fill in the file with correct [Settings](/docs/settings/README.md)
+* fill in the file with correct [settings](/docs/settings/README.md)
 * put at the same path as `docker-compose.yaml`
 * pay your attention that nxs-backup in docker better to start on the same host where the backed up system is located
-* run docker compose as it described in [quickstart](#docker-compose)
+* run docker compose as it described in [quickstart](https://github.com/nixys/go-nxs-backup/blob/main/README.md#docker-compose)
 * there is a working example [here](docker-compose/README.md)
 
-$IMAGE_VERSION - you can discover on [releases page](https://github.com/nixys/go-nxs-backup/releases)
+$IMAGE_VERSION can be discovered on [releases page](https://github.com/nixys/go-nxs-backup/releases)
 
 ## Kubernetes
 
-* fill in a `values.yaml` with correct values from [Settings](/docs/settings/README.md) see examples [here](kubernetes+helm/README.md)
-* perform actions described in [quickstart](#kubernetes)
+* fill up a `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md) (see examples [here](kubernetes+helm/README.md))
+* perform actions described in [quickstart](https://github.com/nixys/go-nxs-backup/blob/main/README.md#kubernetes)
 * check that application started correct and running:
     * connect to your kubernetes cluster
     * get cronjobs list:

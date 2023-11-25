@@ -43,7 +43,7 @@ You can find example of configuration files for different deployment kinds [here
 
 ## Settings
 
-Full list of setting parameters available in [our documentation](settings/README.md).
+Full list of nxs-backup parameters available in [settings](settings/README.md).
 
 ## Useful information
 

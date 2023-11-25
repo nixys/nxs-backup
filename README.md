@@ -1,6 +1,6 @@
 # nxs-backup
 
-`nxs-backup` is a tool for creating and delivery backus, rotating it locally and on remote storages, compatible with 
+nxs-backup is a tool for creating and delivery backus, rotating it locally and on remote storages, compatible with 
 GNU/Linux distributions.
 
 ## Introduction
@@ -43,7 +43,7 @@ GNU/Linux distributions.
 
 ### On-premise (bare-metal or virtual machine)
 
-`nxs-backup` is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
+nxs-backup is provided for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
 
 To install latest version just download and unpack archive for your CPU architecture.
 
@@ -63,7 +63,7 @@ Then check that installation successful:
 sudo nxs-backup --version
 ```
 
-For starting `nxs-backup` process run:
+For starting nxs-backup process run:
 
 ```sh
 sudo nxs-backup start
@@ -79,7 +79,7 @@ sudo nxs-backup start
   ```sh
   cd nxs-backup/docs/example/docker-compose/
   ```
-- update provided `nxs-backup.conf` file with your parameters (see [Settings](docs/settings/README.md) for details)
+- update provided `nxs-backup.conf` file with your parameters (see [settings](/docs/settings/README.md) for details)
 - launch the nxs-backup with command:
   ```sh
   docker compose up -d --build
@@ -93,14 +93,13 @@ Do the following steps:
   ```sh
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
   ```
+- find example of `helm values` [here](/docs/example/kubernetes+helm/README.md)
+- fill up your `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md)
 - launch nxs-backup with command:
   ```sh
-  helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/universal-chart -f values.yaml
+  helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml
   ```
-  where $NAMESPACE_SERVICE_NAME is namespace with your application launched
-- find example `values.yaml` file [here](docs/example/kubernetes+helm/README.md)
-- update it according [Settings](docs/settings/README.md)
-- configure nxs-backup (see [Configure](docs/example/README.md) for details)
+  where $NAMESPACE_SERVICE_NAME is the namespace in which to back up your data
 
 ## Roadmap
 
@@ -130,4 +129,4 @@ For news and discussions subscribe the channels:
 
 ## License
 
-`nxs-backup` is released under the [GNU GPL-3.0 license](LICENSE).
+nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
