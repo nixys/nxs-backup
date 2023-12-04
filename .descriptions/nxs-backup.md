@@ -18,7 +18,7 @@
 
 ---
 
-- [`v3.0.2`, `latest`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
+- [`v3.0.2`, `latest`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
 
 # What is nxs-backup?
 
@@ -32,8 +32,8 @@ nxs-backup is a tool for creating and delivery backus, rotating it locally and o
 
 There are two ways described below to install and use the nxs-backup with your infrastructure.
 
-First you need to clone the [repo](https://github.com/nixys/nxs-nackup) and go to `docs/example/docker-compose`
-or `docs/example/kubernetes+helm` directory in accordance to the way you choose to install:
+First you need to clone the [repo](https://github.com/nixys/nxs-nackup) and go to `.deploy/docker-compose`
+or `.deploy/kubernetes+helm` directory in accordance to the way you choose to install:
 
 ```console
 $ git clone git@github.com:nixys/nxs-backup.git
@@ -45,8 +45,8 @@ Modify the `docker-compose.yml` or `helm values` according to your backup issues
 
 Do the following steps:
 
-- update provided `nxs-backup.conf` file with correct nxs-backup [settings](/docs/settings/README.md)
-- launch the nxs-backup with command:
+- Update provided `nxs-backup.conf` file with correct nxs-backup [settings](/docs/settings/README.md)
+- Launch the nxs-backup with command:
   ```sh
   docker compose up -d --build
   ```
@@ -55,12 +55,12 @@ Do the following steps:
 
 Do the following steps:
 
-- install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
+- Install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
   ```sh
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
   ```
-- fill up your `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md)
-- launch nxs-backup with command:
+- Fill up your `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md)
+- Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml
 

@@ -1,0 +1,19 @@
+services:
+  nxs-backup:
+    image: registry.nixys.ru/public/nxs-backup:latest
+    container_name: nxs-backup
+    command:
+    - nxs-backup
+    - -c
+    - /nxs-backup.conf
+    - start
+    - all
+    volumes:
+    - type: bind
+      source: ./backup
+      target: /var/nxs-backup/dump_tmp
+    configs:
+    - nxs-backup.conf
+configs:
+  nxs-backup.conf:
+    file: ./nxs-backup.conf

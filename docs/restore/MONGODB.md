@@ -13,11 +13,11 @@ More about `mongorestore` options you can find in [official documentation](https
 $ mongorestore --gzip --archive=/path/contains/backup_archive.gz
 ```
 
-* `--gzip`
+- `--gzip`
 
   Restores from compressed files or data stream
 
-* `--archive`
+- `--archive`
 
   Specified an archive file for restoring
 
@@ -26,11 +26,11 @@ $ mongorestore --gzip --archive=/path/contains/backup_archive.gz
 $ mongorestore --drop --dir /tmp/backup
 ```
 
-* `--drop`
+- `--drop`
 
   Drop collection before restore if it exists
 
-* `--dir`
+- `--dir`
 
   Points to a directory with a backup
 
@@ -39,7 +39,7 @@ $ mongorestore --drop --dir /tmp/backup
 $ mongorestore --drop --dir /home/user/backup --nsInclude 'nxs.collection'
 ```
 
-* `--nsInclude`
+- `--nsInclude`
 
   Comma separated list of namespaces to restore
 
@@ -48,6 +48,6 @@ $ mongorestore --drop --dir /home/user/backup --nsInclude 'nxs.collection'
 $ mongorestore --drop --dir /home/user/backup --nsExclude 'nxs.collection'
 ```
 
-* `--nsExclude`
+- `--nsExclude`
 
   Comma separated list of namespaces to exclude from the restore

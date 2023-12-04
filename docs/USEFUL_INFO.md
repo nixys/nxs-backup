@@ -17,8 +17,8 @@ There are several options for nxs-backup running:
 In this module, an external script is executed passed to the program via the key "dump_cmd".
 By default, at the completion of this command, it is expected that:
 
-* A complete backup file with data will be collected
-* The stdout will send data in json format, like:
+- A complete backup file with data will be collected
+- The stdout will send data in json format, like:
 
 ```json
 {
@@ -28,8 +28,8 @@ By default, at the completion of this command, it is expected that:
 
 **IMPORTANT:**
 
-* make sure that there is no unnecessary information in stdout
-* the successfully completed program should finish with exit code 0
+- Make sure that there is no unnecessary information in stdout
+- The successfully completed program should finish with exit code 0
 
 If the module used with the `skip_backup_rotate` parameter, the standard output is expected as a result of running
 the command. For example, when executing the command "rsync -Pavz /local/source /remote/destination" the result is

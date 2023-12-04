@@ -51,7 +51,7 @@ $IMAGE_VERSION can be discovered on [releases page](https://github.com/nixys/go-
 
 ## Kubernetes
 
-* fill up a `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md) (see examples [here](kubernetes+helm/README.md))
+* fill up a `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md) (see examples [here](kubernetes/README.md))
 * perform actions described in [quickstart](https://github.com/nixys/go-nxs-backup/blob/main/README.md#kubernetes)
 * check that application started correct and running:
     * connect to your kubernetes cluster

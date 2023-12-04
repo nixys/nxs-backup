@@ -4,7 +4,7 @@
 
 ### Introduction
 
-For restore logical PostgreSQL dump use standart `psql tool`. Detailed information you can find in [official documentation.](https://www.postgresql.org/docs/current/app-psql.html)
+For restore logical PostgreSQL dump use standard `psql tool`. Detailed information you can find in [official documentation.](https://www.postgresql.org/docs/current/app-psql.html)
 
 #### Examples
 
@@ -17,11 +17,11 @@ $ psql Names < /home/user/Documents/names.dmp
 # With auth
 $ psql -U nxs-user -W Names < /tmp/users.dmp
 ```
-* `-U nxs-user` or `--username=nxs-user` :
+- `-U nxs-user` or `--username=nxs-user` :
 
     Connect to the database as an user, for example `nxs-user`;
 
-* `-W` or `--password` :
+- `-W` or `--password` :
 
     `psql` will ask you to prompt for a password before connecting to a database;
 
@@ -50,15 +50,15 @@ $ pg_restore -U postgres -d full_db < full_db.tar
 $ pg_restore -U postgres -C -d full_db < full_db.tar
 ```
 
-* `-U` or `--username=username` :
+- `-U` or `--username=username` :
 
     username to connect to database;
 
-* `-d` or `--dbname=dbname` :
+- `-d` or `--dbname=dbname` :
 
     database defining and restore directly into it;
 
-* `-C` or `--create` :
+- `-C` or `--create` :
 
     firstly create database if it needed;
 

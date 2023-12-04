@@ -12,19 +12,19 @@ To restore files backup to the specific date, you have to untar files in next se
 
 Therefore, the commands to restore a backup to the specific date are the following:
 
-* First, unpack the `full year` copy with the follow command:
+- First, unpack the `full year` copy with the follow command:
 
-```bash
-tar xGf /path/to/full/year/backup
-```
+    ```bash
+    tar xGf /path/to/full/year/backup
+    ```
 
-* Then alternately unpack the `monthly`, `decade` and `day` incremental backups, specifying a special key -G:
+- Then alternately unpack the `monthly`, `decade` and `day` incremental backups, specifying a special key -G:
 
-```bash
-tar xGf /path/to/monthly/backup
-tar xGf /path/to/decade/backup
-tar xGf /path/to/day/backup
-```
+    ```bash
+    tar xGf /path/to/monthly/backup
+    tar xGf /path/to/decade/backup
+    tar xGf /path/to/day/backup
+    ```
 
 ## Example
 

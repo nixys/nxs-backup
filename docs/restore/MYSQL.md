@@ -4,9 +4,9 @@
 
 ### Introduction
 
-You can use standart tools for logical dump restoration. More information you can find on the [official documentation page](https://dev.mysql.com/doc/).
+You can use standard tools for logical dump restoration. More information you can find on the [official documentation page](https://dev.mysql.com/doc/).
 
-#### Step by step instruction
+#### Step-by-step instruction
 
 1) Log into mysql server:
 
@@ -14,10 +14,10 @@ You can use standart tools for logical dump restoration. More information you ca
     $ mysql -u root -p
     ```
 
-    * `-u` - user for loging to datase;
-    * `-p` - shell will ask you to prompt for a password before connecting to a database;
+    - `-u` - user for loging to datase;
+    - `-p` - shell will ask you to prompt for a password before connecting to a database;
 
-2) Create database if it doesn't exists
+2) Create database if it doesn't exist
 
     ```shell
     mysql> CREATE DATABASE Users;
