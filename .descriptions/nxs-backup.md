@@ -7,6 +7,9 @@
 - **Maintained by**:  
   [Nixys LLC](https://nixys.io)
 
+- **Where to get news:**  
+  the [@nxs_backup](https://t.me/nxs_backup), [nxs-backup.io](https://nxs-backup.io)
+
 - **Where to get help:**  
   the [@nxs_backup_chat](https://t.me/nxs_backup_chat), [Maintainer Telegram](https://t.me/r_andreev),
   or [GitHub Issues](https://github.com/nixys/nxs-backup/issues)
