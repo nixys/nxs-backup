@@ -43,8 +43,17 @@ GNU/Linux distributions.
 
 ## Quickstart
 
+- Clone the repo
+  ```sh
+  git clone https://github.com/nixys/nxs-backup.git
+  ```
+  
 ### On-premise (bare-metal or virtual machine)
 
+- Go to on-premise directory
+  ```sh
+  cd nxs-backup/.deploy/on-premise/
+  ```
 - Install nxs-backup, just download and unpack archive for your CPU architecture.
   ```sh
   curl -L https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup-amd64.tar.gz -o /tmp/nxs-backup.tar.gz
@@ -56,10 +65,12 @@ GNU/Linux distributions.
   > nxs-backup is built for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
   > If you need specific version of nxs-backup, or different architecture, you can find it
   on [release page](https://github.com/nixys/nxs-backup/releases).
-- Then check that installation successful:
+- Check that installation successful:
   ```sh
   sudo nxs-backup --version
   ```
+- Generate configuration files like described [here](docs/USEFUL_INFO.md#generate-configuration-files) or update
+  provided `nxs-backup.conf` and jobs configs in `cond.d` dir with your parameters (see [Settings](/docs/settings/README.md) for details)
 - For starting nxs-backup process run:
   ```sh
   sudo nxs-backup start
@@ -67,26 +78,18 @@ GNU/Linux distributions.
 
 ### Docker-compose
 
-- Clone the repo
-  ```sh
-  git clone https://github.com/nixys/nxs-backup.git
-  ```
 - Go to docker compose directory
   ```sh
   cd nxs-backup/.deploy/docker-compose/
   ```
-- Update provided `nxs-backup.conf` file with your parameters (see [settings](/docs/settings/README.md) for details)
+- Update provided `nxs-backup.conf` file with your parameters (see [Settings](/docs/settings/README.md) for details)
 - Launch the nxs-backup with command:
   ```sh
-  docker compose up -d --build
+  docker compose up -d --pull
   ```
 
 ### Kubernetes
 
-- Clone the repo
-  ```sh
-  git clone https://github.com/nixys/nxs-backup.git
-  ```
 - Go to kubernetes directory
   ```sh
   cd nxs-backup/.deploy/kubernetes/
@@ -96,7 +99,7 @@ GNU/Linux distributions.
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
   ```
 - Find examples of `helm values` [here](/docs/example/kubernetes/README.md)
-- Fill up your `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md)
+- Fill up your `values.yaml` with correct nxs-backup [Settings](/docs/settings/README.md)
 - Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml

@@ -1,6 +1,6 @@
 services:
   nxs-backup:
-    image: registry.nixys.ru/public/nxs-backup:latest
+    image: nixyslab/nxs-backup:latest
     container_name: nxs-backup
     command:
     - nxs-backup
@@ -12,6 +12,9 @@ services:
     - type: bind
       source: ./backup
       target: /var/nxs-backup/dump_tmp
+    - type: bind
+      source: /path/to/backup
+      target: /path/to/backup
     configs:
     - nxs-backup.conf
 configs:

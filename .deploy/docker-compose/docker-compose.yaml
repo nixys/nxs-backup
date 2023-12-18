@@ -1,6 +1,6 @@
 services:
   nxs-backup:
-    image: registry.nixys.ru/public/nxs-backup:latest
+    image: nixyslab/nxs-backup:latest
     container_name: nxs-backup
     command:
     - nxs-backup

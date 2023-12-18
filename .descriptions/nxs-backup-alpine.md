@@ -38,34 +38,44 @@ There are two ways described below to install and use the nxs-backup with your i
 First you need to clone the [repo](https://github.com/nixys/nxs-nackup) and go to `.deploy/docker-compose`
 or `.deploy/kubernetes` directory in accordance to the way you choose to install:
 
-```console
-$ git clone git@github.com:nixys/nxs-backup.git
+```sh
+git clone git@github.com:nixys/nxs-backup.git
 ```
 
-Modify the `docker-compose.yml` or `helm values` according to your backup issues.
+Modify the `nxs-backup.conf` or `helm values` according to your backup issues.
 
 ## Docker-compose
 
 Do the following steps:
-
-- Update provided `nxs-backup.conf` file with correct nxs-backup [settings](/docs/settings/README.md)
+- Go to docker compose directory
+  ```sh
+  cd nxs-backup/.deploy/docker-compose/
+  ```
+- Update provided `nxs-backup.conf` file with your parameters (see [Settings](/docs/settings/README.md) for details)
 - Launch the nxs-backup with command:
   ```sh
-  docker compose up -d --build
+  docker compose up -d --pull
   ```
 
 ## Kubernetes
 
 Do the following steps:
 
+- Go to kubernetes directory
+  ```sh
+  cd nxs-backup/.deploy/kubernetes/
+  ```
 - Install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
   ```sh
   helm repo add nixys https://registry.nixys.ru/chartrepo/public
   ```
-- Fill up your `values.yaml` with correct nxs-backup [settings](/docs/settings/README.md)
+- Find examples of `helm values` [here](/docs/example/kubernetes/README.md)
+- Fill up your `values.yaml` with correct nxs-backup [Settings](/docs/settings/README.md)
 - Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml
+  ```
+  where $NAMESPACE_SERVICE_NAME is the namespace in which to back up your data
 
 # License
 

@@ -36,14 +36,13 @@ compatible with your database version.
 For backups of Redis is used `redis-cli` tool. You have to ensure that you have a version of `redis-cli` that is
 compatible with your Redis version.
 
-
 ## Configure
 
 You can find example of configuration files for different deployment kinds [here](example/README.md).
 
 ## Settings
 
-Full list of nxs-backup parameters available in [settings](settings/README.md).
+Full list of nxs-backup parameters available in [Settings](settings/README.md).
 
 ## Useful information
 

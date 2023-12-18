@@ -1,0 +1,354 @@
+releasePrefix: "-"
+
+defaultImage: nixyslab/nxs-backup
+defaultImageTag: latest
+
+configMaps:
+  config:
+    data:
+      nxs-backup.conf: |-
+        project_name: "My Project"
+        server_name: backup-in-k8s
+        notifications:
+          mail:
+            enabled: false
+          webhooks:
+          - webhook_url: "https://my-alert.com/v2/alert"
+            extra_headers:
+              "Auth-Key": "my_auth_key"
+            payload_message_key: "triggerMessage"
+            extra_payload:
+              "isEmergencyAlert":  false
+        storage_connects:
+        - name: obs
+          s3_params:
+            bucket_name: my_bucket
+            access_key_id: my_access_key
+            secret_access_key: my_secret_key
+            endpoint: my.s3.endpoint
+            region: my-s3-region
+        - name: share
+          scp_params:
+            user: my_ssh_user
+            host: my_ssh_host
+            port: 22
+            password: my_ssh_password
+            key_file: ""
+        - name: smb
+          smb_params:
+            host: my_smb_host
+            port: 445
+            user: my_smb_user
+            password: my_smb_pass
+            domain: my_smb_domain
+            share: my_smb_share_path
+        - name: nfs
+          nfs_params:
+            host: my_nfs_host
+            target: my_nfs_target_path
+            uid: 1000
+            gid: 1000
+            port: 111
+        - name: webdav
+          webdav_params:
+            url: my_webdav_url
+            username: my_webdav_user
+            password: my_webdav_pass
+            oauth_token: my_webdav_oauth_token
+        - name: sftp
+          sftp_params:
+            user: my_ssh_user
+            host: my_ssh_host
+            port: 22
+            password: my_ssh_password
+            key_file: ""
+        - name: ftp
+          ftp_params:
+            host: my_ftp_host
+            user: my_ftp_user
+            password: my_ftp_pass
+            port: 21
+        jobs:
+        - job_name: PROJECT-desc_files
+          type: desc_files
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: desc_files
+            targets:
+            - /var/www/html/www.site.ru
+            - /some/path/for/backup
+            excludes:
+            - tmp
+            - log
+            - some_extra_exclude
+            gzip: true
+            save_abs_path: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-inc_files
+          type: inc_files
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: inc_files
+            targets:
+            - /var/www/html/www.site.ru
+            - /some/path/for/backup
+            excludes:
+            - tmp
+            - log
+            - some_extra_exclude
+            gzip: true
+            save_abs_path: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              months: 12
+        - job_name: PROJECT-mysql
+          type: mysql
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: mysql
+            connect:
+              db_host: mysql
+              db_port: "3306"
+              db_user: root
+              db_password: rootP@5s
+            target_dbs:
+            - all
+            excludes:
+            - mysql
+            - information_schema
+            - performance_schema
+            - sys
+            gzip: true
+            db_extra_keys: --opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-mysql_xtrabackup
+          type: mysql_xtrabackup
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: mysql_xtrabackup
+            connect:
+              db_host: mysql
+              db_port: "3306"
+              db_user: root
+              db_password: rootP@5s
+            excludes:
+            - bd_name.table_to_exclude
+            gzip: true
+            db_extra_keys: --datadir=/path/to/mysql/data
+            prepare_xtrabackup: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-postgresql
+          type: postgresql
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: psql
+            connect:
+              db_host: psql
+              db_port: "5432"
+              psql_ssl_mode: require
+              db_user: postgres
+              db_password: postgresP@5s
+            target_dbs:
+            - all
+            excludes:
+            - postgres
+            - demo.information_schema
+            gzip: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-postgresql_basebackup
+          type: postgresql_basebackup
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: psql_basebackup
+            connect:
+              db_host: psql
+              db_port: "5432"
+              psql_ssl_mode: require
+              db_user: repmgr
+              db_password: repmgrP@5s
+            gzip: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-redis
+          type: redis
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: redis
+            connect:
+              db_host: redis
+              db_port: "6379"
+              db_password: redisP@5s
+            gzip: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-mongodb
+          type: mongodb
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: mongodb
+            connect:
+              db_host: mongo1
+              db_port: "27017"
+              db_user: mongo
+              db_password: mongoP@5s
+            target_dbs:
+            - all
+            target_collections:
+            - all
+            exclude_dbs:
+            - admin
+            - config
+            - local
+            exclude_collections:
+            - sample_mflix.users
+            gzip: true
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+        - job_name: PROJECT-external
+          type: external
+          safety_backup: false
+          deferred_copying: false
+          sources: []
+          storages_options:
+          - storage_name: local
+            backup_path: /var/nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          dump_cmd: /path/to/backup_script.sh
+        - job_name: PROJECT-mysql-remotes
+          type: mysql
+          tmp_dir: /var/nxs-backup/dump_tmp
+          safety_backup: false
+          deferred_copying: false
+          sources:
+          - name: mysql
+            connect:
+              db_host: mysql
+              db_port: "3306"
+              db_user: root
+              db_password: rootP@5s
+            target_dbs:
+            - all
+            excludes:
+            - mysql
+            - information_schema
+            - performance_schema
+            - sys
+            gzip: true
+            db_extra_keys: --opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction
+          storages_options:
+          - storage_name: share
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: obs
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: sftp
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: ftp
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: smb
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: nfs
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+          - storage_name: webdav
+            backup_path: /nxs-backup/dump
+            retention:
+              days: 7
+              weeks: 5
+              months: 5
+
+
+cronJobs:
+  nxs-backup:
+    schedule: "0 0 * * *"
+    containers:
+    - name: nxs-backup
+      volumeMounts:
+      - name: config
+        mountPath: /etc/nxs-backup
+    volumes:
+    - type: configMap
+      name: config
+    restartPolicy: Never

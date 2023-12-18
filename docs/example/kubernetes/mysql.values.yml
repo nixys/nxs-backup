@@ -9,8 +9,8 @@ secretEnvs:
   S3_ACCESS_KEY: ""
   S3_SECRET_KEY: ""
 
-defaultImage: registry.nixys.ru/public/nxs-backup
-defaultImageTag: 3-alpine
+defaultImage: nixyslab/nxs-backup
+defaultImageTag: alpine
 
 configMaps:
   config:

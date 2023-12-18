@@ -1,5 +1,44 @@
 # Useful information
 
+## Generate Configuration Files
+
+After nxs-backup installation to a server/virtual machine need to generate configuration as the config does not appear
+automatically.
+
+You can generate a configuration file by running nxs-backup with the ***generate*** command and the options:
+
+* *-T* [*--backup-type*] (required, backup type)
+* *-S* [*--storage-types*] (optional, map of storages),
+* *-O* [*--out-path*] (optional, path to the generated conf file).
+
+This will generate a configuration file for the job and output the details. For example:
+
+```bash
+$ sudo nxs-backup generate -T mysql -S minio=s3 aws=s3 share=nfs dumps=scp
+
+nxs-backup: Successfully generated '/etc/nxs-backup/conf.d/mysql.conf' configuration file!
+```
+
+nxs-backup configuration files are located in the */etc/nxs-backup/* directory by default. If these files do not exist,
+you will be prompted to add them at the first startup.
+
+The basic configuration has only the main configuration file *nxs-backup.conf* and an empty subdirectory *conf.d*, where
+files with job descriptions should be stored (one file per job). All configuration files are in YAML format.
+For more details, see [Settings](/docs/settings/README.md).
+
+You can find the example of on-premise config files [here](example/on-premise/README.md).
+
+### Testing of Conﬁguration
+
+You can verify that the configuration is correct by running nxs-backup with the ***-t*** option and the optional
+parameter *-c*/*--config* (the path to the main conf file). The program will process all configurations and display
+error messages and then terminate:
+
+```sh
+$ sudo nxs-backup -t
+The configuration is correct.
+```
+
 ## Run specific jobs
 
 There are several options for nxs-backup running:
