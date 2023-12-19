@@ -96,7 +96,7 @@ GNU/Linux distributions.
   ```
 - Install [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart) (`Helm 3` is required):
   ```sh
-  helm repo add nixys https://registry.nixys.ru/chartrepo/public
+  helm repo add nixys https://registry.nixys.io/chartrepo/public
   ```
 - Find examples of `helm values` [here](/docs/example/kubernetes/README.md)
 - Fill up your `values.yaml` with correct nxs-backup [Settings](/docs/settings/README.md)
