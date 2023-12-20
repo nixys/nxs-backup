@@ -11,6 +11,7 @@ on:
 jobs:
   dockerHubDescription:
     runs-on: ubuntu-latest
+    environment: secure
     steps:
     - uses: actions/checkout@v4
 
