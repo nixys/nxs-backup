@@ -68,7 +68,6 @@ jobs:
       with:
         files: nxs-backup-${{ matrix.TARGET }}.tar.gz
         prerelease: ${{ contains(github.ref_name, 'rc') }}
-        generate_release_notes: true
         append_body: true
 
   build-and-push-docker:
@@ -140,6 +139,7 @@ jobs:
         tags: ${{ steps.meta-bin.outputs.tags }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: VERSION=${{ github.ref_name }}
 
     - name: Build and push alpine
       uses: docker/build-push-action@v4
