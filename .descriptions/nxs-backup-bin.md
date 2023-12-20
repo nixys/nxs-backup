@@ -2,8 +2,6 @@
 
 # Quick reference
 
----
-
 - **Maintained by**:  
   [Nixys LLC](https://nixys.io)
 
@@ -19,19 +17,13 @@
 
 # Supported tags and respective `Dockerfile` links
 
----
-
 - [`v3.0.2`, `latest`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-bin)
 
 # What is nxs-backup?
 
----
-
 nxs-backup is a tool for creating and delivery backus, rotating it locally and on remote storages.
 
 # How to use this image
-
----
 
 This image contains only a binary file and can be used to create the image you will use.
 
@@ -54,8 +46,6 @@ CMD nxs-backup start
 ```
 
 # License
-
----
 
 [nxs-backup](https://github.com/nixys/nxs-backup) is open source and released under the terms of
 the [GNU GPL-3.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).

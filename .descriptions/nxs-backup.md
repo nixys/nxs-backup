@@ -2,8 +2,6 @@
 
 # Quick reference
 
----
-
 - **Maintained by**:  
   [Nixys LLC](https://nixys.io)
 
@@ -19,19 +17,13 @@
 
 # Supported tags and respective `Dockerfile` links
 
----
-
 - [`v3.0.2`, `latest`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
 
 # What is nxs-backup?
 
----
-
 nxs-backup is a tool for creating and delivery backus, rotating it locally and on remote storages.
 
 # How to use this image
-
----
 
 There are two ways described below to install and use the nxs-backup with your infrastructure.
 
@@ -78,8 +70,6 @@ Do the following steps:
   where $NAMESPACE_SERVICE_NAME is the namespace in which to back up your data
 
 # License
-
----
 
 [nxs-backup](https://github.com/nixys/nxs-backup) is open source and released under the terms of
 the [GNU GPL-3.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).
