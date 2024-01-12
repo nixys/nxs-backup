@@ -1,4 +1,4 @@
-FROM nixyslab/nxs-backup-bin AS bin
+FROM nixyslab/nxs-backup-bin:3.0.2-rc2 AS bin
 
 FROM debian:12-slim
 
@@ -9,14 +9,25 @@ RUN apt update \
       gnupg \
       default-mysql-client \
       postgresql-client \
-      redis \
-    && wget -O /tmp/xtrabackup.deb https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb \
-    && apt -fyq install /tmp/xtrabackup.deb \
-    && rm /tmp/xtrabackup.deb \
-    && percona-release enable-only tools \
-    && apt update \
-    && apt install percona-xtrabackup-80 -yq \
-    && apt clean
+      redis
+
+# TODO Install Percona Xtrabackup and MongoDB-tools
+#RUN apt install -yq git \
+#    dirmngr \
+#    cmake \
+#    build-essential flex bison automake autoconf \
+#    libtool cmake libaio-dev libncurses-dev zlib1g-dev \
+#    libev-dev libcurl4-gnutls-dev vim-common \
+#    devscripts libnuma-dev openssl libssl-dev libgcrypt20-dev gnutls-bin python3-sphinx \
+#    libprocps-dev libudev-dev
+#
+#RUN git clone --recurse-submodules -j$(nproc --all) --single-branch --branch=percona-xtrabackup-8.0.35-30 --depth 1 https://github.com/percona/percona-xtrabackup.git
+#
+#RUN mkdir -p /percona-xtrabackup/build/boost \
+#    && cd /percona-xtrabackup/build \
+#    && cmake -DWITH_NUMA=1 -DDOWNLOAD_BOOST=1 -DDOWNLOAD_BOOST_TIMEOUT=3000 -DWITH_BOOST=/boost -DWITH_MAN_PAGES=OFF -DCMAKE_INSTALL_PREFIX=/percona-xtrabackup/build .. \
+#    && make -j$(nproc --all)
+#    && make install
 
 COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
 
