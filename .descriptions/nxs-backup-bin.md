@@ -17,7 +17,7 @@
 
 # Supported tags and respective `Dockerfile` links
 
-- [`v3.0.2`, `latest`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-bin)
+- [`3.0.2`, `3`, `3.0`, `latest`,](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-bin)
 
 # What is nxs-backup?
 

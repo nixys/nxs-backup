@@ -24,15 +24,6 @@ jobs:
         short-description: ${{ github.event.repository.description }}
         readme-filepath: .descriptions/nxs-backup-bin.md
 
-    - name: Docker Hub Description alpine
-      uses: peter-evans/dockerhub-description@v3
-      with:
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_TOKEN }}
-        repository: nixyslab/nxs-backup-alpine
-        short-description: ${{ github.event.repository.description }}
-        readme-filepath: .descriptions/nxs-backup-alpine.md
-
     - name: Docker Hub Description debian
       uses: peter-evans/dockerhub-description@v3
       with:

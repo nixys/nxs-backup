@@ -108,11 +108,14 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 	}
 
 	for _, bucketPath := range bakRemPaths {
-		_, err = s.client.PutObject(context.Background(), s.bucketName, bucketPath, source, sourceStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
+		res, err := s.client.PutObject(context.Background(), s.bucketName, bucketPath, source, sourceStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		if err != nil {
+			logCh <- logger.Log(jobName, s.name).Errorf("Failed to uploaded object '%s' to bucket %s", bucketPath, s.bucketName)
+			logCh <- logger.Log(jobName, s.name).Errorf("Error: %s", err)
+			logCh <- logger.Log(jobName, s.name).Debugf("Response: %+v\n", res)
 			return err
 		}
-		logCh <- logger.Log(jobName, s.name).Infof("Successfully uploaded object '%s' in bucket %s", bucketPath, s.bucketName)
+		logCh <- logger.Log(jobName, s.name).Infof("Successfully uploaded object '%s' to bucket %s", bucketPath, s.bucketName)
 	}
 
 	return nil
