@@ -28,7 +28,7 @@ nxs-backup is a tool for creating and delivery backus, rotating it locally and o
 
 There are two ways described below to install and use the nxs-backup with your infrastructure.
 
-First you need to clone the [repo](https://github.com/nixys/nxs-nackup) and go to `.deploy/docker-compose`
+First you need to clone the [repo](https://github.com/nixys/nxs-backup) and go to `.deploy/docker-compose`
 or `.deploy/kubernetes` directory in accordance to the way you choose to install:
 
 ```sh
