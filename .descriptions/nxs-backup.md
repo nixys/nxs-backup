@@ -44,7 +44,7 @@ Do the following steps:
   ```sh
   cd nxs-backup/.deploy/docker-compose/
   ```
-- Update provided `nxs-backup.conf` file with your parameters (see [Settings](/docs/settings/README.md) for details)
+- Update provided `nxs-backup.conf` file with your parameters (see [Settings](https://github.com/nixys/nxs-backup/blob/main/docs/settings/README.md) for details)
 - Launch the nxs-backup with command:
   ```sh
   docker compose up -d --pull
@@ -62,8 +62,8 @@ Do the following steps:
   ```sh
   helm repo add nixys https://registry.nixys.io/chartrepo/public
   ```
-- Find examples of `helm values` [here](/docs/example/kubernetes/README.md)
-- Fill up your `values.yaml` with correct nxs-backup [Settings](/docs/settings/README.md)
+- Find examples of `helm values` [here](https://github.com/nixys/nxs-backup/blob/main/docs/example/kubernetes/README.md)
+- Fill up your `values.yaml` with correct nxs-backup [Settings](https://github.com/nixys/nxs-backup/blob/main/docs/settings/README.md)
 - Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml
