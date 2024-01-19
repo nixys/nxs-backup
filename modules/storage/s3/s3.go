@@ -23,20 +23,22 @@ import (
 )
 
 type s3 struct {
-	client     *minio.Client
-	bucketName string
-	backupPath string
-	name       string
+	client        *minio.Client
+	bucketName    string
+	backupPath    string
+	name          string
+	batchDeletion bool
 	Retention
 }
 
 type Params struct {
-	BucketName  string
-	AccessKeyID string
-	SecretKey   string
-	Endpoint    string
-	Region      string
-	Secure      bool
+	BucketName    string
+	AccessKeyID   string
+	SecretKey     string
+	Endpoint      string
+	Region        string
+	BatchDeletion bool
+	Secure        bool
 }
 
 func Init(name string, params Params) (*s3, error) {
@@ -50,9 +52,10 @@ func Init(name string, params Params) (*s3, error) {
 	}
 
 	return &s3{
-		name:       name,
-		client:     s3Client,
-		bucketName: params.BucketName,
+		name:          name,
+		client:        s3Client,
+		bucketName:    params.BucketName,
+		batchDeletion: params.BatchDeletion,
 	}, nil
 }
 
@@ -186,9 +189,18 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string
 		}
 	}()
 
-	for rErr := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{GovernanceBypass: true}) {
-		logCh <- logger.Log(jobName, s.name).Errorf("Error detected during object deletion: '%s'", rErr)
-		errs = multierror.Append(errs, rErr.Err)
+	if s.batchDeletion {
+		for rErr := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{GovernanceBypass: true}) {
+			logCh <- logger.Log(jobName, s.name).Errorf("Error detected during multiple objects deletion: '%s'", rErr)
+			errs = multierror.Append(errs, rErr.Err)
+		}
+	} else {
+		for object := range objCh {
+			if err := s.client.RemoveObject(context.Background(), s.bucketName, object.Key, minio.RemoveObjectOptions{GovernanceBypass: true}); err != nil {
+				logCh <- logger.Log(jobName, s.name).Errorf("Error detected during single object deletion: '%s'", err)
+				errs = multierror.Append(errs, err)
+			}
+		}
 	}
 
 	return errs.ErrorOrNil()

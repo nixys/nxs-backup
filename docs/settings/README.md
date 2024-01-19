@@ -67,13 +67,14 @@ nxs-backup storage connect settings block description.
 
 ##### S3 connection params
 
-| Name                | Description    | Value |
-|---------------------|----------------|-------|
-| `bucket_name`       | S3 bucket name | `""`  |
-| `endpoint`          | S3 endpoint    | `""`  |
-| `region`            | S3 region      | `""`  |
-| `access_key_id`     | S3 access key  | `""`  |
-| `secret_access_key` | S3 secret key  | `""`  |
+| Name                | Description                                                 | Value    |
+|---------------------|-------------------------------------------------------------|----------|
+| `bucket_name`       | S3 bucket name                                              | `""`     |
+| `endpoint`          | S3 endpoint                                                 | `""`     |
+| `region`            | S3 region                                                   | `""`     |
+| `access_key_id`     | S3 access key                                               | `""`     |
+| `secret_access_key` | S3 secret key                                               | `""`     |
+| `batch_deletion`    | Deleting a group of objects in s3 bucket by single request  | `"true"` |
 
 ##### SFTP connection params
 
