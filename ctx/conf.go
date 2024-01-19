@@ -120,12 +120,13 @@ type storageConnect struct {
 }
 
 type s3Params struct {
-	BucketName  string `conf:"bucket_name" conf_extraopts:"required"`
-	AccessKeyID string `conf:"access_key_id"`
-	SecretKey   string `conf:"secret_access_key"`
-	Endpoint    string `conf:"endpoint" conf_extraopts:"required"`
-	Region      string `conf:"region" conf_extraopts:"required"`
-	Secure      bool   `conf:"secure" conf_extraopts:"default=true"`
+	BucketName    string `conf:"bucket_name" conf_extraopts:"required"`
+	AccessKeyID   string `conf:"access_key_id"`
+	SecretKey     string `conf:"secret_access_key"`
+	Endpoint      string `conf:"endpoint" conf_extraopts:"required"`
+	Region        string `conf:"region" conf_extraopts:"required"`
+	BatchDeletion bool   `conf:"batch_deletion" conf_extraopts:"default=true"`
+	Secure        bool   `conf:"secure" conf_extraopts:"default=true"`
 }
 
 type sftpParams struct {
