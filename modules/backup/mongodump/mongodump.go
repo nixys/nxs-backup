@@ -3,6 +3,7 @@ package mongodump
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -292,12 +293,13 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 
 	if err := targz.Tar(tmpMongodumpPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
-		if serr, ok := err.(targz.Error); ok {
+		var serr targz.Error
+		if errors.As(err, &serr) {
 			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
 		}
 		return err
 	}
-	//_ = os.RemoveAll(tmpMongodumpPath)
+	_ = os.RemoveAll(tmpMongodumpPath)
 
 	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", target.dbName)
 
