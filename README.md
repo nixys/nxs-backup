@@ -10,28 +10,29 @@ GNU/Linux distributions.
 ### Features
 
 - Full data backup
-- Discrete and incremental files backups
-- Upload and manage backups to the remote storages:
-    - S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS,
-      GCP)
-    - SSH (SFTP)
-    - FTP
-    - CIFS (SMB)
-    - NFS
-    - WebDAV
-- Database backups:
+  - File backups:
+    - Discrete files backups
+    - Incremental files backups
+  - Database backups:
     - Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
     - Xtrabackup (2.4/8.0) of MySQL/Mariadb/Percona (5.7/8.0/all versions)
     - Regular backups of PostgreSQL (9/10/11/12/13/14/15/16/_all versions_)
     - Basebackups of PostgreSQL (9/10/11/12/13/14/15/_all versions_)
     - Backups of MongoDB (3.0/3.2/3.4/3.6/4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
     - Backups of Redis (_all versions_)
+  - Support of user-defined scripts that extend functionality
+- Upload and manage backups to the remote storages:
+  - S3 (Simple Storage Service that provides object storage through a web interface. Supported by clouds e.g. AWS, GCP)
+  - SSH (SFTP)
+  - FTP
+  - CIFS (SMB)
+  - NFS
+  - WebDAV
 - Fine-tune the database backup process with additional options for optimization purposes
-- Notifications via email and webhooks about events of the backup process
+- Notifications about events of the backup process via email and webhooks
 - Built-in generator of the configuration files to expedite initial setup
 - Easy to read and maintain configuration files with clear transparent structure
 - Possibility to restore backups by standard file/database tools (nxs-backup is not required)
-- Support of user-defined scripts that extend functionality
 - Support of Environment variables in configuration files
 
 ### Who can use the tool?

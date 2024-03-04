@@ -68,6 +68,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 
 	if err = os.Rename(tmpBackupFile, bakDstPath); err != nil {
 		logCh <- logger.Log(jobName, "local").Debugf("Unable to move temp backup: %s", err)
+		err = nil
 		bakDst, err := os.Create(bakDstPath)
 		if err != nil {
 			return err
