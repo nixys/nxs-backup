@@ -173,6 +173,7 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 		dir, err := os.Open(bakDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
+				logCh <- logger.Log(jobName, "local").Debugf("Backups directory `%s` not found. Continue.", bakDir)
 				continue
 			}
 			logCh <- logger.Log(jobName, "local").Errorf("Failed to open directory '%s' with next error: %s", bakDir, err)

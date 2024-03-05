@@ -61,7 +61,7 @@ func (j *job) GetType() string {
 }
 
 func (j *job) GetTargetOfsList() []string {
-	return []string{""}
+	return []string{j.name}
 }
 
 func (j *job) GetStoragesCount() int {
@@ -91,7 +91,9 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
 	if j.skipBackupRotate {
+		logCh <- logger.Log(j.name, "").Debugf("Backup rotate skipped by config.")
 		return nil
 	}
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)

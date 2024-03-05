@@ -198,6 +198,7 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)
 }
 
@@ -246,6 +247,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string, target target) error {
 	tmpMongodumpPath := path.Join(path.Dir(tmpBackupFile), "dump")
+	defer func() { _ = os.RemoveAll(tmpMongodumpPath) }()
 
 	var args []string
 	// define command args
@@ -299,7 +301,6 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		}
 		return err
 	}
-	_ = os.RemoveAll(tmpMongodumpPath)
 
 	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", target.dbName)
 

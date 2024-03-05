@@ -155,6 +155,7 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)
 }
 
