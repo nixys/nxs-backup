@@ -23,6 +23,7 @@ func main() {
 		"start":    arg_cmd.Start,
 		"testCfg":  arg_cmd.TestConfig,
 		"generate": arg_cmd.GenerateConfig,
+		"update":   arg_cmd.SelfUpdate,
 	}
 
 	// Read command line arguments

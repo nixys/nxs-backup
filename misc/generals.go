@@ -3,12 +3,17 @@ package misc
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/sirupsen/logrus"
+
 	"nxs-backup/modules/logger"
 )
 
@@ -17,6 +22,8 @@ const (
 	MonthlyBackupDay = "1"
 	WeeklyBackupDay  = "0"
 	IncBackupType    = "inc_files"
+	LatestVersionURL = "https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup"
+	VersionURL       = "https://github.com/nixys/nxs-backup/releases/download/v"
 )
 
 var DecadesBackupDays = []string{"1", "11", "21"}
@@ -147,4 +154,52 @@ func GetMessage(n logger.LogRecord, project, server string) (m string) {
 	m += fmt.Sprintf("\nMessage: %s\n", n.Message)
 
 	return
+}
+
+// CheckNewVersionAvailable checks if new version is available
+func CheckNewVersionAvailable(ver string) (string, string, error) {
+	var url string
+	newVer, err := semver.NewVersion(ver)
+	if err != nil {
+		return "", "", err
+	}
+	curVer, err := semver.NewVersion(VERSION)
+	if err != nil {
+		return "", "", err
+	}
+
+	if ver != "3" {
+		url = VersionURL + newVer.String() + "/nxs-backup-" + runtime.GOARCH + ".tar.gz"
+	} else {
+		url = LatestVersionURL + "-" + runtime.GOARCH + ".tar.gz"
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("Failed to get new version from GitHub. Url: %s Status: %s ", url, resp.Status)
+	}
+
+	re := regexp.MustCompile(`v?(\d+\.\d+\.\d+(-[\w.]+)?)`)
+	matches := re.FindStringSubmatch(resp.Request.Header.Get("Referer"))
+
+	if len(matches) < 2 {
+		return "", "", fmt.Errorf("no semver version found")
+	}
+
+	newVer, err = semver.NewVersion(matches[1])
+	if err != nil {
+		return "", "", fmt.Errorf("error while parsing version: %v", err)
+	}
+
+	if curVer.LessThan(newVer) {
+		fmt.Printf("The new version is: %s\n", newVer)
+		return newVer.String(), url, nil
+	}
+
+	return "", "", nil
 }
