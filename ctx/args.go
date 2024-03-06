@@ -35,9 +35,14 @@ type GenerateCmd struct {
 	OutPath  string            `arg:"-O,--out-path" help:"Path to the generated configuration file" placeholder:"PATH"`
 }
 
+type UpdateCmd struct {
+	Version string `arg:"-V,--set-version" help:"Use the specific version to update. Example: -V 3.2.0-rc0" default:"3"`
+}
+
 type args struct {
 	Start    *StartCmd    `arg:"subcommand:start"`
 	Generate *GenerateCmd `arg:"subcommand:generate"`
+	Update   *UpdateCmd   `arg:"subcommand:update"`
 	ConfPath string       `arg:"-c,--config" help:"Path to config file" default:"/etc/nxs-backup/nxs-backup.conf" placeholder:"PATH"`
 	TestConf bool         `arg:"-t,--test-config" help:"Check if configuration correct"`
 }

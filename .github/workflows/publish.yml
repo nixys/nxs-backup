@@ -25,12 +25,12 @@ jobs:
     - name: Building ${{ matrix.TARGET }}
       run: echo "${{ matrix.TARGET }}"
 
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
 
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v4
       name: Set up Go
       with:
-        go-version: 1.19
+        go-version: '1.20'
 
     - name: Set version
       run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
@@ -39,7 +39,7 @@ jobs:
       run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w" -v -o nxs-backup
 
     - name: Run UPX
-      uses: crazy-max/ghaction-upx@v2
+      uses: crazy-max/ghaction-upx@v3
       with:
         version: latest
         files: |
@@ -57,7 +57,7 @@ jobs:
           ./LICENSE
         outPath: nxs-backup-${{ matrix.TARGET }}.tar.gz
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: nxs-backup-${{ matrix.TARGET }}.tar.gz
         path: nxs-backup-${{ matrix.TARGET }}.tar.gz
@@ -76,7 +76,7 @@ jobs:
     environment: secure
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set app version
       run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
