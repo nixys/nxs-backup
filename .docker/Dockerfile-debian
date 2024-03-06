@@ -1,4 +1,4 @@
-FROM nixyslab/nxs-backup-bin:3.0.2-rc2 AS bin
+FROM nixyslab/nxs-backup-bin AS bin
 
 FROM debian:12-slim
 
