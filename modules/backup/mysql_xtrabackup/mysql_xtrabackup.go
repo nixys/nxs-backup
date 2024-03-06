@@ -3,15 +3,18 @@ package mysql_xtrabackup
 import (
 	"bytes"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+	"gopkg.in/ini.v1"
+
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
 	"nxs-backup/modules/backend/exec_cmd"
+	"nxs-backup/modules/backend/files"
 	"nxs-backup/modules/backend/targz"
 	"nxs-backup/modules/connectors/mysql_connect"
 	"nxs-backup/modules/logger"
@@ -30,7 +33,7 @@ type job struct {
 
 type target struct {
 	extraKeys       []string
-	authFile        string
+	authFile        *ini.File
 	ignoreDatabases string
 	gzip            bool
 	isSlave         bool
@@ -211,8 +214,19 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 
 	tmpXtrabackupPath := path.Join(path.Dir(tmpBackupFile), "xtrabackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
 
+	authFile, err := files.CreateTmpMysqlAuthFile(target.authFile)
+	if err != nil {
+		logCh <- logger.Log(j.name, "").Errorf("Failed to create tmp auth file. Error: %s", err)
+		return err
+	}
+	defer func() {
+		if err = files.DeleteTmpMysqlAuthFile(authFile); err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Failed to delete tmp auth file. Error: %s", err)
+		}
+	}()
+
 	// define commands args with auth options
-	backupArgs = append(backupArgs, "--defaults-extra-file="+target.authFile)
+	backupArgs = append(backupArgs, "--defaults-extra-file="+authFile)
 	prepareArgs = backupArgs
 	// add backup options
 	backupArgs = append(backupArgs, "--backup", "--target-dir="+tmpXtrabackupPath)

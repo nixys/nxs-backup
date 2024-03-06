@@ -10,10 +10,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
+	"gopkg.in/ini.v1"
 
 	"nxs-backup/interfaces"
 	"nxs-backup/misc"
 	"nxs-backup/modules/backend/exec_cmd"
+	"nxs-backup/modules/backend/files"
 	"nxs-backup/modules/backend/targz"
 	"nxs-backup/modules/connectors/mysql_connect"
 	"nxs-backup/modules/logger"
@@ -28,11 +30,12 @@ type job struct {
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
+	authFilesKeys    map[string][]byte
 }
 
 type target struct {
 	connect      *sqlx.DB
-	authFile     string
+	authFile     *ini.File
 	dbName       string
 	ignoreTables []string
 	extraKeys    []string
@@ -245,9 +248,21 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		}()
 	}
 
+	authFile, err := files.CreateTmpMysqlAuthFile(target.authFile)
+	if err != nil {
+		logCh <- logger.Log(j.name, "").Errorf("Failed to create tmp auth file. Error: %s", err)
+		errs = multierror.Append(errs, err)
+		return errs.ErrorOrNil()
+	}
+	defer func() {
+		if err = files.DeleteTmpMysqlAuthFile(authFile); err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Failed to delete tmp auth file. Error: %s", err)
+		}
+	}()
+
 	var args []string
 	// define command args with auth options
-	args = append(args, "--defaults-file="+target.authFile)
+	args = append(args, "--defaults-file="+authFile)
 	// add tables exclude
 	if len(target.ignoreTables) > 0 {
 		args = append(args, target.ignoreTables...)
@@ -286,7 +301,6 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 
 func (j *job) Close() error {
 	for _, tgt := range j.targets {
-		_ = os.Remove(tgt.authFile)
 		_ = tgt.connect.Close()
 	}
 	for _, st := range j.storages {

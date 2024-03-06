@@ -2,12 +2,9 @@ package mysql_connect
 
 import (
 	"fmt"
-
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/ini.v1"
-
-	"nxs-backup/misc"
 )
 
 type Params struct {
@@ -19,7 +16,7 @@ type Params struct {
 	Socket   string // Socket path
 }
 
-func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, string, error) {
+func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, *ini.File, error) {
 
 	dumpAuthCfg := ini.Empty()
 	_ = dumpAuthCfg.NewSections(sectionName)
@@ -27,7 +24,7 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, string, er
 	if conn.AuthFile != "" {
 		authCfg, err := ini.LoadSources(ini.LoadOptions{AllowBooleanKeys: true}, conn.AuthFile)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 
 		for _, sName := range []string{"mysql", "client", "mysqldump", ""} {
@@ -75,12 +72,6 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, string, er
 		}
 	}
 
-	authFile := misc.GetFileFullPath("/tmp", "my_cnf", "ini", misc.RandString(5), false)
-	err := dumpAuthCfg.SaveTo(authFile)
-	if err != nil {
-		return nil, authFile, err
-	}
-
 	cfg := mysql.NewConfig()
 	cfg.User = conn.User
 	cfg.Passwd = conn.Passwd
@@ -94,5 +85,5 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, string, er
 
 	db, err := sqlx.Connect("mysql", cfg.FormatDSN())
 
-	return db, authFile, err
+	return db, dumpAuthCfg, err
 }
