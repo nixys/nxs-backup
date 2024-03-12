@@ -1,4 +1,4 @@
-![nxs-backup](https://github.com/nixys/go-nxs-backup/assets/28505813/6aa03e3a-db3d-4f34-952b-91cab5fbe49e)
+![nxs-backup](https://github.com/nixys/nxs-backup/assets/28505813/20d0da34-eb6e-4ae4-a5c9-24845407400f)
 
 # nxs-backup
 
