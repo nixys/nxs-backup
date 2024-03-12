@@ -2,7 +2,7 @@
 
 # nxs-backup
 
-nxs-backup is a tool for creating and delivery backus, rotating it locally and on remote storages, compatible with
+nxs-backup is a tool for creating and delivery backups, rotating it locally and on remote storages, compatible with
 GNU/Linux distributions.
 
 ## Introduction
