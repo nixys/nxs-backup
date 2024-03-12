@@ -10,7 +10,7 @@ Works identical like creating a backup using `tar`.
 
 Incremental copies of files are made according to the following scheme:
 
-![Incremental backup scheme](https://image.ibb.co/dtLn2p/nxs_inc_backup_scheme_last_version.jpg)
+![Incremental backup scheme](https://github.com/nixys/nxs-backup/assets/28505813/1eab2e87-69a5-405f-b64e-23c4dcede691)
 
 At the beginning of the year or on the first start of nxs-backup, a full initial backup is created. Then at the
 beginning of each month - an incremental monthly copy from a yearly copy is created. Inside each month there are
