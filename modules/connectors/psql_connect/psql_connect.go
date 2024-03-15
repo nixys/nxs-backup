@@ -2,9 +2,10 @@ package psql_connect
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"net/url"
+	"strings"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -26,9 +27,12 @@ func GetConnUrl(params Params) *url.URL {
 	opts := url.Values{}
 
 	connUrl.User = url.UserPassword(params.User, params.Passwd)
+	connUrl.Path = "/"
+
 	if params.Socket != "" {
-		connUrl.Scheme = "unix"
-		connUrl.Host = params.Socket
+		connUrl.Host = ""
+		connUrl.Scheme = "postgres"
+		opts.Add("host", strings.ReplaceAll(params.Socket, "/.s.PGSQL.5432", ""))
 	} else {
 		connUrl.Scheme = "postgres"
 		connUrl.Host = fmt.Sprintf("%s:%s", params.Host, params.Port)
@@ -43,7 +47,7 @@ func GetConnUrl(params Params) *url.URL {
 		opts.Add("sslcrl", params.SSLCrl)
 	}
 	if params.Database != "" {
-		connUrl.Path = params.Database
+		connUrl.Path += params.Database
 	}
 
 	connUrl.RawQuery = opts.Encode()
