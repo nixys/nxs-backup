@@ -1,18 +1,22 @@
 package arg_cmd
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
-	appctx "github.com/nixys/nxs-go-appctx/v2"
 	"io"
 	"log"
 	"net/http"
-	"nxs-backup/ctx"
 	"os"
 
+	appctx "github.com/nixys/nxs-go-appctx/v2"
+
+	"nxs-backup/ctx"
 	"nxs-backup/misc"
 )
 
 func SelfUpdate(appCtx *appctx.AppContext) error {
+	var tmpBinFile *os.File
 
 	cc := appCtx.CustomCtx().(*ctx.Ctx)
 
@@ -31,31 +35,69 @@ func SelfUpdate(appCtx *appctx.AppContext) error {
 	if err != nil {
 		log.Fatalf("Failed to get current executable: %v", err)
 	}
+	tarPath := exePath + ".tgz"
 	newExePath := exePath + "-new"
 
-	tmpFile, err := os.Create(newExePath)
+	tarFile, err := os.Create(tarPath)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tarFile.Name()) }()
 
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
-	_, err = io.Copy(tmpFile, resp.Body)
+	_, err = io.Copy(tarFile, resp.Body)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tarFile.Close() }()
+
+	_, err = tarFile.Seek(0, 0)
 	if err != nil {
 		return err
 	}
 
-	err = tmpFile.Close()
+	gr, err := gzip.NewReader(tarFile)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = gr.Close() }()
+
+	tr := tar.NewReader(gr)
+
+	tmpBinFile, err = os.OpenFile(newExePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmpBinFile.Name()) }()
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if header.Name == "./nxs-backup" {
+			if _, err := io.Copy(tmpBinFile, tr); err != nil {
+				return err
+			}
+			break
+		}
+	}
+
+	err = tmpBinFile.Close()
 	if err != nil {
 		return err
 	}
 
-	err = os.Rename(tmpFile.Name(), exePath)
+	err = os.Rename(tmpBinFile.Name(), exePath)
 	if err != nil {
 		return err
 	}
