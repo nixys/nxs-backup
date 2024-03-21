@@ -14,7 +14,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/lib/pq v1.10.9
 	github.com/mb0/glob v0.0.0-20160210091149-1eb79d2de6c4
-	github.com/minio/minio-go/v7 v7.0.68
+	github.com/minio/minio-go/v7 v7.0.69
 	github.com/nightlyone/lockfile v1.0.0
 	github.com/nixys/nxs-go-appctx/v2 v2.3.0
 	github.com/nixys/nxs-go-conf v1.1.0

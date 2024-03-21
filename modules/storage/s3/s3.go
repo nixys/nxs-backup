@@ -8,11 +8,11 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
@@ -49,6 +49,14 @@ func Init(name string, params Params) (*s3, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' S3 storage. Error: %v ", name, err)
+	}
+
+	exist, err := s3Client.BucketExists(context.Background(), params.BucketName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to check bucket exist in S3 storage '%s'. Error: %v ", name, err)
+	}
+	if !exist {
+		return nil, fmt.Errorf("Bucket '%s' doesn't exist. ", params.BucketName)
 	}
 
 	return &s3{
@@ -124,86 +132,117 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 	return nil
 }
 
-func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string, jobName, bakType string, full bool) error {
+func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job interfaces.Job, full bool) error {
 
-	var errs *multierror.Error
+	curDate := time.Now().Round(24 * time.Hour)
 
 	objCh := make(chan minio.ObjectInfo)
-	curDate := time.Now()
 
 	// Send object that are needed to be removed to objCh
+	filesList := make(map[string][]minio.ObjectInfo)
+
+	backupDir := path.Join(s.backupPath, ofs)
+
+	for object := range s.client.ListObjects(context.Background(), s.bucketName, minio.ListObjectsOptions{Recursive: true, Prefix: backupDir}) {
+		if object.Err != nil {
+			logCh <- logger.Log(job.GetName(), s.name).Errorf("Failed get objects: '%s'", object.Err)
+			return object.Err
+		}
+
+		if job.GetType() == misc.IncBackupType {
+			if full {
+				filesList["inc"] = append(filesList["inc"], object)
+			} else {
+				intMoy, _ := strconv.Atoi(misc.GetDateTimeNow("moy"))
+				lastMonth := intMoy - s.Months
+
+				var year string
+				if lastMonth > 0 {
+					year = misc.GetDateTimeNow("year")
+				} else {
+					year = misc.GetDateTimeNow("previous_year")
+					lastMonth += 12
+				}
+				rx := regexp.MustCompile(year + "/month_\\d\\d")
+				if rx.MatchString(object.Key) {
+					dirParts := strings.Split(path.Base(object.Key), "_")
+					dirMonth, _ := strconv.Atoi(dirParts[1])
+					if dirMonth < lastMonth {
+						filesList["inc"] = append(filesList["inc"], object)
+					}
+				}
+			}
+		} else {
+			if strings.Contains(object.Key, "daily") {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Days)) {
+					filesList["daily"] = append(filesList["daily"], object)
+				}
+			}
+			if strings.Contains(object.Key, "weekly") {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Weeks*7)) {
+					filesList["weekly"] = append(filesList["weekly"], object)
+				}
+			}
+			if strings.Contains(object.Key, "monthly") {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, -s.Retention.Months, 0)) {
+					filesList["monthly"] = append(filesList["monthly"], object)
+				}
+			}
+		}
+	}
+
 	go func() {
 		defer close(objCh)
-		for _, ofs := range ofsPartsList {
-			backupDir := path.Join(s.backupPath, ofs)
-			basePath := strings.TrimPrefix(backupDir, "/")
+		for period, files := range filesList {
+			needSort := true
+			retentionCount := 0
+			switch period {
+			case "inc":
+				needSort = false
+			case "daily":
+				retentionCount = s.Retention.Days
+			case "weekly":
+				retentionCount = s.Retention.Weeks
+			case "monthly":
+				retentionCount = s.Retention.Months
+			}
 
-			for object := range s.client.ListObjects(context.Background(), s.bucketName, minio.ListObjectsOptions{Recursive: true, Prefix: basePath}) {
-				if object.Err != nil {
-					logCh <- logger.Log(jobName, s.name).Errorf("Failed get objects: '%s'", object.Err)
-					errs = multierror.Append(errs, object.Err)
+			if needSort && s.Retention.UseCount {
+				sort.Slice(files, func(i, j int) bool {
+					return files[i].LastModified.Before(files[j].LastModified)
+				})
+
+				if !job.IsBackupSafety() {
+					retentionCount--
 				}
-
-				if bakType == misc.IncBackupType {
-					if full {
-						objCh <- object
-					} else {
-						intMoy, _ := strconv.Atoi(misc.GetDateTimeNow("moy"))
-						lastMonth := intMoy - s.Months
-
-						var year string
-						if lastMonth > 0 {
-							year = misc.GetDateTimeNow("year")
-						} else {
-							year = misc.GetDateTimeNow("previous_year")
-							lastMonth += 12
-						}
-						rx := regexp.MustCompile(year + "/month_\\d\\d")
-						if rx.MatchString(object.Key) {
-							dirParts := strings.Split(path.Base(object.Key), "_")
-							dirMonth, _ := strconv.Atoi(dirParts[1])
-							if dirMonth < lastMonth {
-								objCh <- object
-							}
-						}
-					}
+				if retentionCount <= len(files) {
+					files = files[:len(files)-retentionCount]
 				} else {
-					fileDate := object.LastModified
-					var retentionDate time.Time
-
-					if strings.Contains(object.Key, "daily") {
-						retentionDate = fileDate.AddDate(0, 0, s.Retention.Days)
-					}
-					if strings.Contains(object.Key, "weekly") {
-						retentionDate = fileDate.AddDate(0, 0, s.Retention.Weeks*7)
-					}
-					if strings.Contains(object.Key, "monthly") {
-						retentionDate = fileDate.AddDate(0, s.Retention.Months, 0)
-					}
-					retentionDate = retentionDate.Truncate(24 * time.Hour)
-					if curDate.After(retentionDate) {
-						objCh <- object
-					}
+					files = files[:0]
 				}
+			}
+
+			for _, file := range files {
+				logCh <- logger.Log(job.GetName(), s.name).Infof("File '%s' going to be deleted", file.Key)
+				objCh <- file
 			}
 		}
 	}()
 
 	if s.batchDeletion {
-		for rErr := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{GovernanceBypass: true}) {
-			logCh <- logger.Log(jobName, s.name).Errorf("Error detected during multiple objects deletion: '%s'", rErr)
-			errs = multierror.Append(errs, rErr.Err)
+		for err := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{GovernanceBypass: true}) {
+			logCh <- logger.Log(job.GetName(), s.name).Errorf("Error detected during multiple objects deletion: '%s'", err)
+			return err.Err
 		}
 	} else {
 		for object := range objCh {
 			if err := s.client.RemoveObject(context.Background(), s.bucketName, object.Key, minio.RemoveObjectOptions{GovernanceBypass: true}); err != nil {
-				logCh <- logger.Log(jobName, s.name).Errorf("Error detected during single object deletion: '%s'", err)
-				errs = multierror.Append(errs, err)
+				logCh <- logger.Log(job.GetName(), s.name).Errorf("Error detected during single object deletion: '%s'", err)
+				return err
 			}
 		}
 	}
-
-	return errs.ErrorOrNil()
+	return nil
 }
 
 func (s *s3) GetFileReader(ofsPath string) (io.Reader, error) {

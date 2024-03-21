@@ -103,9 +103,10 @@ type storageOpts struct {
 }
 
 type retention struct {
-	Days   int `conf:"days" conf_extraopts:"default=7"`
-	Weeks  int `conf:"weeks" conf_extraopts:"default=5"`
-	Months int `conf:"months" conf_extraopts:"default=12"`
+	Days     int  `conf:"days" conf_extraopts:"default=7"`
+	Weeks    int  `conf:"weeks" conf_extraopts:"default=5"`
+	Months   int  `conf:"months" conf_extraopts:"default=12"`
+	UseCount bool `conf:"count_instead_of_period" conf_extraopts:"default=false"`
 }
 
 type storageConnect struct {
@@ -193,7 +194,7 @@ func confRead(confPath string) (confOpts, error) {
 	c.ConfPath = confPath
 
 	if len(c.IncludeCfgs) > 0 {
-		err = c.extraCfgsRead()
+		err = c.extraConfigsRead()
 		if err != nil {
 			return c, err
 		}
@@ -202,7 +203,7 @@ func confRead(confPath string) (confOpts, error) {
 	return c, nil
 }
 
-func (c *confOpts) extraCfgsRead() error {
+func (c *confOpts) extraConfigsRead() error {
 
 	for _, pathRegexp := range c.IncludeCfgs {
 		var p string

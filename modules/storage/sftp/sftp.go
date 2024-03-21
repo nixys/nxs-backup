@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -194,29 +195,23 @@ func (s *SFTP) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmpB
 	return nil
 }
 
-func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string, jobName, bakType string, full bool) (err error) {
+func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	var errs *multierror.Error
-
-	for _, ofsPart := range ofsPartsList {
-		if bakType == misc.IncBackupType {
-			err = s.deleteIncBackup(logCh, jobName, ofsPart, full)
-		} else {
-			err = s.deleteDescBackup(logCh, jobName, ofsPart)
-		}
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
+	if job.GetType() == misc.IncBackupType {
+		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
+	} else {
+		return s.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())
 	}
-
-	return errs.ErrorOrNil()
 }
 
-func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string) error {
+func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
 	var errs *multierror.Error
-	curDate := time.Now()
+	curDate := time.Now().Round(24 * time.Hour)
 
 	for _, period := range []string{"daily", "weekly", "monthly"} {
+		var retentionDate time.Time
+		retentionCount := 0
+
 		bakDir := path.Join(s.backupPath, ofsPart, period)
 		files, err := s.client.ReadDir(bakDir)
 		if err != nil {
@@ -227,33 +222,54 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 			return err
 		}
 
+		switch period {
+		case "daily":
+			retentionCount = s.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -s.Retention.Days)
+		case "weekly":
+			retentionCount = s.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -s.Retention.Weeks*7)
+		case "monthly":
+			retentionCount = s.Retention.Months
+			retentionDate = curDate.AddDate(0, -s.Retention.Months, 0)
+		}
+
+		if s.Retention.UseCount {
+			sort.Slice(files, func(i, j int) bool {
+				return files[i].ModTime().Before(files[j].ModTime())
+			})
+
+			if !safety {
+				retentionCount--
+			}
+			if retentionCount <= len(files) {
+				files = files[:len(files)-retentionCount]
+			} else {
+				files = files[:0]
+			}
+		} else {
+			i := 0
+			for _, file := range files {
+				if file.ModTime().Before(retentionDate) {
+					files[i] = file
+					i++
+				}
+			}
+			files = files[:i]
+		}
+
 		for _, file := range files {
 			if file.Name() == ".." || file.Name() == "." {
 				continue
 			}
 
-			fileDate := file.ModTime()
-			var retentionDate time.Time
-
-			switch period {
-			case "daily":
-				retentionDate = fileDate.AddDate(0, 0, s.Retention.Days)
-			case "weekly":
-				retentionDate = fileDate.AddDate(0, 0, s.Retention.Weeks*7)
-			case "monthly":
-				retentionDate = fileDate.AddDate(0, s.Retention.Months, 0)
-			}
-
-			retentionDate = retentionDate.Truncate(24 * time.Hour)
-			if curDate.After(retentionDate) {
-				err = s.client.Remove(path.Join(bakDir, file.Name()))
-				if err != nil {
-					logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
-						file.Name(), bakDir, err)
-					errs = multierror.Append(errs, err)
-				} else {
-					logCh <- logger.Log(jobName, s.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name(), bakDir)
-				}
+			err = s.client.Remove(path.Join(bakDir, file.Name()))
+			if err != nil {
+				logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
+					file.Name(), bakDir, err)
+				errs = multierror.Append(errs, err)
+			} else {
+				logCh <- logger.Log(jobName, s.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name(), bakDir)
 			}
 		}
 	}
@@ -316,7 +332,7 @@ func (s *SFTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = f.Close() }()
+	defer func() { _ = s.Close() }()
 
 	var buf []byte
 	buf, err = io.ReadAll(f)
