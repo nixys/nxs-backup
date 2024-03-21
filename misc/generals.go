@@ -136,6 +136,9 @@ func GetMessage(n logger.LogRecord, project, server string) (m string) {
 		m += "⚠️[WARNING]\n\n"
 	case logrus.ErrorLevel:
 		m += "‼️[ERROR]\n\n"
+	case logrus.PanicLevel:
+	case logrus.FatalLevel:
+	case logrus.TraceLevel:
 	}
 
 	if project != "" {
@@ -178,7 +181,7 @@ func CheckNewVersionAvailable(ver string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", "", fmt.Errorf("Failed to get new version from GitHub. Url: %s Status: %s ", url, resp.Status)

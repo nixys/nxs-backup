@@ -26,13 +26,6 @@ func Perform(logCh chan logger.LogRecord, job interfaces.Job) error {
 		if err := job.DeleteOldBackups(logCh, ""); err != nil {
 			errs = multierror.Append(errs, err)
 		}
-	} else {
-		defer func() {
-			err := job.DeleteOldBackups(logCh, "")
-			if err != nil {
-				errs = multierror.Append(errs, err)
-			}
-		}()
 	}
 
 	if !job.NeedToMakeBackup() {
@@ -71,6 +64,12 @@ func Perform(logCh chan logger.LogRecord, job interfaces.Job) error {
 		})
 	// cleanup tmp dir
 	_ = os.Remove(tmpDirPath)
+
+	if job.IsBackupSafety() {
+		if err := job.DeleteOldBackups(logCh, ""); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
 
 	logCh <- logger.Log(job.GetName(), "").Info("Finished")
 

@@ -17,7 +17,7 @@ type Storage interface {
 	SetBackupPath(path string)
 	SetRetention(r storage.Retention)
 	DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupPath, ofs, bakType string) error
-	DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string, jobName, bakType string, full bool) error
+	DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job Job, full bool) error
 	GetFileReader(path string) (io.Reader, error)
 	Close() error
 	Clone() Storage
@@ -31,17 +31,21 @@ func (s Storages) Less(i, j int) bool { return s[i].IsLocal() < s[j].IsLocal() }
 func (s Storages) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (s Storages) DeleteOldBackups(logCh chan logger.LogRecord, j Job, ofsPath string) error {
-	var err error
 	var errs *multierror.Error
 
 	for _, st := range s {
 		if ofsPath != "" {
-			err = st.DeleteOldBackups(logCh, []string{ofsPath}, j.GetName(), j.GetType(), true)
+			err := st.DeleteOldBackups(logCh, ofsPath, j, true)
+			if err != nil {
+				errs = multierror.Append(errs, err)
+			}
 		} else {
-			err = st.DeleteOldBackups(logCh, j.GetTargetOfsList(), j.GetName(), j.GetType(), false)
-		}
-		if err != nil {
-			errs = multierror.Append(errs, err)
+			for _, ofsPart := range j.GetTargetOfsList() {
+				err := st.DeleteOldBackups(logCh, ofsPart, j, false)
+				if err != nil {
+					errs = multierror.Append(errs, err)
+				}
+			}
 		}
 	}
 	return errs.ErrorOrNil()

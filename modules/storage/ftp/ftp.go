@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -149,36 +150,32 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 	return nil
 }
 
-func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPartsList []string, jobName, bakType string, full bool) (err error) {
-	var errs *multierror.Error
+func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if err = f.updateConn(); err != nil {
+	if err := f.updateConn(); err != nil {
 		return err
 	}
 
-	for _, ofsPart := range ofsPartsList {
-		if bakType == misc.IncBackupType {
-			err = f.deleteIncBackup(logCh, jobName, ofsPart, full)
-		} else {
-			err = f.deleteDescBackup(logCh, jobName, ofsPart)
-		}
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
+	if job.GetType() == misc.IncBackupType {
+		return f.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
+	} else {
+		return f.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())
 	}
-
-	return errs.ErrorOrNil()
 }
 
-func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string) error {
+func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string, safety bool) error {
 	var errs *multierror.Error
-	curDate := time.Now()
+	curDate := time.Now().Round(24 * time.Hour)
 
 	for _, period := range []string{"daily", "weekly", "monthly"} {
+		var retentionDate time.Time
+		retentionCount := 0
+
 		bakDir := path.Join(f.backupPath, ofsPart, period)
 		files, err := f.conn.List(bakDir)
 		if err != nil {
-			protoErr := err.(*textproto.Error)
+			var protoErr *textproto.Error
+			errors.As(err, &protoErr)
 			if protoErr.Code == 550 {
 				continue
 			}
@@ -186,33 +183,53 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string)
 			return err
 		}
 
+		switch period {
+		case "daily":
+			retentionCount = f.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -f.Retention.Days)
+		case "weekly":
+			retentionCount = f.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -f.Retention.Weeks*7)
+		case "monthly":
+			retentionCount = f.Retention.Months
+			retentionDate = curDate.AddDate(0, -f.Retention.Months, 0)
+		}
+
+		if f.Retention.UseCount {
+			sort.Slice(files, func(i, j int) bool {
+				return files[i].Time.Before(files[j].Time)
+			})
+			if !safety {
+				retentionCount--
+			}
+			if retentionCount <= len(files) {
+				files = files[:len(files)-retentionCount]
+			} else {
+				files = files[:0]
+			}
+		} else {
+			i := 0
+			for _, file := range files {
+				if file.Time.Before(retentionDate) {
+					files[i] = file
+					i++
+				}
+			}
+			files = files[:i]
+		}
+
 		for _, file := range files {
 			if file.Name == ".." || file.Name == "." {
 				continue
 			}
 
-			fileDate := file.Time
-			var retentionDate time.Time
-
-			switch period {
-			case "daily":
-				retentionDate = fileDate.AddDate(0, 0, f.Retention.Days)
-			case "weekly":
-				retentionDate = fileDate.AddDate(0, 0, f.Retention.Weeks*7)
-			case "monthly":
-				retentionDate = fileDate.AddDate(0, f.Retention.Months, 0)
-			}
-
-			retentionDate = retentionDate.Truncate(24 * time.Hour)
-			if curDate.After(retentionDate) {
-				err = f.conn.Delete(path.Join(bakDir, file.Name))
-				if err != nil {
-					logCh <- logger.Log(job, f.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
-						file.Name, bakDir, err)
-					errs = multierror.Append(errs, err)
-				} else {
-					logCh <- logger.Log(job, f.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name, bakDir)
-				}
+			err = f.conn.Delete(path.Join(bakDir, file.Name))
+			if err != nil {
+				logCh <- logger.Log(job, f.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
+					file.Name, bakDir, err)
+				errs = multierror.Append(errs, err)
+			} else {
+				logCh <- logger.Log(job, f.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name, bakDir)
 			}
 		}
 	}

@@ -11,9 +11,10 @@ import (
 )
 
 type Retention struct {
-	Days   int
-	Weeks  int
-	Months int
+	Days     int
+	Weeks    int
+	Months   int
+	UseCount bool
 }
 
 func GetNeedToMakeBackup(day, week, month int) bool {

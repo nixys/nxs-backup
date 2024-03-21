@@ -67,14 +67,14 @@ nxs-backup storage connect settings block description.
 
 ##### S3 connection params
 
-| Name                | Description                                                 | Value    |
-|---------------------|-------------------------------------------------------------|----------|
-| `bucket_name`       | S3 bucket name                                              | `""`     |
-| `endpoint`          | S3 endpoint                                                 | `""`     |
-| `region`            | S3 region                                                   | `""`     |
-| `access_key_id`     | S3 access key                                               | `""`     |
-| `secret_access_key` | S3 secret key                                               | `""`     |
-| `batch_deletion`    | Deleting a group of objects in s3 bucket by single request  | `"true"` |
+| Name                | Description                                                | Value    |
+|---------------------|------------------------------------------------------------|----------|
+| `bucket_name`       | S3 bucket name                                             | `""`     |
+| `endpoint`          | S3 endpoint                                                | `""`     |
+| `region`            | S3 region                                                  | `""`     |
+| `access_key_id`     | S3 access key                                              | `""`     |
+| `secret_access_key` | S3 secret key                                              | `""`     |
+| `batch_deletion`    | Deleting a group of objects in s3 bucket by single request | `"true"` |
 
 ##### SFTP connection params
 
@@ -192,11 +192,19 @@ You may use either `auth_file` or `db_host` or `socket` options. Options priorit
 
 ##### Storage retention
 
-| Name     | Description                                                                                                                                                                          | Value |
-|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------|
-| `days`   | Days to store backups                                                                                                                                                                | `7`   |
-| `weeks`  | Weeks to store backups                                                                                                                                                               | `5`   |
-| `months` | Months to store backups. For *inc_files* backup type determines how many months of incremental copies<br> will be stored relative to the current month. Can take values from 0 to 12 | `12`  |
+| Name                      | Description                                                                                                                                                                          | Value   |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| `days`                    | Days to store backups                                                                                                                                                                | `7`     |
+| `weeks`                   | Weeks to store backups                                                                                                                                                               | `5`     |
+| `months`                  | Months to store backups. For *inc_files* backup type determines how many months of incremental copies<br> will be stored relative to the current month. Can take values from 0 to 12 | `12`    |
+| `count_instead_of_period` | Use backup retention count instead of retention period                                                                                                                               | `false` |
+
+> [!NOTE]
+> If the `count_instead_of_period` option is disabled (the default option), the number of backups falling within the
+> period specified in the parameters will be retained during backup rotation.
+>
+> If the `count_instead_of_period` option is enabled, backup rotation will preserve the number of backups (daily,
+> weekly, monthly) specified in the corresponding parameters, regardless of the backup creation date.
 
 ##### Backup types
 

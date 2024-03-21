@@ -62,10 +62,9 @@ GNU/Linux distributions.
   sudo mv /tmp/nxs-backup /usr/sbin/nxs-backup
   sudo chown root:root /usr/sbin/nxs-backup
   ```
-  > [!NOTE]
-  > nxs-backup is built for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
-  > If you need specific version of nxs-backup, or different architecture, you can find it
-  on [release page](https://github.com/nixys/nxs-backup/releases).
+> [!NOTE]
+> nxs-backup is built for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
+> If you need specific version of nxs-backup, or different architecture, you can find it on [release page](https://github.com/nixys/nxs-backup/releases).
 - Check that installation successful:
   ```sh
   sudo nxs-backup --version
