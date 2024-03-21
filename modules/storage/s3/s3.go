@@ -70,7 +70,7 @@ func Init(name string, params Params) (*s3, error) {
 func (s *s3) IsLocal() int { return 0 }
 
 func (s *s3) SetBackupPath(path string) {
-	s.backupPath = path
+	s.backupPath = strings.TrimPrefix(path, "/")
 }
 
 func (s *s3) SetRetention(r Retention) {
