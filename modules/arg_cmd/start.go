@@ -2,8 +2,12 @@ package arg_cmd
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/nightlyone/lockfile"
 	appctx "github.com/nixys/nxs-go-appctx/v2"
 
 	"nxs-backup/ctx"
@@ -17,6 +21,28 @@ func Start(appCtx *appctx.AppContext) error {
 	cc := appCtx.CustomCtx().(*ctx.Ctx)
 
 	cc.LogCh <- logger.Log("", "").Info("Backup starting.")
+
+	// Crate lockfile
+	lock, err := lockfile.New(path.Join(os.TempDir(), "nxs-backup.lck"))
+	if cc.Cfg.WaitingTimeout != 0 {
+		now := time.Now()
+		waitTill := now.Add(time.Minute * cc.Cfg.WaitingTimeout)
+		for waitTill.After(time.Now()) {
+			if err = lock.TryLock(); err != nil {
+				time.Sleep(time.Second * 5)
+			} else {
+				break
+			}
+		}
+	} else {
+		err = lock.TryLock()
+	}
+	if err != nil {
+		err = fmt.Errorf("Can't start nxs-backup. Another nxs-backup process already running. ")
+		cc.LogCh <- logger.Log("", "").Error(err)
+		return err
+	}
+	defer func() { _ = lock.Unlock() }()
 
 	jobNameArg := cc.CmdParams.(*ctx.StartCmd).JobName
 
