@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"syscall"
 	"time"
 
-	"github.com/nightlyone/lockfile"
 	appctx "github.com/nixys/nxs-go-appctx/v2"
 
 	"nxs-backup/ctx"
@@ -44,35 +42,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	cc := appCtx.CustomCtx().(*ctx.Ctx)
-
-	// Crate lockfile
-	lock, _ := lockfile.New(path.Join(os.TempDir(), "nxs-backup.lck"))
-	if cc.Cfg.WaitingTimeout != 0 {
-		now := time.Now()
-		waitTill := now.Add(time.Minute * cc.Cfg.WaitingTimeout)
-		for waitTill.After(time.Now()) {
-			if err = lock.TryLock(); err != nil {
-				time.Sleep(time.Second * 5)
-			} else {
-				break
-			}
-		}
-	} else {
-		err = lock.TryLock()
-	}
-	if err != nil {
-		fmt.Printf("Another nxs-backup already running")
-		os.Exit(1)
-	}
-	defer func() { _ = lock.Unlock() }()
-
 	// Create logging and notification routine
 	appCtx.RoutineCreate(context.Background(), logging.Runtime)
+
+	cc := appCtx.CustomCtx().(*ctx.Ctx)
 
 	// exec command
 	err = a.CmdHandler(appCtx)
 	// wait for logging and notification tasks complete
+	time.Sleep(time.Millisecond)
 	cc.WG.Wait()
 	if err != nil {
 		fmt.Println("exec error: ", err)

@@ -133,9 +133,9 @@ func GetMessage(n logger.LogRecord, project, server string) (m string) {
 	case logrus.InfoLevel:
 		m += "[INFO]\n\n"
 	case logrus.WarnLevel:
-		m += "⚠️[WARNING]\n\n"
+		m += "⚠️[WARNING]⚠️\n\n"
 	case logrus.ErrorLevel:
-		m += "‼️[ERROR]\n\n"
+		m += "‼️[ERROR]‼️\n\n"
 	case logrus.PanicLevel:
 	case logrus.FatalLevel:
 	case logrus.TraceLevel:
