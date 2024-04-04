@@ -157,6 +157,24 @@ func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 		var retentionDate time.Time
 		retentionCount := 0
 
+		switch period {
+		case "daily":
+			retentionCount = wd.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Days)
+		case "weekly":
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+				continue
+			}
+			retentionCount = wd.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Weeks*7)
+		case "monthly":
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+				continue
+			}
+			retentionCount = wd.Retention.Months
+			retentionDate = curDate.AddDate(0, -wd.Retention.Months, 0)
+		}
+
 		bakDir := path.Join(wd.backupPath, ofsPart, period)
 		files, err := wd.client.Ls(bakDir)
 		if err != nil {
@@ -165,18 +183,6 @@ func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 			}
 			logCh <- logger.Log(jobName, wd.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
 			return err
-		}
-
-		switch period {
-		case "daily":
-			retentionCount = wd.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Days)
-		case "weekly":
-			retentionCount = wd.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Weeks*7)
-		case "monthly":
-			retentionCount = wd.Retention.Months
-			retentionDate = curDate.AddDate(0, -wd.Retention.Months, 0)
 		}
 
 		if wd.Retention.UseCount {

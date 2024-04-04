@@ -212,6 +212,24 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 		var retentionDate time.Time
 		retentionCount := 0
 
+		switch period {
+		case "daily":
+			retentionCount = s.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -s.Retention.Days)
+		case "weekly":
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+				continue
+			}
+			retentionCount = s.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -s.Retention.Weeks*7)
+		case "monthly":
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+				continue
+			}
+			retentionCount = s.Retention.Months
+			retentionDate = curDate.AddDate(0, -s.Retention.Months, 0)
+		}
+
 		bakDir := path.Join(s.backupPath, ofsPart, period)
 		files, err := s.client.ReadDir(bakDir)
 		if err != nil {
@@ -220,18 +238,6 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 			}
 			logCh <- logger.Log(jobName, s.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
 			return err
-		}
-
-		switch period {
-		case "daily":
-			retentionCount = s.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -s.Retention.Days)
-		case "weekly":
-			retentionCount = s.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -s.Retention.Weeks*7)
-		case "monthly":
-			retentionCount = s.Retention.Months
-			retentionDate = curDate.AddDate(0, -s.Retention.Months, 0)
 		}
 
 		if s.Retention.UseCount {

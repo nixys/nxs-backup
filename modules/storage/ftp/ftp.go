@@ -171,6 +171,24 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 		var retentionDate time.Time
 		retentionCount := 0
 
+		switch period {
+		case "daily":
+			retentionCount = f.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -f.Retention.Days)
+		case "weekly":
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+				continue
+			}
+			retentionCount = f.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -f.Retention.Weeks*7)
+		case "monthly":
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+				continue
+			}
+			retentionCount = f.Retention.Months
+			retentionDate = curDate.AddDate(0, -f.Retention.Months, 0)
+		}
+
 		bakDir := path.Join(f.backupPath, ofsPart, period)
 		files, err := f.conn.List(bakDir)
 		if err != nil {
@@ -181,18 +199,6 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 			}
 			logCh <- logger.Log(job, f.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
 			return err
-		}
-
-		switch period {
-		case "daily":
-			retentionCount = f.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -f.Retention.Days)
-		case "weekly":
-			retentionCount = f.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -f.Retention.Weeks*7)
-		case "monthly":
-			retentionCount = f.Retention.Months
-			retentionDate = curDate.AddDate(0, -f.Retention.Months, 0)
 		}
 
 		if f.Retention.UseCount {
