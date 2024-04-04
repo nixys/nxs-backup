@@ -179,11 +179,17 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 				}
 			}
 			if strings.Contains(object.Key, "weekly") {
+				if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+					continue
+				}
 				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Weeks*7)) {
 					filesList["weekly"] = append(filesList["weekly"], object)
 				}
 			}
 			if strings.Contains(object.Key, "monthly") {
+				if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+					continue
+				}
 				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, -s.Retention.Months, 0)) {
 					filesList["monthly"] = append(filesList["monthly"], object)
 				}

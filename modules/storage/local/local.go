@@ -164,6 +164,24 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 		var retentionDate time.Time
 		retentionCount := 0
 
+		switch period {
+		case "daily":
+			retentionCount = l.Retention.Days
+			retentionDate = curDate.AddDate(0, 0, -l.Retention.Days)
+		case "weekly":
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+				continue
+			}
+			retentionCount = l.Retention.Weeks
+			retentionDate = curDate.AddDate(0, 0, -l.Retention.Weeks*7)
+		case "monthly":
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+				continue
+			}
+			retentionCount = l.Retention.Months
+			retentionDate = curDate.AddDate(0, -l.Retention.Months, 0)
+		}
+
 		bakDir := path.Join(l.backupPath, ofsPart, period)
 
 		dir, err := os.Open(bakDir)
@@ -180,18 +198,6 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 		if err != nil {
 			logCh <- logger.Log(jobName, "local").Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
 			return err
-		}
-
-		switch period {
-		case "daily":
-			retentionCount = l.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -l.Retention.Days)
-		case "weekly":
-			retentionCount = l.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -l.Retention.Weeks*7)
-		case "monthly":
-			retentionCount = l.Retention.Months
-			retentionDate = curDate.AddDate(0, -l.Retention.Months, 0)
 		}
 
 		if l.Retention.UseCount {
