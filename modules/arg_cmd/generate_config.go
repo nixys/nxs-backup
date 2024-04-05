@@ -151,7 +151,7 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				Name: "desc_files",
 				Gzip: true,
 				Targets: []string{
-					"/var/www/html/www.site.ru",
+					"/var/www/html/www.site.io",
 					"/some/path/for/backup",
 				},
 				Excludes: []string{
@@ -169,7 +169,7 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				Name: "inc_files",
 				Gzip: true,
 				Targets: []string{
-					"/var/www/html/www.site.ru",
+					"/var/www/html/www.site.io",
 					"/some/path/for/backup",
 				},
 				Excludes: []string{

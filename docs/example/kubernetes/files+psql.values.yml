@@ -1,7 +1,7 @@
 releasePrefix: "-"
 
 envs:
-  ALERT_SYSTEM_URL: "https://you.alert-system.ru/alert"
+  ALERT_SYSTEM_URL: "https://you.alert-system.io/alert"
   PSQL_PORT: 6432
   PSQL_USER: backup-user@app_db  # `@<db_name>` uses if user don't have db with same name
 
@@ -59,7 +59,7 @@ configMaps:
             bucket_name: Backups
             access_key_id: ENV:S3_ACCESS_KEY
             secret_access_key: ENV:S3_SECRET_KEY
-            endpoint: s3.storage.selcloud.ru
+            endpoint: s3.storage.cloud.io
             region: ru-1
       files-desc: |
         job_name: "files backup desc"

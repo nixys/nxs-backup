@@ -77,7 +77,7 @@ configMaps:
           sources:
           - name: desc_files
             targets:
-            - /var/www/html/www.site.ru
+            - /var/www/html/www.site.io
             - /some/path/for/backup
             excludes:
             - tmp
@@ -100,7 +100,7 @@ configMaps:
           sources:
           - name: inc_files
             targets:
-            - /var/www/html/www.site.ru
+            - /var/www/html/www.site.io
             - /some/path/for/backup
             excludes:
             - tmp

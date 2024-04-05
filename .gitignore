@@ -18,3 +18,4 @@ nxs-backup.code-workspace
 .idea
 version.go
 .docker/Dockerfile-local
+vendor
