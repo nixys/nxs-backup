@@ -8,13 +8,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
-	appctx "github.com/nixys/nxs-go-appctx/v2"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/logger"
 	"github.com/sirupsen/logrus"
-	"nxs-backup/misc"
-	"nxs-backup/modules/logger"
 )
 
 // WebhookOpts contains webhook options
@@ -61,17 +59,14 @@ func WebhookInit(opts WebhookOpts) (*webhook, error) {
 	return wh, nil
 }
 
-func (wh *webhook) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-
+func (wh *webhook) Send(log *logrus.Logger, n logger.LogRecord) {
 	if n.Level > wh.opts.MessageLevel {
 		return
 	}
 
-	req, err := http.NewRequest(http.MethodPost, wh.opts.WebhookURL, bytes.NewBuffer(wh.getJsonData(appCtx, n)))
+	req, err := http.NewRequest(http.MethodPost, wh.opts.WebhookURL, bytes.NewBuffer(wh.getJsonData(log, n)))
 	if err != nil {
-		appCtx.Log().Errorf("Can't create webhook request: %v", err)
+		log.Errorf("Can't create webhook request: %v", err)
 		return
 	}
 
@@ -81,20 +76,20 @@ func (wh *webhook) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.
 
 	resp, err := wh.hc.Do(req)
 	if err != nil {
-		appCtx.Log().Errorf("Request error: %v", err)
+		log.Errorf("Request error: %v", err)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
-	appCtx.Log().Debugf("HTTP response code: %d, body: %v", resp.StatusCode, string(body))
+	log.Tracef("HTTP response code: %d, body: %v", resp.StatusCode, string(body))
 
 	if resp.StatusCode != 200 {
-		appCtx.Log().Errorf("Unexpected HTTP response code: %d, body: %v", resp.StatusCode, string(body))
+		log.Errorf("Unexpected HTTP response code: %d, body: %v", resp.StatusCode, string(body))
 	}
 }
 
-func (wh *webhook) getJsonData(appCtx *appctx.AppContext, n logger.LogRecord) []byte {
+func (wh *webhook) getJsonData(log *logrus.Logger, n logger.LogRecord) []byte {
 	data := make(map[string]interface{})
 
 	data[wh.opts.PayloadMessageKey] = misc.GetMessage(n, wh.opts.ProjectName, wh.opts.ServerName)
@@ -104,7 +99,7 @@ func (wh *webhook) getJsonData(appCtx *appctx.AppContext, n logger.LogRecord) []
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		appCtx.Log().Errorf("Can't marshal json for webhook request: %v", err)
+		log.Errorf("Can't marshal json for webhook request: %v", err)
 		return nil
 	}
 

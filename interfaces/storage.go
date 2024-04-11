@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"nxs-backup/misc"
-	"nxs-backup/modules/logger"
-	"nxs-backup/modules/storage"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/storage"
 )
 
 type Storage interface {

@@ -16,11 +16,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/misc"
-	"nxs-backup/modules/backend/webdav"
-	"nxs-backup/modules/logger"
-	. "nxs-backup/modules/storage"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/webdav"
+	"github.com/nixys/nxs-backup/modules/logger"
+	. "github.com/nixys/nxs-backup/modules/storage"
 )
 
 type webDav struct {

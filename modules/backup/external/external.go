@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type job struct {

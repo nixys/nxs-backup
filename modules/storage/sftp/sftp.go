@@ -18,10 +18,10 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/misc"
-	"nxs-backup/modules/logger"
-	. "nxs-backup/modules/storage"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/logger"
+	. "github.com/nixys/nxs-backup/modules/storage"
 )
 
 type SFTP struct {

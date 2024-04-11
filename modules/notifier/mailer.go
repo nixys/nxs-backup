@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"sync"
 
-	appctx "github.com/nixys/nxs-go-appctx/v2"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/gomail.v2"
 
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type MailOpts struct {
@@ -47,10 +45,7 @@ func MailerInit(mailCfg MailOpts) (*mailer, error) {
 }
 
 // Send sends notification via Email
-func (m *mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-
+func (m *mailer) Send(log *logrus.Logger, n logger.LogRecord) {
 	if n.Level > m.opts.MessageLevel {
 		return
 	}
@@ -77,7 +72,7 @@ func (m *mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.Wa
 		d := gomail.NewDialer(m.opts.SmtpServer, m.opts.SmtpPort, m.opts.SmtpUser, m.opts.SmtpPassword)
 		sc, err = d.Dial()
 		if err != nil {
-			appCtx.Log().Errorf("Failed to dial SMTP server. Error: %v", err)
+			log.Errorf("Failed to dial SMTP server. Error: %v", err)
 			return
 		}
 	} else {
@@ -85,7 +80,7 @@ func (m *mailer) Send(appCtx *appctx.AppContext, n logger.LogRecord, wg *sync.Wa
 	}
 
 	if err = gomail.Send(sc, msg); err != nil {
-		appCtx.Log().Errorf("Could not send email: %v", err)
+		log.Errorf("Could not send email: %v", err)
 	}
 }
 

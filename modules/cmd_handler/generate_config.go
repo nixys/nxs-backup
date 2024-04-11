@@ -1,18 +1,16 @@
-package arg_cmd
+package cmd_handler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-	appctx "github.com/nixys/nxs-go-appctx/v2"
+	"github.com/alexflint/go-arg"
 	"gopkg.in/yaml.v3"
 
-	"nxs-backup/ctx"
+	"github.com/nixys/nxs-backup/misc"
 )
 
 type jobCfgYml struct {
@@ -127,25 +125,40 @@ type smbParams struct {
 	Share    string `yaml:"share"`
 }
 
-func GenerateConfig(appCtx *appctx.AppContext) error {
+type GenerateConfig struct {
+	done     chan error
+	cfgPath  string
+	jobType  string
+	outPath  string
+	arg      *arg.Parser
+	storages map[string]string
+}
 
-	var errs *multierror.Error
+func InitGenerateConfig(dc chan error, cfgPath, jt, op string, st map[string]string, ap *arg.Parser) *GenerateConfig {
+	return &GenerateConfig{
+		done:     dc,
+		arg:      ap,
+		cfgPath:  cfgPath,
+		jobType:  jt,
+		outPath:  op,
+		storages: st,
+	}
+}
 
-	cc := appCtx.CustomCtx().(*ctx.Ctx)
-	params := cc.CmdParams.(*ctx.GenerateCmd)
+func (gc *GenerateConfig) Run() {
 
 	job := jobCfgYml{
-		JobName:         fmt.Sprintf("PROJECT-%s", params.Type),
-		JobType:         params.Type,
+		JobName:         fmt.Sprintf("PROJECT-%s", gc.jobType),
+		JobType:         gc.jobType,
 		DeferredCopying: false,
 		SafetyBackup:    false,
 		TmpDir:          "/var/nxs-backup/dump_tmp",
 	}
-	cfgName := params.Type + ".conf"
+	cfgName := gc.jobType + ".conf"
 
-	switch params.Type {
-	case ctx.AllowedJobTypes[0]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	switch gc.jobType {
+	case misc.AllowedJobTypes[0]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "desc_files",
@@ -162,8 +175,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				SaveAbsPath: true,
 			},
 		}
-	case ctx.AllowedJobTypes[1]:
-		job.StoragesOptions = genStorageOpts(params.Storages, true)
+	case misc.AllowedJobTypes[1]:
+		job.StoragesOptions = genStorageOpts(gc.storages, true)
 		job.Sources = []sourceYaml{
 			{
 				Name: "inc_files",
@@ -180,8 +193,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				SaveAbsPath: true,
 			},
 		}
-	case ctx.AllowedJobTypes[2]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[2]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "mysql",
@@ -205,8 +218,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				ExtraKeys: "--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction",
 			},
 		}
-	case ctx.AllowedJobTypes[3]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[3]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "mysql_xtrabackup",
@@ -227,8 +240,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				ExtraKeys:         "--datadir=/path/to/mysql/data",
 			},
 		}
-	case ctx.AllowedJobTypes[4]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[4]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "psql",
@@ -249,8 +262,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				ExtraKeys: "",
 			},
 		}
-	case ctx.AllowedJobTypes[5]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[5]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "psql_basebackup",
@@ -266,8 +279,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				ExtraKeys: "",
 			},
 		}
-	case ctx.AllowedJobTypes[6]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[6]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "mongodb",
@@ -291,8 +304,8 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				ExtraKeys:          "",
 			},
 		}
-	case ctx.AllowedJobTypes[7]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[7]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
 				Name: "redis",
@@ -305,34 +318,33 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 				},
 			},
 		}
-	case ctx.AllowedJobTypes[8]:
-		job.StoragesOptions = genStorageOpts(params.Storages, false)
+	case misc.AllowedJobTypes[8]:
+		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.DumpCmd = "/path/to/backup_script.sh"
 		job.TmpDir = ""
 	default:
-		errs = multierror.Append(fmt.Errorf("Unknown job type. Allowed types: %s ", strings.Join(ctx.AllowedJobTypes, ", ")))
-	}
-
-	if errs != nil {
-		return errs
+		printGenCfgErr(gc.done, fmt.Errorf("Unknown backup type. Allowed types: %s ", strings.Join(misc.AllowedJobTypes, ", ")), gc.arg)
+		return
 	}
 
 	// update storage connections
-	if err := updateStorageConnects(cc.ConfigPath, params.Storages); err != nil {
-		return err
+	if err := updateStorageConnects(gc.cfgPath, gc.storages); err != nil {
+		printGenCfgErr(gc.done, err, gc.arg)
+		return
 	}
 
 	// create config file
 
-	var cfgPath string
-	if params.OutPath == "" {
-		cfgPath = path.Join(path.Dir(cc.ConfigPath), "conf.d", cfgName)
+	var newCfgPath string
+	if gc.outPath == "" {
+		newCfgPath = path.Join(path.Dir(gc.cfgPath), "conf.d", cfgName)
 	} else {
-		cfgPath = params.OutPath
+		newCfgPath = gc.outPath
 	}
-	file, err := os.Create(cfgPath)
+	file, err := os.Create(newCfgPath)
 	if err != nil {
-		return err
+		printGenCfgErr(gc.done, err, gc.arg)
+		return
 	}
 	defer func() { _ = file.Close() }()
 
@@ -341,12 +353,13 @@ func GenerateConfig(appCtx *appctx.AppContext) error {
 	defer func() { _ = e.Close() }()
 
 	if err = e.Encode(&job); err != nil {
-		return err
+		printGenCfgErr(gc.done, err, gc.arg)
+		return
 	}
 
-	fmt.Printf("Successfully added new sample config file: %s\n", cfgPath)
+	fmt.Printf("Successfully added new sample config file: %s\n", newCfgPath)
 
-	return nil
+	return
 }
 
 func genStorageOpts(storages map[string]string, incBackup bool) (sts []storageOptsYaml) {
@@ -379,7 +392,7 @@ func genStorageOpts(storages map[string]string, incBackup bool) (sts []storageOp
 }
 
 func updateStorageConnects(cfgPath string, storages map[string]string) error {
-	content, err := ioutil.ReadFile(cfgPath)
+	content, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return err
 	}
@@ -441,8 +454,9 @@ func updateStorageConnects(cfgPath string, storages map[string]string) error {
 }
 
 func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
-	allowedStorageTypes := []string{
+	ast := []string{
 		"s3",
+		"ssh",
 		"scp",
 		"sftp",
 		"ftp",
@@ -456,7 +470,7 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 		st := storageConnect{Name: stName}
 		//stNode := yaml.Node{}
 		switch stType {
-		case allowedStorageTypes[0]:
+		case ast[0]:
 			st.S3Params = &s3Params{
 				BucketName:      "my_bucket",
 				AccessKeyID:     "my_access_key",
@@ -464,28 +478,21 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 				Endpoint:        "my.s3.endpoint",
 				Region:          "my-s3-region",
 			}
-		case allowedStorageTypes[1]:
+		case ast[1], ast[2], ast[3]:
 			st.ScpParams = &sftpParams{
 				Host:     "my_ssh_host",
 				Port:     22,
 				User:     "my_ssh_user",
 				Password: "my_ssh_password",
 			}
-		case allowedStorageTypes[2]:
-			st.SftpParams = &sftpParams{
-				Host:     "my_ssh_host",
-				Port:     22,
-				User:     "my_ssh_user",
-				Password: "my_ssh_password",
-			}
-		case allowedStorageTypes[3]:
+		case ast[4]:
 			st.FtpParams = &ftpParams{
 				Host:     "my_ftp_host",
 				Port:     21,
 				User:     "my_ftp_user",
 				Password: "my_ftp_pass",
 			}
-		case allowedStorageTypes[4]:
+		case ast[5]:
 			st.SmbParams = &smbParams{
 				Host:     "my_smb_host",
 				Port:     445,
@@ -494,7 +501,7 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 				Share:    "my_smb_share_path",
 				Domain:   "my_smb_domain",
 			}
-		case allowedStorageTypes[5]:
+		case ast[6]:
 			st.NfsParams = &nfsParams{
 				Host:   "my_nfs_host",
 				Port:   111,
@@ -502,7 +509,7 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 				UID:    1000,
 				GID:    1000,
 			}
-		case allowedStorageTypes[6]:
+		case ast[7]:
 			st.WebDavParams = &webDavParams{
 				URL:        "my_webdav_url",
 				Username:   "my_webdav_user",
@@ -510,7 +517,7 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 				OAuthToken: "my_webdav_oauth_token",
 			}
 		default:
-			return nil, fmt.Errorf("Unknown strage type. Supported types: %s ", strings.Join(allowedStorageTypes, ", "))
+			return nil, fmt.Errorf("Unknown storage type. Supported types: %s ", strings.Join(ast, ", "))
 		}
 		data, err := yaml.Marshal(st)
 		if err != nil {
@@ -524,4 +531,10 @@ func getStorageConnects(storages map[string]string) ([]*yaml.Node, error) {
 	}
 
 	return sts, nil
+}
+
+func printGenCfgErr(dc chan error, err error, arg *arg.Parser) {
+	_, _ = fmt.Fprintf(os.Stderr, "Can't generate config: %v\n", err)
+	_ = arg.FailSubcommand(err.Error(), "generate")
+	dc <- err
 }

@@ -2,7 +2,6 @@ package desc_files
 
 import (
 	"fmt"
-	"nxs-backup/modules/backend/exec_cmd"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,10 +10,11 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/glob"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/misc"
-	"nxs-backup/modules/backend/targz"
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/exec_cmd"
+	"github.com/nixys/nxs-backup/modules/backend/targz"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type job struct {

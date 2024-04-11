@@ -1,13 +1,11 @@
 package interfaces
 
 import (
-	"sync"
+	"github.com/sirupsen/logrus"
 
-	appctx "github.com/nixys/nxs-go-appctx/v2"
-
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type Notifier interface {
-	Send(ctx *appctx.AppContext, log logger.LogRecord, wg *sync.WaitGroup)
+	Send(log *logrus.Logger, rec logger.LogRecord)
 }

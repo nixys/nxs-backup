@@ -14,7 +14,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/sirupsen/logrus"
 
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 const (
@@ -25,6 +25,18 @@ const (
 	LatestVersionURL = "https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup"
 	VersionURL       = "https://github.com/nixys/nxs-backup/releases/download/v"
 )
+
+var AllowedJobTypes = []string{
+	"desc_files",
+	"inc_files",
+	"mysql",
+	"mysql_xtrabackup",
+	"postgresql",
+	"postgresql_basebackup",
+	"mongodb",
+	"redis",
+	"external",
+}
 
 var DecadesBackupDays = []string{"1", "11", "21"}
 

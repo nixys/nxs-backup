@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/modules/backend/notifier"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/modules/notifier"
 )
 
 var messageLevels = map[string]logrus.Level{
@@ -32,19 +32,21 @@ var messageLevels = map[string]logrus.Level{
 	"INFO":    logrus.InfoLevel,
 }
 
-func notifiersInit(conf confOpts) ([]interfaces.Notifier, error) {
+func notifiersInit(conf ConfOpts) ([]interfaces.Notifier, error) {
 	var errs *multierror.Error
 	var ns []interfaces.Notifier
 
 	if conf.Notifications.Mail.Enabled {
 		var mailErrs *multierror.Error
 		mailList := conf.Notifications.Mail.Recipients
-		mailList = append(mailList, conf.Notifications.Mail.From)
 		for _, a := range mailList {
 			_, err := mail.ParseAddress(a)
 			if err != nil {
-				mailErrs = multierror.Append(mailErrs, fmt.Errorf("Email init fail. Failed to parse email \"%s\". %s ", a, err))
+				mailErrs = multierror.Append(mailErrs, fmt.Errorf("Email init fail. Failed to parse email \"%s\". %v ", a, err))
 			}
+		}
+		if _, err := mail.ParseAddress(conf.Notifications.Mail.From); err != nil {
+			mailErrs = multierror.Append(mailErrs, fmt.Errorf("Email init fail. Failed to parse `mail_from` \"%s\". %v ", conf.Notifications.Mail.From, err))
 		}
 
 		ml, ok := messageLevels[conf.Notifications.Mail.MessageLevel]
