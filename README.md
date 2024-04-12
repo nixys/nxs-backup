@@ -106,6 +106,10 @@ GNU/Linux distributions.
   ```
   where $NAMESPACE_SERVICE_NAME is the namespace in which to back up your data
 
+## Documentation
+
+For detailed information on using the tool please visit [nxs-backup.io](https://nxs-backup.io).
+
 ## Roadmap
 
 Following features are already in backlog for our development team and will be released soon:
