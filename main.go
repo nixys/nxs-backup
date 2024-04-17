@@ -1,61 +1,51 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"errors"
 	"os"
 	"syscall"
-	"time"
 
-	appctx "github.com/nixys/nxs-go-appctx/v2"
+	appctx "github.com/nixys/nxs-go-appctx/v3"
 
-	"nxs-backup/ctx"
-	"nxs-backup/modules/arg_cmd"
-	"nxs-backup/modules/logger"
-	"nxs-backup/routines/logging"
+	"github.com/nixys/nxs-backup/ctx"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/routines/cmd_handler"
+	"github.com/nixys/nxs-backup/routines/notification"
 )
 
 func main() {
-
-	subCmds := ctx.SubCmds{
-		"start":    arg_cmd.Start,
-		"testCfg":  arg_cmd.TestConfig,
-		"generate": arg_cmd.GenerateConfig,
-		"update":   arg_cmd.SelfUpdate,
-	}
-
-	// Read command line arguments
-	a := ctx.ReadArgs(subCmds)
-
-	// Init appctx
-	appCtx, err := appctx.ContextInit(appctx.Settings{
-		CustomContext:    &ctx.Ctx{},
-		Args:             &a,
-		CfgPath:          a.ConfigPath,
-		TermSignals:      []os.Signal{syscall.SIGTERM, syscall.SIGINT},
-		ReloadSignals:    []os.Signal{syscall.SIGHUP},
-		LogrotateSignals: []os.Signal{syscall.SIGUSR1},
-		LogFormatter:     &logger.LogFormatter{},
-	})
+	err := appctx.Init(nil).
+		RoutinesSet(
+			map[string]appctx.RoutineParam{
+				"handler": {
+					Handler: cmd_handler.Runtime,
+				},
+				"notification": {
+					Handler: notification.Runtime,
+				},
+			},
+		).
+		ValueInitHandlerSet(ctx.AppCtxInit).
+		SignalsSet([]appctx.SignalsParam{
+			{
+				Signals: []os.Signal{
+					syscall.SIGTERM,
+					syscall.SIGINT,
+				},
+				Handler: sigHandlerTerm,
+			},
+		}).
+		Run()
 	if err != nil {
-		fmt.Printf("Failed to init nxs-backup with next error:\n%s", err)
-		os.Exit(1)
+		switch {
+		case errors.Is(err, misc.ErrArgSuccessExit):
+			os.Exit(0)
+		default:
+			os.Exit(1)
+		}
 	}
+}
 
-	// Create logging and notification routine
-	appCtx.RoutineCreate(context.Background(), logging.Runtime)
-
-	cc := appCtx.CustomCtx().(*ctx.Ctx)
-
-	// exec command
-	err = a.CmdHandler(appCtx)
-	// wait for logging and notification tasks complete
-	time.Sleep(time.Millisecond)
-	cc.WG.Wait()
-	if err != nil {
-		fmt.Println("exec error: ", err)
-		os.Exit(1)
-	}
-
-	os.Exit(0)
+func sigHandlerTerm(sig appctx.Signal) {
+	sig.Shutdown(nil)
 }

@@ -1,7 +1,7 @@
 package interfaces
 
 import (
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type Job interface {

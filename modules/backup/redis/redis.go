@@ -10,12 +10,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/misc"
-	"nxs-backup/modules/backend/exec_cmd"
-	"nxs-backup/modules/backend/targz"
-	"nxs-backup/modules/connectors/redis_connect"
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/ds/redis_connect"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/exec_cmd"
+	"github.com/nixys/nxs-backup/modules/backend/targz"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type job struct {

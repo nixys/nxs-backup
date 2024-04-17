@@ -10,18 +10,17 @@ import (
 type LogFormatter struct{}
 
 func (f *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-
 	var (
-		out, job, storage string
-		s                 []string
+		out, job, store string
+		s               []string
 	)
 
 	for k, v := range entry.Data {
 		switch k {
 		case "job":
 			job = fmt.Sprintf("%s", v)
-		case "storage":
-			storage = fmt.Sprintf("%s", v)
+		case "store":
+			store = fmt.Sprintf("%s", v)
 		default:
 			s = append(s, fmt.Sprintf("%s: %v", k, v))
 		}
@@ -31,8 +30,8 @@ func (f *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if job != "" {
 		out += fmt.Sprintf("[%s]", job)
 	}
-	if storage != "" {
-		out += fmt.Sprintf("(%s)", storage)
+	if store != "" {
+		out += fmt.Sprintf("(%s)", store)
 	}
 	out += fmt.Sprintf(" %s", entry.Message)
 	if len(s) > 0 {

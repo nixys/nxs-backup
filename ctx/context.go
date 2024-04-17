@@ -5,111 +5,193 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
-	appctx "github.com/nixys/nxs-go-appctx/v2"
+	"github.com/hashicorp/go-multierror"
+	appctx "github.com/nixys/nxs-go-appctx/v3"
+	"github.com/sirupsen/logrus"
 
-	"nxs-backup/interfaces"
-	"nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/generate_config"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/self_update"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/start_backup"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/test_config"
+	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 // Ctx defines application custom context
 type Ctx struct {
-	ConfigPath   string
-	CmdParams    interface{}
-	Storages     interfaces.Storages
-	Jobs         interfaces.Jobs
-	FilesJobs    interfaces.Jobs
-	DBsJobs      interfaces.Jobs
-	ExternalJobs interfaces.Jobs
-	LogCh        chan logger.LogRecord
-	Notifiers    []interfaces.Notifier
-	WG           *sync.WaitGroup
-
-	Cfg confOpts
+	Cmd       interfaces.Handler
+	Log       *logrus.Logger
+	Done      chan error
+	EventCh   chan logger.LogRecord
+	EventsWG  *sync.WaitGroup
+	Notifiers []interfaces.Notifier
 }
 
-// Init initiates application custom context
-func (c *Ctx) Init(opts appctx.CustomContextFuncOpts) (appctx.CfgData, error) {
+type app struct {
+	waitTimeout time.Duration
+	jobs        map[string]interfaces.Job
+	fileJobs    interfaces.Jobs
+	dbJobs      interfaces.Jobs
+	extJobs     interfaces.Jobs
+	initErrs    *multierror.Error
+}
 
-	// Set application context
-	arg := opts.Args.(*ArgsParams)
-	c.CmdParams = arg.CmdParams
-	c.ConfigPath = arg.ConfigPath
+func AppCtxInit() (any, error) {
+	c := &Ctx{
+		EventsWG: &sync.WaitGroup{},
+		EventCh:  make(chan logger.LogRecord),
+		Done:     make(chan error),
+	}
 
-	// Read config file
-	conf, err := confRead(opts.Config)
+	ra, err := ReadArgs()
 	if err != nil {
-		fmt.Printf("Failed to read configuration file with next errors:\n%v", err)
-		os.Exit(1)
+		return nil, err
 	}
-	c.Cfg = conf
 
-	if conf.LogFile != "stdout" && conf.LogFile != "stderr" {
-		if err = os.MkdirAll(path.Dir(conf.LogFile), os.ModePerm); err != nil {
-			fmt.Printf("Failed to create logfile dir: %v", err)
-			os.Exit(1)
+	l, _ := appctx.DefaultLogInit(os.Stderr, logrus.InfoLevel, &logrus.TextFormatter{})
+	c.Log = l
+
+	switch ra.Cmd {
+	case "update":
+		c.Cmd = self_update.Init(
+			self_update.Opts{
+				Version: ra.CmdParams.(*UpdateCmd).Version,
+				Done:    c.Done,
+			},
+		)
+	case "generate":
+		if _, err = confRead(ra.ConfigPath); err != nil {
+			printInitError("Failed to read configuration file: %v\n", err)
+			return nil, err
 		}
+		cp := ra.CmdParams.(*GenerateCmd)
+		c.Cmd = generate_config.Init(
+			generate_config.Opts{
+				Done:     c.Done,
+				CfgPath:  ra.ConfigPath,
+				JobType:  cp.Type,
+				OutPath:  cp.OutPath,
+				Arg:      ra.Arg,
+				Storages: cp.Storages,
+			},
+		)
+	case "testCfg":
+		a, err := appInit(c, ra.ConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		c.Cmd = test_config.Init(
+			test_config.Opts{
+				InitErr:  a.initErrs.ErrorOrNil(),
+				Done:     c.Done,
+				FileJobs: a.fileJobs,
+				DBJobs:   a.dbJobs,
+				ExtJobs:  a.extJobs,
+			},
+		)
+	case "start":
+		a, err := appInit(c, ra.ConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		c.Cmd = start_backup.Init(
+			start_backup.Opts{
+				InitErr:  a.initErrs.ErrorOrNil(),
+				Done:     c.Done,
+				EvCh:     c.EventCh,
+				WaitPrev: a.waitTimeout,
+				JobName:  ra.CmdParams.(*StartCmd).JobName,
+				Jobs:     a.jobs,
+				FileJobs: a.fileJobs,
+				DBJobs:   a.dbJobs,
+				ExtJobs:  a.extJobs,
+			},
+		)
 	}
 
+	return c, nil
+}
+
+func printInitError(ft string, err error) {
+	_, _ = fmt.Fprintf(os.Stderr, ft, err)
+}
+
+func appInit(c *Ctx, cfgPath string) (app, error) {
+	a := app{
+		jobs: make(map[string]interfaces.Job),
+	}
+
+	conf, err := confRead(cfgPath)
+	if err != nil {
+		printInitError("Failed to read configuration file: %v\n", err)
+		return a, err
+	}
+
+	a.waitTimeout = conf.WaitingTimeout
+
+	if err = logInit(c, conf.LogFile, conf.LogLevel); err != nil {
+		printInitError("Failed to init log file: %v\n", err)
+		return a, err
+	}
+
+	// Notifications init
+	if err = notifiersInit(c, conf); err != nil {
+		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
+	}
+	// Init app
 	storages, err := storagesInit(conf)
 	if err != nil {
-		fmt.Printf("Failed init storages with next errors:\n%v", err)
-		os.Exit(1)
-	}
-	for _, s := range storages {
-		c.Storages = append(c.Storages, s)
+		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
 
-	c.Jobs, err = jobsInit(conf.Jobs, storages)
+	jobs, err := jobsInit(conf, storages)
 	if err != nil {
-		fmt.Printf("Failed init jobs with next errors:\n%v", err)
-		os.Exit(1)
+		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
-	for _, job := range c.Jobs {
+
+	for _, job := range jobs {
 		switch job.GetType() {
 		case "desc_files", "inc_files":
-			c.FilesJobs = append(c.FilesJobs, job)
+			a.fileJobs = append(a.fileJobs, job)
 		case "mysql", "mysql_xtrabackup", "postgresql", "postgresql_basebackup", "mongodb", "redis":
-			c.DBsJobs = append(c.DBsJobs, job)
+			a.dbJobs = append(a.dbJobs, job)
 		case "external":
-			c.ExternalJobs = append(c.ExternalJobs, job)
+			a.extJobs = append(a.extJobs, job)
+		}
+		a.jobs[job.GetName()] = job
+	}
+
+	return a, nil
+}
+
+func logInit(c *Ctx, file, level string) error {
+	var (
+		f   *os.File
+		l   logrus.Level
+		err error
+	)
+
+	switch file {
+	case "stdout":
+		f = os.Stdout
+	case "stderr":
+		f = os.Stderr
+	default:
+		if err = os.MkdirAll(path.Dir(file), os.ModePerm); err != nil {
+			return err
+		}
+		if f, err = os.OpenFile(file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600); err != nil {
+			return err
 		}
 	}
 
-	c.LogCh = make(chan logger.LogRecord)
-
-	c.Notifiers, err = notifiersInit(conf)
-	if err != nil {
-		fmt.Printf("Failed init notifications with next errors:\n%v", err)
-		os.Exit(1)
+	// Validate log level
+	if l, err = logrus.ParseLevel(level); err != nil {
+		return fmt.Errorf("log init: %w", err)
 	}
-	c.WG = new(sync.WaitGroup)
 
-	return appctx.CfgData{
-		LogFile:  conf.LogFile,
-		LogLevel: conf.LogLevel,
-		PidFile:  conf.PidFile,
-	}, nil
-}
-
-// Reload reloads application custom context
-func (c *Ctx) Reload(opts appctx.CustomContextFuncOpts) (appctx.CfgData, error) {
-
-	opts.Log.Debug("reloading context")
-
-	_ = c.Jobs.Close()
-	_ = c.Storages.Close()
-
-	return c.Init(opts)
-}
-
-// Free frees application custom context
-func (c *Ctx) Free(opts appctx.CustomContextFuncOpts) int {
-
-	opts.Log.Debug("freeing context")
-
-	_ = c.Jobs.Close()
-	_ = c.Storages.Close()
-
-	return 0
+	c.Log, err = appctx.DefaultLogInit(f, l, &logger.LogFormatter{})
+	return err
 }

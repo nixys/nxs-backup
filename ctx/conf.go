@@ -1,17 +1,21 @@
 package ctx
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	conf "github.com/nixys/nxs-go-conf"
 
-	"nxs-backup/misc"
+	"github.com/nixys/nxs-backup/misc"
 )
 
-type confOpts struct {
+type ConfOpts struct {
 	ProjectName     string           `conf:"project_name"`
 	ServerName      string           `conf:"server_name" conf_extraopts:"default=localhost"`
 	Notifications   notifications    `conf:"notifications"`
@@ -173,9 +177,13 @@ type smbParams struct {
 	ConnectionTimeout time.Duration `conf:"connection_timeout" conf_extraopts:"default=10"`
 }
 
-func confRead(confPath string) (confOpts, error) {
+func confRead(confPath string) (ConfOpts, error) {
 
-	var c confOpts
+	var c ConfOpts
+
+	if err := checkConfigPath(confPath); err != nil {
+		return c, err
+	}
 
 	p, err := misc.PathNormalize(confPath)
 	if err != nil {
@@ -203,7 +211,7 @@ func confRead(confPath string) (confOpts, error) {
 	return c, nil
 }
 
-func (c *confOpts) extraConfigsRead() error {
+func (c *ConfOpts) extraConfigsRead() error {
 
 	for _, pathRegexp := range c.IncludeCfgs {
 		var p string
@@ -248,4 +256,70 @@ func (c *confOpts) extraConfigsRead() error {
 	return nil
 }
 
-// validate checks if provided configuration valid
+func checkConfigPath(configPath string) error {
+	cp, err := misc.PathNormalize(configPath)
+	if err != nil {
+		return err
+	}
+
+	// Check config file exist
+	_, err = os.Stat(cp)
+	if err == nil {
+		return nil
+	}
+
+	// If not, default files and directories ask to create
+	r := bufio.NewReader(os.Stdin)
+	var s string
+
+	fmt.Printf("Can't find config by path '%s'. Would you like to create? (y/N): ", configPath)
+
+	s, _ = r.ReadString('\n')
+
+	s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+
+	// Create new config
+	if s == "y" || s == "yes" {
+		if err = os.MkdirAll(path.Join(path.Dir(cp), "conf.d"), 0750); err != nil {
+			return err
+		}
+		f, err := os.Create(cp)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = f.Close() }()
+		_, err = f.WriteString(emptyConfig())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func emptyConfig() string {
+	return `server_name: localhost
+#project_name: My best Project
+
+notifications:
+  mail:
+    enabled: false
+    mail_from: backup@localhost
+    smtp_server: ''
+    smtp_port: 465
+    smtp_user: ''
+    smtp_password: ''
+    recipients:
+    - root@localhost
+  webhooks: []
+
+storage_connects: []
+
+jobs: []
+
+include_jobs_configs: ["conf.d/*.conf"]
+
+logfile: /var/log/nxs-backup/nxs-backup.log
+`
+}

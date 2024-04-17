@@ -1,28 +1,20 @@
 package ctx
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"path"
-	"strings"
 
 	"github.com/alexflint/go-arg"
-	appctx "github.com/nixys/nxs-go-appctx/v2"
 
-	"nxs-backup/misc"
+	"github.com/nixys/nxs-backup/misc"
 )
-
-type cmdHandler func(*appctx.AppContext) error
-
-// SubCmds contains Command name and handler
-type SubCmds map[string]cmdHandler
 
 // ArgsParams contains parameters read from command line, command parameters and command handler
 type ArgsParams struct {
 	ConfigPath string
-	CmdHandler cmdHandler
+	Cmd        string
 	CmdParams  interface{}
+	Arg        *arg.Parser
 }
 
 type StartCmd struct {
@@ -30,7 +22,7 @@ type StartCmd struct {
 }
 
 type GenerateCmd struct {
-	Type     string            `arg:"-T,--backup-type" help:"Type of backup"`
+	Type     string            `arg:"-T,--backup-type,required" help:"Type of backup"`
 	Storages map[string]string `arg:"-S,--storage-types" help:"Storages names with type. Example: -S minio=s3 aws=s3"`
 	OutPath  string            `arg:"-O,--out-path" help:"Path to the generated configuration file" placeholder:"PATH"`
 }
@@ -48,21 +40,17 @@ type args struct {
 }
 
 // ReadArgs reads arguments from command line
-func ReadArgs(cmds SubCmds) (p ArgsParams) {
+func ReadArgs() (p ArgsParams, err error) {
 
 	var a args
 
+	//err = misc.ErrArgSuccessExit
 	curArgs := arg.MustParse(&a)
-
-	if err := checkConfigPath(a.ConfPath); err != nil {
-		fmt.Println("Config error:", err)
-		os.Exit(1)
-	}
 
 	p.ConfigPath = a.ConfPath
 
 	if a.TestConf {
-		p.CmdHandler = cmds["testCfg"]
+		p.Cmd = "testCfg"
 		return
 	}
 
@@ -70,82 +58,15 @@ func ReadArgs(cmds SubCmds) (p ArgsParams) {
 	if len(subCmds) == 0 {
 		_, _ = fmt.Fprintln(os.Stderr, "Command not defined")
 		curArgs.WriteHelp(os.Stderr)
-		os.Exit(1)
+		return p, misc.ErrArg
 	}
-	p.CmdHandler = cmds[subCmds[0]]
+	p.Cmd = subCmds[0]
 	p.CmdParams = curArgs.Subcommand()
+	p.Arg = curArgs
 
-	return p
+	return
 }
 
 func (args) Version() string {
 	return "nxs-backup " + misc.VERSION
-}
-
-func checkConfigPath(configPath string) error {
-	cp, err := misc.PathNormalize(configPath)
-	if err != nil {
-		return err
-	}
-
-	// Check config file exist
-	_, err = os.Stat(cp)
-	if err == nil {
-		return nil
-	}
-
-	// If not, default files and directories ask to create
-	r := bufio.NewReader(os.Stdin)
-	var s string
-
-	fmt.Printf("Can't find config by path '%s'. Would you like to create? (y/N): ", configPath)
-
-	s, _ = r.ReadString('\n')
-
-	s = strings.TrimSpace(s)
-	s = strings.ToLower(s)
-
-	// Create new config
-	if s == "y" || s == "yes" {
-		if err = os.MkdirAll(path.Join(path.Dir(cp), "conf.d"), 0750); err != nil {
-			return err
-		}
-		f, err := os.Create(cp)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = f.Close() }()
-		_, err = f.WriteString(emptyConfig())
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func emptyConfig() string {
-	return `server_name: localhost
-#project_name: My best Project
-
-notifications:
-  mail:
-    enabled: false
-    mail_from: backup@localhost
-    smtp_server: ''
-    smtp_port: 465
-    smtp_user: ''
-    smtp_password: ''
-    recipients:
-    - root@localhost
-  webhooks: []
-
-storage_connects: []
-
-jobs: []
-
-include_jobs_configs: ["conf.d/*.conf"]
-
-logfile: /var/log/nxs-backup/nxs-backup.log
-`
 }

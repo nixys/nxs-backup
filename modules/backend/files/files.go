@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/ini.v1"
 
-	"nxs-backup/misc"
+	"github.com/nixys/nxs-backup/misc"
 )
 
 func CreateTmpMysqlAuthFile(af *ini.File) (authFile string, err error) {

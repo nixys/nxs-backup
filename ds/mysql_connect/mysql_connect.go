@@ -2,6 +2,7 @@ package mysql_connect
 
 import (
 	"fmt"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/ini.v1"

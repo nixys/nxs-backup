@@ -69,5 +69,5 @@ func Log(jobName, storageName string) LogRecord {
 }
 
 func WriteLog(logger *logrus.Logger, log LogRecord) {
-	logger.WithFields(logrus.Fields{"storage": log.StorageName, "job": log.JobName}).Log(log.Level, log.Message)
+	logger.WithFields(logrus.Fields{"store": log.StorageName, "job": log.JobName}).Log(log.Level, log.Message)
 }
