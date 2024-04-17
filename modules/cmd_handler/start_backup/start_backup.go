@@ -1,4 +1,4 @@
-package cmd_handler
+package start_backup
 
 import (
 	"fmt"
@@ -14,35 +14,45 @@ import (
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
-type StartBackup struct {
-	initErr error
+type Opts struct {
+	InitErr  error
+	Done     chan error
+	EvCh     chan logger.LogRecord
+	WaitPrev time.Duration
+	JobName  string
+	Jobs     map[string]interfaces.Job
+	FileJobs interfaces.Jobs
+	DBJobs   interfaces.Jobs
+	ExtJobs  interfaces.Jobs
+}
 
+type startBackup struct {
+	initErr  error
 	done     chan error
 	evCh     chan logger.LogRecord
 	waitPrev time.Duration
 	jobName  string
-
 	jobs     map[string]interfaces.Job
 	fileJobs interfaces.Jobs
 	dbJobs   interfaces.Jobs
 	extJobs  interfaces.Jobs
 }
 
-func InitStartBackup(ie error, dc chan error, ec chan logger.LogRecord, w time.Duration, jn string, j map[string]interfaces.Job, fj, dj, ej interfaces.Jobs) *StartBackup {
-	return &StartBackup{
-		initErr:  ie,
-		done:     dc,
-		evCh:     ec,
-		waitPrev: w,
-		jobName:  jn,
-		jobs:     j,
-		fileJobs: fj,
-		dbJobs:   dj,
-		extJobs:  ej,
+func Init(o Opts) *startBackup {
+	return &startBackup{
+		initErr:  o.InitErr,
+		done:     o.Done,
+		evCh:     o.EvCh,
+		waitPrev: o.WaitPrev,
+		jobName:  o.JobName,
+		jobs:     o.Jobs,
+		fileJobs: o.FileJobs,
+		dbJobs:   o.DBJobs,
+		extJobs:  o.ExtJobs,
 	}
 }
 
-func (sb *StartBackup) Run() {
+func (sb *startBackup) Run() {
 	var errs *multierror.Error
 
 	if sb.initErr != nil {

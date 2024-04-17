@@ -1,11 +1,19 @@
-package cmd_handler
+package test_config
 
 import (
 	"fmt"
 	"github.com/nixys/nxs-backup/interfaces"
 )
 
-type TestConfig struct {
+type Opts struct {
+	InitErr  error
+	Done     chan error
+	FileJobs interfaces.Jobs
+	DBJobs   interfaces.Jobs
+	ExtJobs  interfaces.Jobs
+}
+
+type testConfig struct {
 	initErr  error
 	done     chan error
 	fileJobs interfaces.Jobs
@@ -13,17 +21,17 @@ type TestConfig struct {
 	extJobs  interfaces.Jobs
 }
 
-func InitTestConfig(ie error, dc chan error, fj, dj, ej interfaces.Jobs) *TestConfig {
-	return &TestConfig{
-		initErr:  ie,
-		done:     dc,
-		fileJobs: fj,
-		dbJobs:   dj,
-		extJobs:  ej,
+func Init(o Opts) *testConfig {
+	return &testConfig{
+		initErr:  o.InitErr,
+		done:     o.Done,
+		fileJobs: o.FileJobs,
+		dbJobs:   o.DBJobs,
+		extJobs:  o.ExtJobs,
 	}
 }
 
-func (tc *TestConfig) Run() {
+func (tc *testConfig) Run() {
 
 	if tc.initErr != nil {
 		fmt.Printf("The configuration have next errors:\n%v\n", tc.initErr)

@@ -1,4 +1,4 @@
-package notifier
+package mailer
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
-type MailOpts struct {
+type Opts struct {
 	From         string
 	SmtpServer   string
 	SmtpPort     int
@@ -26,10 +26,10 @@ type MailOpts struct {
 }
 
 type mailer struct {
-	opts MailOpts
+	opts Opts
 }
 
-func MailerInit(mailCfg MailOpts) (*mailer, error) {
+func Init(mailCfg Opts) (*mailer, error) {
 	m := &mailer{opts: mailCfg}
 
 	if mailCfg.SmtpServer != "" {

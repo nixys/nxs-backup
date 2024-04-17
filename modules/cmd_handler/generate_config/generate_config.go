@@ -1,4 +1,4 @@
-package cmd_handler
+package generate_config
 
 import (
 	"fmt"
@@ -125,7 +125,16 @@ type smbParams struct {
 	Share    string `yaml:"share"`
 }
 
-type GenerateConfig struct {
+type Opts struct {
+	Done     chan error
+	CfgPath  string
+	JobType  string
+	OutPath  string
+	Arg      *arg.Parser
+	Storages map[string]string
+}
+
+type generateConfig struct {
 	done     chan error
 	cfgPath  string
 	jobType  string
@@ -134,18 +143,18 @@ type GenerateConfig struct {
 	storages map[string]string
 }
 
-func InitGenerateConfig(dc chan error, cfgPath, jt, op string, st map[string]string, ap *arg.Parser) *GenerateConfig {
-	return &GenerateConfig{
-		done:     dc,
-		arg:      ap,
-		cfgPath:  cfgPath,
-		jobType:  jt,
-		outPath:  op,
-		storages: st,
+func Init(o Opts) *generateConfig {
+	return &generateConfig{
+		done:     o.Done,
+		arg:      o.Arg,
+		cfgPath:  o.CfgPath,
+		jobType:  o.JobType,
+		outPath:  o.OutPath,
+		storages: o.Storages,
 	}
 }
 
-func (gc *GenerateConfig) Run() {
+func (gc *generateConfig) Run() {
 
 	job := jobCfgYml{
 		JobName:         fmt.Sprintf("PROJECT-%s", gc.jobType),

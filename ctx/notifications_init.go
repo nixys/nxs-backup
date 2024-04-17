@@ -2,37 +2,26 @@ package ctx
 
 import (
 	"fmt"
-	"net/mail"
-
 	"github.com/hashicorp/go-multierror"
+	"github.com/nixys/nxs-backup/modules/notifier/mailer"
+	"github.com/nixys/nxs-backup/modules/notifier/webhooker"
 	"github.com/sirupsen/logrus"
+	"net/mail"
+	"strings"
 
 	"github.com/nixys/nxs-backup/interfaces"
-	"github.com/nixys/nxs-backup/modules/notifier"
 )
 
 var messageLevels = map[string]logrus.Level{
-	"err":     logrus.ErrorLevel,
-	"Err":     logrus.ErrorLevel,
 	"ERR":     logrus.ErrorLevel,
-	"error":   logrus.ErrorLevel,
-	"Error":   logrus.ErrorLevel,
 	"ERROR":   logrus.ErrorLevel,
-	"warn":    logrus.WarnLevel,
-	"Warn":    logrus.WarnLevel,
 	"WARN":    logrus.WarnLevel,
-	"warning": logrus.WarnLevel,
-	"Warning": logrus.WarnLevel,
 	"WARNING": logrus.WarnLevel,
-	"inf":     logrus.InfoLevel,
-	"Inf":     logrus.InfoLevel,
 	"INF":     logrus.InfoLevel,
-	"info":    logrus.InfoLevel,
-	"Info":    logrus.InfoLevel,
 	"INFO":    logrus.InfoLevel,
 }
 
-func notifiersInit(conf ConfOpts) ([]interfaces.Notifier, error) {
+func notifiersInit(c *Ctx, conf ConfOpts) error {
 	var errs *multierror.Error
 	var ns []interfaces.Notifier
 
@@ -49,12 +38,12 @@ func notifiersInit(conf ConfOpts) ([]interfaces.Notifier, error) {
 			mailErrs = multierror.Append(mailErrs, fmt.Errorf("Email init fail. Failed to parse `mail_from` \"%s\". %v ", conf.Notifications.Mail.From, err))
 		}
 
-		ml, ok := messageLevels[conf.Notifications.Mail.MessageLevel]
+		ml, ok := messageLevels[strings.ToUpper(conf.Notifications.Mail.MessageLevel)]
 		if ok {
 			if mailErrs != nil {
 				errs = multierror.Append(errs, mailErrs.Errors...)
 			} else {
-				m, err := notifier.MailerInit(notifier.MailOpts{
+				m, err := mailer.Init(mailer.Opts{
 					From:         conf.Notifications.Mail.From,
 					SmtpServer:   conf.Notifications.Mail.SmtpServer,
 					SmtpPort:     conf.Notifications.Mail.SmtpPort,
@@ -78,9 +67,9 @@ func notifiersInit(conf ConfOpts) ([]interfaces.Notifier, error) {
 
 	for _, wh := range conf.Notifications.Webhooks {
 		if wh.Enabled {
-			ml, ok := messageLevels[wh.MessageLevel]
+			ml, ok := messageLevels[strings.ToUpper(wh.MessageLevel)]
 			if ok {
-				a, err := notifier.WebhookInit(notifier.WebhookOpts{
+				a, err := webhooker.Init(webhooker.Opts{
 					WebhookURL:        wh.WebhookURL,
 					InsecureTLS:       wh.InsecureTLS,
 					ExtraHeaders:      wh.ExtraHeaders,
@@ -101,5 +90,7 @@ func notifiersInit(conf ConfOpts) ([]interfaces.Notifier, error) {
 		}
 	}
 
-	return ns, errs.ErrorOrNil()
+	c.Notifiers = ns
+
+	return errs.ErrorOrNil()
 }

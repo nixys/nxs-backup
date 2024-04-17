@@ -1,4 +1,4 @@
-package cmd_handler
+package self_update
 
 import (
 	"archive/tar"
@@ -11,19 +11,24 @@ import (
 	"github.com/nixys/nxs-backup/misc"
 )
 
-type SelfUpdate struct {
+type Opts struct {
+	Version string
+	Done    chan error
+}
+
+type selfUpdate struct {
 	version string
 	done    chan error
 }
 
-func InitSelfUpdate(version string, dc chan error) *SelfUpdate {
-	return &SelfUpdate{
-		version: version,
-		done:    dc,
+func Init(o Opts) *selfUpdate {
+	return &selfUpdate{
+		version: o.Version,
+		done:    o.Done,
 	}
 }
 
-func (su *SelfUpdate) Run() {
+func (su *selfUpdate) Run() {
 	var tmpBinFile *os.File
 
 	newVer, url, err := misc.CheckNewVersionAvailable(su.version)

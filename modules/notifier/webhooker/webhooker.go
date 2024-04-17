@@ -1,4 +1,4 @@
-package notifier
+package webhooker
 
 import (
 	"bytes"
@@ -15,8 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// WebhookOpts contains webhook options
-type WebhookOpts struct {
+// Opts contains webhook options
+type Opts struct {
 	WebhookURL        string
 	InsecureTLS       bool
 	PayloadMessageKey string
@@ -28,11 +28,11 @@ type WebhookOpts struct {
 }
 
 type webhook struct {
-	opts WebhookOpts
+	opts Opts
 	hc   *http.Client
 }
 
-func WebhookInit(opts WebhookOpts) (*webhook, error) {
+func Init(opts Opts) (*webhook, error) {
 
 	wh := &webhook{
 		opts: opts,
