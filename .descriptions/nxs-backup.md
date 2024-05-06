@@ -17,8 +17,8 @@
 
 # Supported tags and respective `Dockerfile` links
 
-- [`3.0.2`, `3`, `3.0`, `latest`, `3.0.2-debian`, `3-debian`, `3.0-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
-- [`3.0.2-alpine`, `3-alpine`, `3.0-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
+- [`3.5.0`, `3.5`, `3`, `latest`, `3.5.0-debian`, `3.0-debian`, `3-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
+- [`3.5.0-alpine`, `3.5-alpine`, `3-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
 
 # What is nxs-backup?
 
@@ -73,7 +73,7 @@ Do the following steps:
 # License
 
 [nxs-backup](https://github.com/nixys/nxs-backup) is open source and released under the terms of
-the [GNU GPL-3.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).
+the [Apache-2.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).
 
 As with all Docker images, these likely also contain other software which may be under other licenses (such as Bash,
 etc. from the base distribution, along with any direct or indirect dependencies of the primary software being

@@ -17,7 +17,7 @@
 
 # Supported tags and respective `Dockerfile` links
 
-- [`3.0.2`, `3`, `3.0`, `latest`,](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-bin)
+- [`3.5.0`, `3.5`, `3`, `latest`,](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-bin)
 
 # What is nxs-backup?
 
@@ -48,7 +48,7 @@ CMD nxs-backup start
 # License
 
 [nxs-backup](https://github.com/nixys/nxs-backup) is open source and released under the terms of
-the [GNU GPL-3.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).
+the [Apache-2.0 license](https://github.com/nixys/nxs-backup/blob/main/LICENSE).
 
 As for any pre-built image usage, it is the image user's responsibility to ensure that any use of this image complies
 with any relevant licenses for all software contained within.

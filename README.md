@@ -138,4 +138,4 @@ For news and discussions subscribe the channels:
 
 ## License
 
-nxs-backup is released under the [GNU GPL-3.0 license](LICENSE).
+nxs-backup is released under the [Apache-2.0 license](LICENSE).
