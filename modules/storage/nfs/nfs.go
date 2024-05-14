@@ -169,16 +169,19 @@ func (n *NFS) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 
 		switch period {
 		case "daily":
+			if n.Retention.Days == 0 {
+				continue
+			}
 			retentionCount = n.Retention.Days
 			retentionDate = curDate.AddDate(0, 0, -n.Retention.Days)
 		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || n.Retention.Weeks == 0 {
 				continue
 			}
 			retentionCount = n.Retention.Weeks
 			retentionDate = curDate.AddDate(0, 0, -n.Retention.Weeks*7)
 		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || n.Retention.Months == 0 {
 				continue
 			}
 			retentionCount = n.Retention.Months

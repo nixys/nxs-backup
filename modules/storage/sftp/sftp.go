@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -205,25 +206,34 @@ func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job
 }
 
 func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
+	type fileLinks struct {
+		wLink string
+		dLink string
+	}
 	var errs *multierror.Error
+	filesMap := make(map[string]*fileLinks, 64)
+	filesToDeleteMap := make(map[string]*fileLinks, 64)
 	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"daily", "weekly", "monthly"} {
+	for _, period := range []string{"monthly", "weekly", "daily"} {
 		var retentionDate time.Time
 		retentionCount := 0
 
 		switch period {
 		case "daily":
+			if s.Retention.Days == 0 {
+				continue
+			}
 			retentionCount = s.Retention.Days
 			retentionDate = curDate.AddDate(0, 0, -s.Retention.Days)
 		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+			if s.Retention.Weeks == 0 {
 				continue
 			}
 			retentionCount = s.Retention.Weeks
 			retentionDate = curDate.AddDate(0, 0, -s.Retention.Weeks*7)
 		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+			if s.Retention.Months == 0 {
 				continue
 			}
 			retentionCount = s.Retention.Months
@@ -238,6 +248,31 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 			}
 			logCh <- logger.Log(jobName, s.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
 			return err
+		}
+
+		for _, file := range files {
+			fPath := path.Join(bakDir, file.Name())
+			if file.Mode()&fs.ModeSymlink != 0 {
+				link, err := s.client.ReadLink(fPath)
+				if err != nil {
+					logCh <- logger.Log(jobName, s.name).Errorf("Failed to read a symlink for file '%s': %s",
+						file, err)
+					errs = multierror.Append(errs, err)
+					continue
+				}
+				linkPath := filepath.Join(bakDir, link)
+
+				if fl, ok := filesMap[linkPath]; ok {
+					switch period {
+					case "weekly":
+						fl.wLink = fPath
+					case "daily":
+						fl.dLink = fPath
+					}
+					filesMap[linkPath] = fl
+				}
+			}
+			filesMap[fPath] = &fileLinks{}
 		}
 
 		if s.Retention.UseCount {
@@ -268,14 +303,59 @@ func (s *SFTP) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 			if file.Name() == ".." || file.Name() == "." {
 				continue
 			}
+			fPath := path.Join(bakDir, file.Name())
+			filesToDeleteMap[fPath] = filesMap[fPath]
+		}
+	}
 
-			err = s.client.Remove(path.Join(bakDir, file.Name()))
-			if err != nil {
-				logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
-					file.Name(), bakDir, err)
+	for file, fl := range filesToDeleteMap {
+		delFile := true
+		moved := false
+		if fl.wLink != "" {
+			if _, toDel := filesToDeleteMap[fl.wLink]; !toDel {
+				delFile = false
+				if err := s.moveFile(file, fl.wLink); err != nil {
+					logCh <- logger.Log(jobName, s.name).Error(err)
+					errs = multierror.Append(errs, err)
+				} else {
+					logCh <- logger.Log(jobName, s.name).Debugf("Successfully moved old backup to %s", fl.wLink)
+					moved = true
+				}
+				if _, toDel = filesToDeleteMap[fl.dLink]; !toDel {
+					if err := s.client.Remove(fl.dLink); err != nil {
+						logCh <- logger.Log(jobName, s.name).Error(err)
+						errs = multierror.Append(errs, err)
+						break
+					}
+					relative, _ := filepath.Rel(filepath.Dir(fl.dLink), fl.wLink)
+					if err := s.client.Symlink(relative, fl.dLink); err != nil {
+						logCh <- logger.Log(jobName, s.name).Error(err)
+						errs = multierror.Append(errs, err)
+					} else {
+						logCh <- logger.Log(jobName, s.name).Debugf("Successfully changed symlink %s", fl.dLink)
+					}
+				}
+			}
+		}
+		if fl.dLink != "" && !moved {
+			if _, toDel := filesToDeleteMap[fl.dLink]; !toDel {
+				delFile = false
+				if err := s.moveFile(file, fl.dLink); err != nil {
+					logCh <- logger.Log(jobName, s.name).Error(err)
+					errs = multierror.Append(errs, err)
+				} else {
+					logCh <- logger.Log(jobName, s.name).Debugf("Successfully moved old backup to %s", fl.dLink)
+				}
+			}
+		}
+
+		if delFile {
+			if err := s.client.Remove(file); err != nil {
+				logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete file '%s' with next error: %s",
+					file, err)
 				errs = multierror.Append(errs, err)
 			} else {
-				logCh <- logger.Log(jobName, s.name).Infof("Deleted old backup file '%s' in remote directory '%s'", file.Name(), bakDir)
+				logCh <- logger.Log(jobName, s.name).Infof("Deleted old backup file '%s'", file)
 			}
 		}
 	}
@@ -360,4 +440,14 @@ func (s *SFTP) Clone() interfaces.Storage {
 
 func (s *SFTP) GetName() string {
 	return s.name
+}
+
+func (s *SFTP) moveFile(oldPath, newPath string) error {
+	if err := s.client.Remove(newPath); err != nil {
+		return fmt.Errorf("Failed to delete file '%s' with next error: %s ", oldPath, err)
+	}
+	if err := s.client.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("Failed to move file '%s' with next error: %s ", oldPath, err)
+	}
+	return nil
 }
