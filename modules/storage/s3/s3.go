@@ -173,23 +173,15 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 				}
 			}
 		} else {
-			if strings.Contains(object.Key, "daily") {
+			if strings.Contains(object.Key, "daily") && s.Retention.Days > 0 {
 				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Days)) {
 					filesList["daily"] = append(filesList["daily"], object)
 				}
-			}
-			if strings.Contains(object.Key, "weekly") {
-				if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
-					continue
-				}
+			} else if strings.Contains(object.Key, "weekly") && s.Retention.Weeks > 0 && misc.GetDateTimeNow("dow") == misc.WeeklyBackupDay {
 				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Weeks*7)) {
 					filesList["weekly"] = append(filesList["weekly"], object)
 				}
-			}
-			if strings.Contains(object.Key, "monthly") {
-				if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
-					continue
-				}
+			} else if strings.Contains(object.Key, "monthly") && s.Retention.Weeks > 0 && misc.GetDateTimeNow("dom") == misc.MonthlyBackupDay {
 				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, -s.Retention.Months, 0)) {
 					filesList["monthly"] = append(filesList["monthly"], object)
 				}

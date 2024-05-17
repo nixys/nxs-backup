@@ -17,6 +17,11 @@ func Perform(logCh chan logger.LogRecord, job interfaces.Job) error {
 	var errs *multierror.Error
 	var tmpDirPath string
 
+	if !job.NeedToMakeBackup() {
+		logCh <- logger.Log(job.GetName(), "").Infof("According to the backup plan today new backups are not created for job %s", job.GetName())
+		return nil
+	}
+
 	if job.GetStoragesCount() == 0 {
 		logCh <- logger.Log(job.GetName(), "").Warn("There are no configured storages for job.")
 		return nil
@@ -26,11 +31,6 @@ func Perform(logCh chan logger.LogRecord, job interfaces.Job) error {
 		if err := job.DeleteOldBackups(logCh, ""); err != nil {
 			errs = multierror.Append(errs, err)
 		}
-	}
-
-	if !job.NeedToMakeBackup() {
-		logCh <- logger.Log(job.GetName(), "").Infof("According to the backup plan today new backups are not created for job %s", job.GetName())
-		return nil
 	}
 
 	logCh <- logger.Log(job.GetName(), "").Info("Starting")

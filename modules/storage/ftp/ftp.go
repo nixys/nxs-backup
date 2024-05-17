@@ -173,16 +173,19 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 
 		switch period {
 		case "daily":
+			if f.Retention.Days == 0 {
+				continue
+			}
 			retentionCount = f.Retention.Days
 			retentionDate = curDate.AddDate(0, 0, -f.Retention.Days)
 		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || f.Retention.Weeks == 0 {
 				continue
 			}
 			retentionCount = f.Retention.Weeks
 			retentionDate = curDate.AddDate(0, 0, -f.Retention.Weeks*7)
 		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || f.Retention.Months == 0 {
 				continue
 			}
 			retentionCount = f.Retention.Months

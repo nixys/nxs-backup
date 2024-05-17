@@ -159,16 +159,19 @@ func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 
 		switch period {
 		case "daily":
+			if wd.Retention.Days == 0 {
+				continue
+			}
 			retentionCount = wd.Retention.Days
 			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Days)
 		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay {
+			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || wd.Retention.Weeks == 0 {
 				continue
 			}
 			retentionCount = wd.Retention.Weeks
 			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Weeks*7)
 		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay {
+			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || wd.Retention.Months == 0 {
 				continue
 			}
 			retentionCount = wd.Retention.Months
