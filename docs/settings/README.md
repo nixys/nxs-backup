@@ -159,6 +159,7 @@ copying data to a remote server, rotation of backups may be skipped with this op
 | `exclude_dbs`         | List of databases to be excluded from backup. **Only for *mongodb* type**                                                                                                        | `[]`    |
 | `exclude_collections` | List of collections to be excluded from backup. **Only for *mongodb* type**                                                                                                      | `[]`    |
 | `db_extra_keys`       | Special parameters for the collecting database backups. **Only for [*databases*](#database-types) types**                                                                        | `""`    |
+| `is_slave`            | The option stops replication while collecting backups **Only for *mysql* and *mysql_xtrabackup* types**                                                                          | `false` |
 | `gzip`                | Whether you need to compress the backup file                                                                                                                                     | `false` |
 | `save_abs_path`       | Whether you need to save absolute path in tar archives **Only for [*file*](#file-types) types**                                                                                  | `true`  |
 | `prepare_xtrabackup`  | Whether you need to make [xtrabackup prepare](https://www.percona.com/doc/percona-xtrabackup/2.2/xtrabackup_bin/preparing_the_backup.html). **Only for *mysql_xtrabackup* type** | `true`  |
@@ -178,6 +179,8 @@ copying data to a remote server, rotation of backups may be skipped with this op
 | `psql_ssl_crl`              | Path to file containing SSL server certificate revocation list (CRL) for PostgreSQL  | `""`        |
 | `mongo_replica_set_name`    | MongoDB replicaset name                                                              | `""`        |
 | `mongo_replica_set_address` | Comma separated list of MongoDB replicaset hosts                                     | `""`        |
+| `mongo_tls_CA_file`         | Path to file containing SSL certificate authority (CA) certificate(s) for MongoDB    | `""`        |
+| `mongo_auth_db`             | Name of authentication database                                                      | `""`        |
 
 You may use either `auth_file` or `db_host` or `socket` options. Options priority follows:
 `auth_file` → `db_host` → `socket`

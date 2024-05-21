@@ -26,7 +26,6 @@ type ConfOpts struct {
 
 	LogFile  string `conf:"logfile" conf_extraopts:"default=stdout"`
 	LogLevel string `conf:"loglevel" conf_extraopts:"default=info"`
-	PidFile  string `conf:"pidfile"`
 	ConfPath string
 }
 
