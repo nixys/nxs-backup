@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
-
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
+	"os"
+	"os/exec"
+	"time"
 )
 
 type job struct {
@@ -20,6 +22,8 @@ type job struct {
 	skipBackupRotate bool
 	storages         interfaces.Storages
 	dumpedObjects    map[string]interfaces.DumpObject
+	metrics          *metrics.Data
+	targetMetrics    map[string]float64
 }
 
 type JobParams struct {
@@ -31,6 +35,7 @@ type JobParams struct {
 	SafetyBackup     bool
 	SkipBackupRotate bool
 	Storages         interfaces.Storages
+	Metrics          *metrics.Data
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
@@ -45,7 +50,25 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		skipBackupRotate: jp.SkipBackupRotate,
 		storages:         jp.Storages,
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
+		metrics:          jp.Metrics,
+		targetMetrics:    make(map[string]float64),
 	}, nil
+}
+
+func (j *job) FillMetrics(_ string, metrics map[string]float64) {
+	for m, v := range metrics {
+		j.targetMetrics[m] = v
+	}
+}
+
+func (j *job) ExportMetrics() {
+	j.metrics.AddTargetMetric(metrics.TargetData{
+		JobName: j.name,
+		JobType: j.GetType(),
+		Source:  "",
+		Target:  "",
+		Values:  j.targetMetrics,
+	})
 }
 
 func (j *job) GetName() string {
@@ -91,7 +114,7 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
-	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate outdated backups.")
 	if j.skipBackupRotate {
 		logCh <- logger.Log(j.name, "").Debugf("Backup rotate skipped by config.")
 		return nil
@@ -127,18 +150,22 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 
 	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
 
-	if err = cmd.Start(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to start %s. Error: %s", j.dumpCmd, err)
-		return err
-	}
 	logCh <- logger.Log(j.name, "").Infof("Starting of `%s`", j.dumpCmd)
-
-	if err = cmd.Wait(); err != nil {
+	startTime := time.Now()
+	if err = cmd.Run(); err != nil {
+		j.FillMetrics("", map[string]float64{
+			"backup_ok":   float64(0),
+			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+		})
 		logCh <- logger.Log(j.name, "").Errorf("Unable to finish `%s`. Error: %s", j.dumpCmd, err)
 		logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
 		logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", stderr.String())
 		return err
 	}
+	j.FillMetrics("", map[string]float64{
+		"backup_ok":   float64(1),
+		"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+	})
 
 	logCh <- logger.Log(j.name, "").Infof("Dumping completed")
 	logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
@@ -159,6 +186,10 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s.", out.FullPath)
 
 	j.dumpedObjects[j.name] = interfaces.DumpObject{TmpFile: out.FullPath}
+	fileInfo, _ := os.Stat(out.FullPath)
+	j.FillMetrics("", map[string]float64{
+		"size": float64(fileInfo.Size()),
+	})
 
 	return j.storages.Delivery(logCh, j)
 }

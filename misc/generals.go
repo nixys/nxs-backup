@@ -127,7 +127,6 @@ func Contains(s []string, str string) bool {
 func RandString(strLen int64) string {
 	var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, strLen)
 	for i := range b {
 		b[i] = chars[rand.Intn(len(chars))]
@@ -212,7 +211,6 @@ func CheckNewVersionAvailable(ver string) (string, string, error) {
 	}
 
 	if curVer.LessThan(newVer) {
-		fmt.Printf("The new version is: %s\n", newVer)
 		return newVer.String(), url, nil
 	}
 

@@ -22,12 +22,15 @@ import (
 	"github.com/nixys/nxs-backup/modules/backup/psql"
 	"github.com/nixys/nxs-backup/modules/backup/psql_basebackup"
 	"github.com/nixys/nxs-backup/modules/backup/redis"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"github.com/nixys/nxs-backup/modules/storage"
 )
 
-func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfaces.Job, error) {
-	var errs *multierror.Error
-	var jobs []interfaces.Job
+func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage, metricsData *metrics.Data) ([]interfaces.Job, error) {
+	var (
+		errs *multierror.Error
+		jobs []interfaces.Job
+	)
 
 	for _, j := range conf.Jobs {
 		var needToMakeBackup bool
@@ -76,10 +79,6 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			sort.Sort(jobStorages)
 		}
 
-		//if stErrs > 0 {
-		//	continue
-		//}
-
 		switch j.JobType {
 		case misc.AllowedJobTypes[0]:
 			var sources []desc_files.SourceParams
@@ -101,6 +100,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -128,6 +128,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying: j.DeferredCopying,
 				Storages:        jobStorages,
 				Sources:         sources,
+				Metrics:         metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -171,6 +172,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -214,6 +216,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -258,6 +261,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -300,6 +304,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -345,6 +350,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -376,6 +382,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -391,6 +398,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				SafetyBackup:     j.SafetyBackup,
 				SkipBackupRotate: j.SkipBackupRotate,
 				Storages:         jobStorages,
+				Metrics:          metricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))

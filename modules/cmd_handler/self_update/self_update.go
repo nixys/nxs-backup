@@ -42,6 +42,7 @@ func (su *selfUpdate) Run() {
 		su.done <- nil
 		return
 	}
+	fmt.Printf("The new version is: %s\n", newVer)
 	exePath, err := os.Executable()
 	if err != nil {
 		printSelfUpErr(su.done, err)

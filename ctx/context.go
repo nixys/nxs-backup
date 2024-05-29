@@ -2,8 +2,12 @@ package ctx
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver/v3"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/api_server"
 	"os"
 	"path"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,6 +21,7 @@ import (
 	"github.com/nixys/nxs-backup/modules/cmd_handler/start_backup"
 	"github.com/nixys/nxs-backup/modules/cmd_handler/test_config"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 // Ctx defines application custom context
@@ -36,6 +41,8 @@ type app struct {
 	dbJobs      interfaces.Jobs
 	extJobs     interfaces.Jobs
 	initErrs    *multierror.Error
+	metrics     *metrics.Data
+	serverBind  string
 }
 
 func AppCtxInit() (any, error) {
@@ -107,8 +114,28 @@ func AppCtxInit() (any, error) {
 				FileJobs: a.fileJobs,
 				DBJobs:   a.dbJobs,
 				ExtJobs:  a.extJobs,
+				Metrics:  a.metrics,
 			},
 		)
+	case "server":
+		a, err := appInit(c, ra.ConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		if a.metrics == nil {
+			err = fmt.Errorf("server metrics disabled by config")
+			printInitError("Init err:\n%s", err)
+			return nil, err
+		}
+		c.Cmd, err = api_server.Init(
+			api_server.Opts{
+				Bind: a.serverBind,
+				Log:  c.Log,
+				Done: c.Done,
+			})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
@@ -130,6 +157,16 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 	}
 
 	a.waitTimeout = conf.WaitingTimeout
+	a.serverBind = conf.Server.Bind
+
+	if conf.Server.Metrics {
+		a.metrics = metrics.InitData(conf.ProjectName, conf.ServerName)
+		ver, _ := semver.NewVersion(misc.VERSION)
+		newVer, _, _ := misc.CheckNewVersionAvailable(strconv.FormatUint(ver.Major(), 10))
+		if newVer != "" {
+			a.metrics.NewVersionAvailable = 1
+		}
+	}
 
 	if err = logInit(c, conf.LogFile, conf.LogLevel); err != nil {
 		printInitError("Failed to init log file: %v\n", err)
@@ -146,7 +183,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
 
-	jobs, err := jobsInit(conf, storages)
+	jobs, err := jobsInit(conf, storages, a.metrics)
 	if err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}

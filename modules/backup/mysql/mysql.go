@@ -3,10 +3,13 @@ package mysql
 import (
 	"bytes"
 	"fmt"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
@@ -31,6 +34,7 @@ type job struct {
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
 	authFilesKeys    map[string][]byte
+	metrics          *metrics.Data
 }
 
 type target struct {
@@ -41,6 +45,7 @@ type target struct {
 	extraKeys    []string
 	isSlave      bool
 	gzip         bool
+	metrics      map[string]float64
 }
 
 type JobParams struct {
@@ -51,6 +56,7 @@ type JobParams struct {
 	DeferredCopying  bool
 	Storages         interfaces.Storages
 	Sources          []SourceParams
+	Metrics          *metrics.Data
 }
 
 type SourceParams struct {
@@ -79,6 +85,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
+		metrics:          jp.Metrics,
 	}
 
 	for _, src := range jp.Sources {
@@ -118,11 +125,31 @@ func Init(jp JobParams) (interfaces.Job, error) {
 				extraKeys:    src.ExtraKeys,
 				gzip:         src.Gzip,
 				isSlave:      src.IsSlave,
+				metrics:      make(map[string]float64),
 			}
 		}
 	}
 
 	return j, nil
+}
+
+func (j *job) FillMetrics(ofs string, metrics map[string]float64) {
+	for m, v := range metrics {
+		j.targets[ofs].metrics[m] = v
+	}
+}
+
+func (j *job) ExportMetrics() {
+	for ofsPart, t := range j.targets {
+		ofs := strings.Split(ofsPart, "/")
+		j.metrics.AddTargetMetric(metrics.TargetData{
+			JobName: j.name,
+			JobType: j.GetType(),
+			Source:  ofs[0],
+			Target:  ofs[1],
+			Values:  t.metrics,
+		})
+	}
 }
 
 func (j *job) GetName() string {
@@ -171,7 +198,7 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
-	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate outdated backups.")
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)
 }
 
@@ -192,13 +219,24 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
+		startTime := time.Now()
 		if err = j.createTmpBackup(logCh, tmpBackupFile, tgt); err != nil {
+			j.FillMetrics(ofsPart, map[string]float64{
+				"backup_ok":   float64(0),
+				"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			})
 			logCh <- logger.Log(j.name, "").Errorf("Unable to create temp backups %s", tmpBackupFile)
 			errs = multierror.Append(errs, err)
 			continue
-		} else {
-			logCh <- logger.Log(j.name, "").Debugf("Created temp backups %s", tmpBackupFile)
 		}
+		fileInfo, _ := os.Stat(tmpBackupFile)
+		j.FillMetrics(ofsPart, map[string]float64{
+			"backup_ok":   float64(1),
+			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			"size":        float64(fileInfo.Size()),
+		})
+
+		logCh <- logger.Log(j.name, "").Debugf("Created temp backups %s", tmpBackupFile)
 
 		j.dumpedObjects[ofsPart] = interfaces.DumpObject{TmpFile: tmpBackupFile}
 

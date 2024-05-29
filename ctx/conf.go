@@ -24,9 +24,16 @@ type ConfOpts struct {
 	IncludeCfgs     []string         `conf:"include_jobs_configs"`
 	WaitingTimeout  time.Duration    `conf:"waiting_timeout"`
 
+	Server serverConf `conf:"server"`
+
 	LogFile  string `conf:"logfile" conf_extraopts:"default=stdout"`
 	LogLevel string `conf:"loglevel" conf_extraopts:"default=info"`
 	ConfPath string
+}
+
+type serverConf struct {
+	Bind    string `conf:"bind" conf_extraopts:"default=:7979"`
+	Metrics bool   `conf:"metrics" conf_extraopts:"default=false"`
 }
 
 type notifications struct {

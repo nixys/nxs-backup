@@ -3,12 +3,14 @@ package inc_files
 import (
 	"errors"
 	"fmt"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"io"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/glob"
@@ -28,6 +30,7 @@ type job struct {
 	storages        interfaces.Storages
 	targets         map[string]target
 	dumpedObjects   map[string]interfaces.DumpObject
+	metrics         *metrics.Data
 }
 
 type target struct {
@@ -35,6 +38,7 @@ type target struct {
 	gzip        bool
 	saveAbsPath bool
 	excludes    []string
+	metrics     map[string]float64
 }
 
 type JobParams struct {
@@ -44,6 +48,7 @@ type JobParams struct {
 	DeferredCopying bool
 	Storages        interfaces.Storages
 	Sources         []SourceParams
+	Metrics         *metrics.Data
 }
 
 type SourceParams struct {
@@ -68,6 +73,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:        jp.Storages,
 		dumpedObjects:   make(map[string]interfaces.DumpObject),
 		targets:         make(map[string]target),
+		metrics:         jp.Metrics,
 	}
 
 	for _, src := range jp.Sources {
@@ -106,6 +112,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 						gzip:        src.Gzip,
 						saveAbsPath: src.SaveAbsPath,
 						excludes:    excludes,
+						metrics:     make(map[string]float64),
 					}
 				}
 			}
@@ -113,6 +120,25 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	}
 
 	return j, nil
+}
+
+func (j *job) FillMetrics(ofs string, metrics map[string]float64) {
+	for m, v := range metrics {
+		j.targets[ofs].metrics[m] = v
+	}
+}
+
+func (j *job) ExportMetrics() {
+	for ofsPart, t := range j.targets {
+		ofs := strings.Split(ofsPart, "/")
+		j.metrics.AddTargetMetric(metrics.TargetData{
+			JobName: j.name,
+			JobType: j.GetType(),
+			Source:  ofs[0],
+			Target:  ofs[1],
+			Values:  t.metrics,
+		})
+	}
 }
 
 func (j *job) GetName() string {
@@ -153,7 +179,7 @@ func (j *job) IsBackupSafety() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
-	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate outdated backups.")
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)
 }
 
@@ -198,7 +224,12 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			}
 		}
 
+		startTime := time.Now()
 		if err = targz.Tar(tgt.path, tmpBackupFile, true, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
+			j.FillMetrics(ofsPart, map[string]float64{
+				"backup_ok":   float64(0),
+				"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			})
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backup %s", tmpBackupFile)
 			logCh <- logger.Log(j.name, "").Error(err)
 			if serr, ok := err.(targz.Error); ok {
@@ -207,6 +238,12 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			errs = multierror.Append(errs, err)
 			continue
 		}
+		fileInfo, _ := os.Stat(tmpBackupFile)
+		j.FillMetrics(ofsPart, map[string]float64{
+			"backup_ok":   float64(1),
+			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			"size":        float64(fileInfo.Size()),
+		})
 
 		logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s", tmpBackupFile)
 

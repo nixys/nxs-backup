@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -57,14 +58,23 @@ func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
 
 	for ofs, dumpObj := range job.GetDumpObjects() {
 		if !dumpObj.Delivered {
+			startTime := time.Now()
+			ok := float64(0)
 			for _, st := range s {
 				if err := st.DeliveryBackup(logCh, job.GetName(), dumpObj.TmpFile, ofs, job.GetType()); err != nil {
 					errs = multierror.Append(errs, err)
 				}
 			}
+			if errs.Len() == 0 {
+				ok = float64(1)
+			}
 			if errs.Len() < len(s) {
 				job.SetDumpObjectDelivered(ofs)
 			}
+			job.FillMetrics(ofs, map[string]float64{
+				"delivery_ok":   ok,
+				"delivery_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			})
 		}
 	}
 

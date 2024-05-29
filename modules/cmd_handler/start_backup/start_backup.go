@@ -2,6 +2,7 @@ package start_backup
 
 import (
 	"fmt"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"os"
 	"path"
 	"time"
@@ -24,6 +25,7 @@ type Opts struct {
 	FileJobs interfaces.Jobs
 	DBJobs   interfaces.Jobs
 	ExtJobs  interfaces.Jobs
+	Metrics  *metrics.Data
 }
 
 type startBackup struct {
@@ -36,6 +38,7 @@ type startBackup struct {
 	fileJobs interfaces.Jobs
 	dbJobs   interfaces.Jobs
 	extJobs  interfaces.Jobs
+	metrics  *metrics.Data
 }
 
 func Init(o Opts) *startBackup {
@@ -49,6 +52,7 @@ func Init(o Opts) *startBackup {
 		fileJobs: o.FileJobs,
 		dbJobs:   o.DBJobs,
 		extJobs:  o.ExtJobs,
+		metrics:  o.Metrics,
 	}
 }
 
@@ -128,7 +132,11 @@ func (sb *startBackup) Run() {
 	}
 
 	sb.evCh <- logger.Log("", "").Infof("Backup finished.\n")
-
+	if sb.metrics != nil {
+		if err = sb.metrics.SaveFile(); err != nil {
+			sb.evCh <- logger.Log("", "").Errorf("Failed to save metrics to file: %v", err)
+		}
+	}
 	if errs.ErrorOrNil() != nil {
 		sb.done <- fmt.Errorf("Some of backups failed with next errors:\n%w", errs)
 	}
