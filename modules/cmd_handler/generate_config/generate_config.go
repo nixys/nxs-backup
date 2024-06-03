@@ -166,7 +166,7 @@ func (gc *generateConfig) Run() {
 	cfgName := gc.jobType + ".conf"
 
 	switch gc.jobType {
-	case misc.AllowedJobTypes[0]:
+	case string(misc.DescFiles):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -184,7 +184,7 @@ func (gc *generateConfig) Run() {
 				SaveAbsPath: true,
 			},
 		}
-	case misc.AllowedJobTypes[1]:
+	case string(misc.IncFiles):
 		job.StoragesOptions = genStorageOpts(gc.storages, true)
 		job.Sources = []sourceYaml{
 			{
@@ -202,7 +202,7 @@ func (gc *generateConfig) Run() {
 				SaveAbsPath: true,
 			},
 		}
-	case misc.AllowedJobTypes[2]:
+	case string(misc.Mysql):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -227,7 +227,7 @@ func (gc *generateConfig) Run() {
 				ExtraKeys: "--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction",
 			},
 		}
-	case misc.AllowedJobTypes[3]:
+	case string(misc.MysqlXtrabackup):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -249,7 +249,7 @@ func (gc *generateConfig) Run() {
 				ExtraKeys:         "--datadir=/path/to/mysql/data",
 			},
 		}
-	case misc.AllowedJobTypes[4]:
+	case string(misc.Postgresql):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -271,7 +271,7 @@ func (gc *generateConfig) Run() {
 				ExtraKeys: "",
 			},
 		}
-	case misc.AllowedJobTypes[5]:
+	case string(misc.PostgresqlBasebackup):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -288,7 +288,7 @@ func (gc *generateConfig) Run() {
 				ExtraKeys: "",
 			},
 		}
-	case misc.AllowedJobTypes[6]:
+	case string(misc.Mongodb):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -313,7 +313,7 @@ func (gc *generateConfig) Run() {
 				ExtraKeys:          "",
 			},
 		}
-	case misc.AllowedJobTypes[7]:
+	case string(misc.Redis):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
@@ -327,12 +327,12 @@ func (gc *generateConfig) Run() {
 				},
 			},
 		}
-	case misc.AllowedJobTypes[8]:
+	case string(misc.External):
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
-		job.DumpCmd = "/path/to/backup_script.sh"
+		job.DumpCmd = "/path/to/my_script.sh"
 		job.TmpDir = ""
 	default:
-		printGenCfgErr(gc.done, fmt.Errorf("Unknown backup type. Allowed types: %s ", strings.Join(misc.AllowedJobTypes, ", ")), gc.arg)
+		printGenCfgErr(gc.done, fmt.Errorf("Unknown backup type. Allowed types: %s ", strings.Join(misc.AllowedBackupTypesGet(), ", ")), gc.arg)
 		return
 	}
 

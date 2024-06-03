@@ -30,7 +30,8 @@ type job struct {
 	storages        interfaces.Storages
 	targets         map[string]target
 	dumpedObjects   map[string]interfaces.DumpObject
-	metrics         *metrics.Data
+	appMetrics      *metrics.Data
+	jobMetrics      metrics.JobData
 }
 
 type target struct {
@@ -38,7 +39,6 @@ type target struct {
 	gzip        bool
 	saveAbsPath bool
 	excludes    []string
-	metrics     map[string]float64
 }
 
 type JobParams struct {
@@ -49,6 +49,7 @@ type JobParams struct {
 	Storages        interfaces.Storages
 	Sources         []SourceParams
 	Metrics         *metrics.Data
+	OldMetrics      *metrics.Data
 }
 
 type SourceParams struct {
@@ -73,8 +74,15 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:        jp.Storages,
 		dumpedObjects:   make(map[string]interfaces.DumpObject),
 		targets:         make(map[string]target),
-		metrics:         jp.Metrics,
+		appMetrics:      jp.Metrics,
 	}
+
+	j.jobMetrics = metrics.JobData{
+		JobName:       jp.Name,
+		JobType:       j.GetType(),
+		TargetMetrics: make(map[string]metrics.TargetData),
+	}
+	ojm := jp.OldMetrics.GetMetrics(jp.Name)
 
 	for _, src := range jp.Sources {
 
@@ -89,12 +97,12 @@ func Init(jp JobParams) (interfaces.Job, error) {
 				return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, targetPattern, err)
 			}
 
-			for _, ofs := range targetOfsList {
+			for _, ofsFullPath := range targetOfsList {
 				var excludes []string
 
 				skipOfs := false
 				for _, pattern := range src.Excludes {
-					match, err := glob.Match(pattern, ofs)
+					match, err := glob.Match(pattern, ofsFullPath)
 					if err != nil {
 						return nil, fmt.Errorf("Job `%s` init failed. Unable to process pattern: %s. Error: %s. ", jp.Name, pattern, err)
 					}
@@ -106,39 +114,41 @@ func Init(jp JobParams) (interfaces.Job, error) {
 				}
 
 				if !skipOfs {
-					ofsPart := src.Name + "/" + misc.GetOfsPart(targetPattern, ofs)
-					j.targets[ofsPart] = target{
-						path:        ofs,
+					ofsPart := misc.GetOfsPart(targetPattern, ofsFullPath)
+					ofs := src.Name + "/" + ofsPart
+
+					j.targets[ofs] = target{
+						path:        ofsFullPath,
 						gzip:        src.Gzip,
 						saveAbsPath: src.SaveAbsPath,
 						excludes:    excludes,
-						metrics:     make(map[string]float64),
+					}
+					if otm, ok := ojm.TargetMetrics[ofs]; ok {
+						j.jobMetrics.TargetMetrics[ofs] = otm
+					} else {
+						j.jobMetrics.TargetMetrics[ofs] = metrics.TargetData{
+							Source: src.Name,
+							Target: ofsPart,
+							Values: make(map[string]float64),
+						}
 					}
 				}
 			}
 		}
 	}
 
+	j.ExportMetrics()
 	return j, nil
 }
 
-func (j *job) FillMetrics(ofs string, metrics map[string]float64) {
-	for m, v := range metrics {
-		j.targets[ofs].metrics[m] = v
+func (j *job) SetOfsMetrics(ofs string, metricsMap map[string]float64) {
+	for m, v := range metricsMap {
+		j.jobMetrics.TargetMetrics[ofs].Values[m] = v
 	}
 }
 
 func (j *job) ExportMetrics() {
-	for ofsPart, t := range j.targets {
-		ofs := strings.Split(ofsPart, "/")
-		j.metrics.AddTargetMetric(metrics.TargetData{
-			JobName: j.name,
-			JobType: j.GetType(),
-			Source:  ofs[0],
-			Target:  ofs[1],
-			Values:  t.metrics,
-		})
-	}
+	j.appMetrics.JobMetricsSet(j.jobMetrics)
 }
 
 func (j *job) GetName() string {
@@ -199,6 +209,14 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	var errs *multierror.Error
 
 	for ofsPart, tgt := range j.targets {
+		j.SetOfsMetrics(ofsPart, map[string]float64{
+			"backup_ok":     float64(0),
+			"backup_time":   float64(0),
+			"delivery_ok":   float64(0),
+			"delivery_time": float64(0),
+			"size":          float64(0),
+		})
+
 		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "tar", "", tgt.gzip)
 		err := os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
@@ -226,8 +244,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 		startTime := time.Now()
 		if err = targz.Tar(tgt.path, tmpBackupFile, true, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
-			j.FillMetrics(ofsPart, map[string]float64{
-				"backup_ok":   float64(0),
+			j.SetOfsMetrics(ofsPart, map[string]float64{
 				"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backup %s", tmpBackupFile)
@@ -239,7 +256,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 		fileInfo, _ := os.Stat(tmpBackupFile)
-		j.FillMetrics(ofsPart, map[string]float64{
+		j.SetOfsMetrics(ofsPart, map[string]float64{
 			"backup_ok":   float64(1),
 			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
 			"size":        float64(fileInfo.Size()),

@@ -5,7 +5,7 @@ import (
 )
 
 type Job interface {
-	FillMetrics(ofs string, metrics map[string]float64)
+	SetOfsMetrics(ofs string, metrics map[string]float64)
 	ExportMetrics()
 	GetName() string
 	GetTempDir() string

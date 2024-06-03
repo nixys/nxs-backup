@@ -80,7 +80,7 @@ func (s *s3) SetRetention(r Retention) {
 func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakRemPaths, mtdRemPaths = GetIncBackupDstList(tmpBackupFile, ofs, s.backupPath)
 	} else {
 		bakRemPaths = GetDescBackupDstList(tmpBackupFile, ofs, s.backupPath, s.Retention)
@@ -149,7 +149,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 			return object.Err
 		}
 
-		if job.GetType() == misc.IncBackupType {
+		if job.GetType() == string(misc.IncFiles) {
 			if full {
 				filesList["inc"] = append(filesList["inc"], object)
 			} else {

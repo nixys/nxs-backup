@@ -78,25 +78,28 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	for _, t := range data.TargetMetrics {
-		for k, v := range t.Values {
-			d, err := prometheus.NewConstMetric(
-				e.metrics[k],
-				prometheus.GaugeValue,
-				v,
-				data.Project,
-				data.Server,
-				t.JobName,
-				t.JobType,
-				t.Source,
-				t.Target,
-			)
-			if err != nil {
-				e.log.Warnf("Failed to export prometheus metric: %v", err)
-				continue
+	for _, j := range data.Job {
+		for _, t := range j.TargetMetrics {
+			for k, v := range t.Values {
+				d, err := prometheus.NewConstMetric(
+					e.metrics[k],
+					prometheus.GaugeValue,
+					v,
+					data.Project,
+					data.Server,
+					j.JobName,
+					j.JobType,
+					t.Source,
+					t.Target,
+				)
+				if err != nil {
+					e.log.Warnf("Failed to export prometheus metric: %v", err)
+					continue
+				}
+				ch <- d
 			}
-			ch <- d
 		}
+
 	}
 
 	d, err := prometheus.NewConstMetric(

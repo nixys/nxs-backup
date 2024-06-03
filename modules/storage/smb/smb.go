@@ -96,7 +96,7 @@ func (s *SMB) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile
 		links                  map[string]string
 	)
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakDstPath, mtdDstPath, links, err = GetIncBackupDstAndLinks(tmpBackupFile, ofs, s.backupPath)
 	} else {
 		bakDstPath, links, err = GetDescBackupDstAndLinks(tmpBackupFile, ofs, s.backupPath, s.Retention)
@@ -168,7 +168,7 @@ func (s *SMB) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath string
 
 func (s *SMB) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == string(misc.IncFiles) {
 		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return s.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

@@ -29,13 +29,13 @@ type job struct {
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
-	metrics          *metrics.Data
+	appMetrics       *metrics.Data
+	jobMetrics       metrics.JobData
 }
 
 type target struct {
-	dsn     string
-	gzip    bool
-	metrics map[string]float64
+	dsn  string
+	gzip bool
 }
 
 type JobParams struct {
@@ -47,6 +47,7 @@ type JobParams struct {
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
+	OldMetrics       *metrics.Data
 }
 
 type SourceParams struct {
@@ -72,8 +73,15 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
-		metrics:          jp.Metrics,
+		appMetrics:       jp.Metrics,
 	}
+
+	j.jobMetrics = metrics.JobData{
+		JobName:       jp.Name,
+		JobType:       j.GetType(),
+		TargetMetrics: make(map[string]metrics.TargetData),
+	}
+	ojm := jp.OldMetrics.GetMetrics(jp.Name)
 
 	for _, src := range jp.Sources {
 
@@ -84,31 +92,32 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		_ = conn.Close()
 
 		j.targets[src.Name] = target{
-			gzip:    src.Gzip,
-			dsn:     dsn,
-			metrics: make(map[string]float64),
+			gzip: src.Gzip,
+			dsn:  dsn,
+		}
+		if otm, ok := ojm.TargetMetrics[src.Name]; ok {
+			j.jobMetrics.TargetMetrics[src.Name] = otm
+		} else {
+			j.jobMetrics.TargetMetrics[src.Name] = metrics.TargetData{
+				Source: src.Name,
+				Target: "",
+				Values: make(map[string]float64),
+			}
 		}
 	}
 
+	j.ExportMetrics()
 	return j, nil
 }
 
-func (j *job) FillMetrics(ofs string, metrics map[string]float64) {
-	for m, v := range metrics {
-		j.targets[ofs].metrics[m] = v
+func (j *job) SetOfsMetrics(ofs string, metricsMap map[string]float64) {
+	for m, v := range metricsMap {
+		j.jobMetrics.TargetMetrics[ofs].Values[m] = v
 	}
 }
 
 func (j *job) ExportMetrics() {
-	for ofs, t := range j.targets {
-		j.metrics.AddTargetMetric(metrics.TargetData{
-			JobName: j.name,
-			JobType: j.GetType(),
-			Source:  ofs,
-			Target:  "",
-			Values:  t.metrics,
-		})
-	}
+	j.appMetrics.JobMetricsSet(j.jobMetrics)
 }
 
 func (j *job) GetName() string {
@@ -169,6 +178,14 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	var errs *multierror.Error
 
 	for ofsPart, tgt := range j.targets {
+		j.SetOfsMetrics(ofsPart, map[string]float64{
+			"backup_ok":     float64(0),
+			"backup_time":   float64(0),
+			"delivery_ok":   float64(0),
+			"delivery_time": float64(0),
+			"size":          float64(0),
+		})
+
 		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "rdb", "", tgt.gzip)
 		err := os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
@@ -179,8 +196,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 		startTime := time.Now()
 		if err = j.createTmpBackup(logCh, tmpBackupFile, ofsPart, tgt); err != nil {
-			j.FillMetrics(ofsPart, map[string]float64{
-				"backup_ok":   float64(0),
+			j.SetOfsMetrics(ofsPart, map[string]float64{
 				"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})
 			logCh <- logger.Log(j.name, "").Error("Failed to create temp backup.")
@@ -188,7 +204,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 		fileInfo, _ := os.Stat(tmpBackupFile)
-		j.FillMetrics(ofsPart, map[string]float64{
+		j.SetOfsMetrics(ofsPart, map[string]float64{
 			"backup_ok":   float64(1),
 			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
 			"size":        float64(fileInfo.Size()),

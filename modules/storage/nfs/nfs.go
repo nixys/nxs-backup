@@ -84,7 +84,7 @@ func (n *NFS) SetRetention(r Retention) {
 func (n *NFS) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakRemPaths, mtdRemPaths = GetIncBackupDstList(tmpBackupFile, ofs, n.backupPath)
 	} else {
 		bakRemPaths = GetDescBackupDstList(tmpBackupFile, ofs, n.backupPath, n.Retention)
@@ -152,7 +152,7 @@ func (n *NFS) copy(logCh chan logger.LogRecord, jobName, dst, src string) error 
 
 func (n *NFS) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == string(misc.IncFiles) {
 		return n.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return n.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

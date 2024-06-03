@@ -71,7 +71,7 @@ func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
 			if errs.Len() < len(s) {
 				job.SetDumpObjectDelivered(ofs)
 			}
-			job.FillMetrics(ofs, map[string]float64{
+			job.SetOfsMetrics(ofs, map[string]float64{
 				"delivery_ok":   ok,
 				"delivery_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})
@@ -87,7 +87,7 @@ func (s Storages) CleanupTmpData(job Job) error {
 	for _, dumpObj := range job.GetDumpObjects() {
 
 		tmpBakFile := dumpObj.TmpFile
-		if job.GetType() == misc.IncBackupType {
+		if job.GetType() == string(misc.IncFiles) {
 			// cleanup tmp metadata files
 			_ = os.Remove(path.Join(tmpBakFile + ".inc"))
 			initFile := path.Join(tmpBakFile + ".init")

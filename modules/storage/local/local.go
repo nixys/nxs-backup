@@ -47,7 +47,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		links                  map[string]string
 	)
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakDstPath, mtdDstPath, links, err = GetIncBackupDstAndLinks(tmpBackupFile, ofs, l.backupPath)
 	} else {
 		bakDstPath, links, err = GetDescBackupDstAndLinks(tmpBackupFile, ofs, l.backupPath, l.Retention)
@@ -150,7 +150,7 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 
 func (l *Local) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == string(misc.IncFiles) {
 		return l.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return l.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

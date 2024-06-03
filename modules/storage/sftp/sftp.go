@@ -102,7 +102,7 @@ func (s *SFTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFil
 		links                  map[string]string
 	)
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakDstPath, mtdDstPath, links, err = GetIncBackupDstAndLinks(tmpBackupFile, ofs, s.backupPath)
 	} else {
 		bakDstPath, links, err = GetDescBackupDstAndLinks(tmpBackupFile, ofs, s.backupPath, s.Retention)
@@ -198,7 +198,7 @@ func (s *SFTP) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmpB
 
 func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == string(misc.IncFiles) {
 		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return s.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

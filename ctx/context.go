@@ -132,7 +132,8 @@ func AppCtxInit() (any, error) {
 				Bind: a.serverBind,
 				Log:  c.Log,
 				Done: c.Done,
-			})
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -146,6 +147,8 @@ func printInitError(ft string, err error) {
 }
 
 func appInit(c *Ctx, cfgPath string) (app, error) {
+	var oldMetrics *metrics.Data
+
 	a := app{
 		jobs: make(map[string]interfaces.Job),
 	}
@@ -160,11 +163,22 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 	a.serverBind = conf.Server.Bind
 
 	if conf.Server.Metrics {
-		a.metrics = metrics.InitData(conf.ProjectName, conf.ServerName)
+		nva := 0.0
 		ver, _ := semver.NewVersion(misc.VERSION)
 		newVer, _, _ := misc.CheckNewVersionAvailable(strconv.FormatUint(ver.Major(), 10))
 		if newVer != "" {
-			a.metrics.NewVersionAvailable = 1
+			nva = 1
+		}
+		a.metrics, oldMetrics, err = metrics.InitMetrics(
+			metrics.Opts{
+				Project:             conf.ProjectName,
+				Server:              conf.ServerName,
+				NewVersionAvailable: nva,
+			},
+		)
+		if err != nil {
+			printInitError("Failed to init metrics: %v\n", err)
+			return a, err
 		}
 	}
 
@@ -183,7 +197,14 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
 
-	jobs, err := jobsInit(conf, storages, a.metrics)
+	jobs, err := jobsInit(
+		jobsOpts{
+			jobs:           conf.Jobs,
+			storages:       storages,
+			metricsData:    a.metrics,
+			oldMetricsData: oldMetrics,
+		},
+	)
 	if err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}

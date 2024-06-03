@@ -17,28 +17,42 @@ import (
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
+type BackupType string
+
 const (
 	YearlyBackupDay  = "1"
 	MonthlyBackupDay = "1"
 	WeeklyBackupDay  = "0"
-	IncBackupType    = "inc_files"
 	LatestVersionURL = "https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup"
 	VersionURL       = "https://github.com/nixys/nxs-backup/releases/download/v"
 )
-
-var AllowedJobTypes = []string{
-	"desc_files",
-	"inc_files",
-	"mysql",
-	"mysql_xtrabackup",
-	"postgresql",
-	"postgresql_basebackup",
-	"mongodb",
-	"redis",
-	"external",
-}
+const (
+	DescFiles            BackupType = "desc_files"
+	IncFiles             BackupType = "inc_files"
+	Mysql                BackupType = "mysql"
+	MysqlXtrabackup      BackupType = "mysql_xtrabackup"
+	Postgresql           BackupType = "postgresql"
+	PostgresqlBasebackup BackupType = "postgresql_basebackup"
+	Mongodb              BackupType = "mongodb"
+	Redis                BackupType = "redis"
+	External             BackupType = "external"
+)
 
 var DecadesBackupDays = []string{"1", "11", "21"}
+
+func AllowedBackupTypesGet() []string {
+	return []string{
+		string(DescFiles),
+		string(IncFiles),
+		string(Mysql),
+		string(MysqlXtrabackup),
+		string(Postgresql),
+		string(PostgresqlBasebackup),
+		string(Mongodb),
+		string(Redis),
+		string(External),
+	}
+}
 
 func GetOfsPart(regex, target string) string {
 	var pathParts []string
@@ -153,7 +167,7 @@ func GetMessage(n logger.LogRecord, project, server string) (m string) {
 	}
 
 	if project != "" {
-		m += fmt.Sprintf("Project: %s\n", project)
+		m += fmt.Sprintf("project: %s\n", project)
 	}
 	if server != "" {
 		m += fmt.Sprintf("Server: %s\n\n", server)

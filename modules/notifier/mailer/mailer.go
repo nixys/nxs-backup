@@ -97,7 +97,7 @@ func (m *mailer) getMailBody(n logger.LogRecord) (b string) {
 	}
 
 	if m.opts.ProjectName != "" {
-		b += fmt.Sprintf("Project: %s\n", m.opts.ProjectName)
+		b += fmt.Sprintf("project: %s\n", m.opts.ProjectName)
 	}
 	if m.opts.ServerName != "" {
 		b += fmt.Sprintf("Server: %s\n\n", m.opts.ServerName)

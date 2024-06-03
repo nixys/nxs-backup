@@ -306,7 +306,7 @@ func checkConfigPath(configPath string) error {
 
 func emptyConfig() string {
 	return `server_name: localhost
-#project_name: My best Project
+#project_name: My best project
 
 notifications:
   mail:
