@@ -156,7 +156,7 @@ func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job 
 		return err
 	}
 
-	if job.GetType() == string(misc.IncFiles) {
+	if job.GetType() == misc.IncFiles {
 		return f.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return f.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

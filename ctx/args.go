@@ -25,7 +25,7 @@ type StartCmd struct {
 type ServerCmd struct{}
 
 type GenerateCmd struct {
-	Type     string            `arg:"-T,--backup-type,required" help:"Type of backup"`
+	Type     misc.BackupType   `arg:"-T,--backup-type,required" help:"Type of backup"`
 	Storages map[string]string `arg:"-S,--storage-types" help:"Storages names with type. Example: -S minio=s3 aws=s3"`
 	OutPath  string            `arg:"-O,--out-path" help:"Path to the generated configuration file" placeholder:"PATH"`
 }

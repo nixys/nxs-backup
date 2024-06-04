@@ -3,7 +3,6 @@ package psql
 import (
 	"bytes"
 	"fmt"
-	"github.com/nixys/nxs-backup/modules/metrics"
 	"net/url"
 	"os"
 	"os/exec"
@@ -21,6 +20,7 @@ import (
 	"github.com/nixys/nxs-backup/modules/backend/exec_cmd"
 	"github.com/nixys/nxs-backup/modules/backend/targz"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 type job struct {
@@ -74,7 +74,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `pg_dump` version. Please install `pg_dump`. Error: %s ", jp.Name, err)
 	}
 
-	j := &job{
+	j := job{
 		name:             jp.Name,
 		tmpDir:           jp.TmpDir,
 		needToMakeBackup: jp.NeedToMakeBackup,
@@ -84,13 +84,13 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
 		appMetrics:       jp.Metrics,
+		jobMetrics: metrics.JobData{
+			JobName:       jp.Name,
+			JobType:       misc.Postgresql,
+			TargetMetrics: make(map[string]metrics.TargetData),
+		},
 	}
 
-	j.jobMetrics = metrics.JobData{
-		JobName:       jp.Name,
-		JobType:       j.GetType(),
-		TargetMetrics: make(map[string]metrics.TargetData),
-	}
 	ojm := jp.OldMetrics.GetMetrics(jp.Name)
 
 	for _, src := range jp.Sources {
@@ -174,7 +174,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 	}
 
 	j.ExportMetrics()
-	return j, nil
+	return &j, nil
 }
 
 func (j *job) SetOfsMetrics(ofs string, metricsMap map[string]float64) {
@@ -195,8 +195,8 @@ func (j *job) GetTempDir() string {
 	return j.tmpDir
 }
 
-func (j *job) GetType() string {
-	return "postgresql"
+func (j *job) GetType() misc.BackupType {
+	return misc.Postgresql
 }
 
 func (j *job) GetTargetOfsList() (ofsList []string) {
@@ -246,11 +246,11 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 	for ofsPart, tgt := range j.targets {
 		j.SetOfsMetrics(ofsPart, map[string]float64{
-			"backup_ok":     float64(0),
-			"backup_time":   float64(0),
-			"delivery_ok":   float64(0),
-			"delivery_time": float64(0),
-			"size":          float64(0),
+			metrics.BackupOk:     float64(0),
+			metrics.BackupTime:   float64(0),
+			metrics.DeliveryOk:   float64(0),
+			metrics.DeliveryTime: float64(0),
+			metrics.BackupSize:   float64(0),
 		})
 
 		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "sql", "", tgt.gzip)
@@ -264,7 +264,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		startTime := time.Now()
 		if err = j.createTmpBackup(logCh, tmpBackupFile, tgt); err != nil {
 			j.SetOfsMetrics(ofsPart, map[string]float64{
-				"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+				metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})
 			logCh <- logger.Log(j.name, "").Errorf("Failed to create temp backups %s", tmpBackupFile)
 			errs = multierror.Append(errs, err)
@@ -272,9 +272,9 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		}
 		fileInfo, _ := os.Stat(tmpBackupFile)
 		j.SetOfsMetrics(ofsPart, map[string]float64{
-			"backup_ok":   float64(1),
-			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
-			"size":        float64(fileInfo.Size()),
+			metrics.BackupOk:   float64(1),
+			metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
+			metrics.BackupSize: float64(fileInfo.Size()),
 		})
 
 		logCh <- logger.Log(j.name, "").Debugf("Created temp backups %s", tmpBackupFile)

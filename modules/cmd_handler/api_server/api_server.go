@@ -1,20 +1,21 @@
 package api_server
 
 import (
-	"github.com/nixys/nxs-backup/modules/metrics"
-	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/nixys/nxs-backup/api"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 type Opts struct {
-	Bind string
-	Log  *logrus.Logger
-	Done chan error
+	Bind           string
+	MetricFilePath string
+	Log            *logrus.Logger
+	Done           chan error
 }
 
 type httpServer struct {
@@ -27,9 +28,10 @@ type httpServer struct {
 
 func Init(o Opts) (*httpServer, error) {
 
-	exporter := metrics.Init(
-		metrics.InitSettings{
-			Log: o.Log,
+	exporter := metrics.InitExporter(
+		metrics.ExporterOpts{
+			Log:            o.Log,
+			MetricFilePath: o.MetricFilePath,
 		},
 	)
 

@@ -2,7 +2,6 @@ package start_backup
 
 import (
 	"fmt"
-	"github.com/nixys/nxs-backup/modules/metrics"
 	"os"
 	"path"
 	"time"
@@ -13,46 +12,47 @@ import (
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/modules/backup"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 type Opts struct {
-	InitErr  error
-	Done     chan error
-	EvCh     chan logger.LogRecord
-	WaitPrev time.Duration
-	JobName  string
-	Jobs     map[string]interfaces.Job
-	FileJobs interfaces.Jobs
-	DBJobs   interfaces.Jobs
-	ExtJobs  interfaces.Jobs
-	Metrics  *metrics.Data
+	InitErr     error
+	Done        chan error
+	EvCh        chan logger.LogRecord
+	WaitPrev    time.Duration
+	JobName     string
+	Jobs        map[string]interfaces.Job
+	FileJobs    interfaces.Jobs
+	DBJobs      interfaces.Jobs
+	ExtJobs     interfaces.Jobs
+	MetricsData *metrics.Data
 }
 
 type startBackup struct {
-	initErr  error
-	done     chan error
-	evCh     chan logger.LogRecord
-	waitPrev time.Duration
-	jobName  string
-	jobs     map[string]interfaces.Job
-	fileJobs interfaces.Jobs
-	dbJobs   interfaces.Jobs
-	extJobs  interfaces.Jobs
-	metrics  *metrics.Data
+	initErr     error
+	done        chan error
+	evCh        chan logger.LogRecord
+	waitPrev    time.Duration
+	jobName     string
+	jobs        map[string]interfaces.Job
+	fileJobs    interfaces.Jobs
+	dbJobs      interfaces.Jobs
+	extJobs     interfaces.Jobs
+	metricsData *metrics.Data
 }
 
 func Init(o Opts) *startBackup {
 	return &startBackup{
-		initErr:  o.InitErr,
-		done:     o.Done,
-		evCh:     o.EvCh,
-		waitPrev: o.WaitPrev,
-		jobName:  o.JobName,
-		jobs:     o.Jobs,
-		fileJobs: o.FileJobs,
-		dbJobs:   o.DBJobs,
-		extJobs:  o.ExtJobs,
-		metrics:  o.Metrics,
+		initErr:     o.InitErr,
+		done:        o.Done,
+		evCh:        o.EvCh,
+		waitPrev:    o.WaitPrev,
+		jobName:     o.JobName,
+		jobs:        o.Jobs,
+		fileJobs:    o.FileJobs,
+		dbJobs:      o.DBJobs,
+		extJobs:     o.ExtJobs,
+		metricsData: o.MetricsData,
 	}
 }
 
@@ -132,8 +132,8 @@ func (sb *startBackup) Run() {
 	}
 
 	sb.evCh <- logger.Log("", "").Infof("Backup finished.\n")
-	if sb.metrics != nil {
-		if err = sb.metrics.SaveFile(); err != nil {
+	if sb.metricsData != nil {
+		if err = sb.metricsData.SaveFile(); err != nil {
 			sb.evCh <- logger.Log("", "").Errorf("Failed to save metrics to file: %v", err)
 		}
 	}

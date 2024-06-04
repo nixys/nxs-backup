@@ -150,7 +150,7 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 
 func (l *Local) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == string(misc.IncFiles) {
+	if job.GetType() == misc.IncFiles {
 		return l.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return l.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

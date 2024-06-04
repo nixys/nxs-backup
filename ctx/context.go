@@ -2,20 +2,20 @@ package ctx
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver/v3"
-	"github.com/nixys/nxs-backup/misc"
-	"github.com/nixys/nxs-backup/modules/cmd_handler/api_server"
 	"os"
 	"path"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/hashicorp/go-multierror"
 	appctx "github.com/nixys/nxs-go-appctx/v3"
 	"github.com/sirupsen/logrus"
 
 	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/api_server"
 	"github.com/nixys/nxs-backup/modules/cmd_handler/generate_config"
 	"github.com/nixys/nxs-backup/modules/cmd_handler/self_update"
 	"github.com/nixys/nxs-backup/modules/cmd_handler/start_backup"
@@ -41,7 +41,7 @@ type app struct {
 	dbJobs      interfaces.Jobs
 	extJobs     interfaces.Jobs
 	initErrs    *multierror.Error
-	metrics     *metrics.Data
+	metricsData *metrics.Data
 	serverBind  string
 }
 
@@ -105,16 +105,16 @@ func AppCtxInit() (any, error) {
 		}
 		c.Cmd = start_backup.Init(
 			start_backup.Opts{
-				InitErr:  a.initErrs.ErrorOrNil(),
-				Done:     c.Done,
-				EvCh:     c.EventCh,
-				WaitPrev: a.waitTimeout,
-				JobName:  ra.CmdParams.(*StartCmd).JobName,
-				Jobs:     a.jobs,
-				FileJobs: a.fileJobs,
-				DBJobs:   a.dbJobs,
-				ExtJobs:  a.extJobs,
-				Metrics:  a.metrics,
+				InitErr:     a.initErrs.ErrorOrNil(),
+				Done:        c.Done,
+				EvCh:        c.EventCh,
+				WaitPrev:    a.waitTimeout,
+				JobName:     ra.CmdParams.(*StartCmd).JobName,
+				Jobs:        a.jobs,
+				FileJobs:    a.fileJobs,
+				DBJobs:      a.dbJobs,
+				ExtJobs:     a.extJobs,
+				MetricsData: a.metricsData,
 			},
 		)
 	case "server":
@@ -122,16 +122,17 @@ func AppCtxInit() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if a.metrics == nil {
+		if a.metricsData == nil {
 			err = fmt.Errorf("server metrics disabled by config")
 			printInitError("Init err:\n%s", err)
 			return nil, err
 		}
 		c.Cmd, err = api_server.Init(
 			api_server.Opts{
-				Bind: a.serverBind,
-				Log:  c.Log,
-				Done: c.Done,
+				Bind:           a.serverBind,
+				MetricFilePath: a.metricsData.MetricFilePath(),
+				Log:            c.Log,
+				Done:           c.Done,
 			},
 		)
 		if err != nil {
@@ -162,17 +163,18 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 	a.waitTimeout = conf.WaitingTimeout
 	a.serverBind = conf.Server.Bind
 
-	if conf.Server.Metrics {
+	if conf.Server.Metrics.Enabled {
 		nva := 0.0
 		ver, _ := semver.NewVersion(misc.VERSION)
 		newVer, _, _ := misc.CheckNewVersionAvailable(strconv.FormatUint(ver.Major(), 10))
 		if newVer != "" {
 			nva = 1
 		}
-		a.metrics, oldMetrics, err = metrics.InitMetrics(
-			metrics.Opts{
+		a.metricsData, oldMetrics, err = metrics.InitData(
+			metrics.DataOpts{
 				Project:             conf.ProjectName,
 				Server:              conf.ServerName,
+				MetricsFile:         conf.Server.Metrics.FilePath,
 				NewVersionAvailable: nva,
 			},
 		)
@@ -201,7 +203,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		jobsOpts{
 			jobs:           conf.Jobs,
 			storages:       storages,
-			metricsData:    a.metrics,
+			metricsData:    a.metricsData,
 			oldMetricsData: oldMetrics,
 		},
 	)

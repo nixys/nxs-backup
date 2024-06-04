@@ -149,7 +149,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 			return object.Err
 		}
 
-		if job.GetType() == string(misc.IncFiles) {
+		if job.GetType() == misc.IncFiles {
 			if full {
 				filesList["inc"] = append(filesList["inc"], object)
 			} else {

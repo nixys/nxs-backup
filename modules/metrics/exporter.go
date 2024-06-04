@@ -8,44 +8,46 @@ import (
 )
 
 type Exporter struct {
-	metrics map[string]*prometheus.Desc
-	ctx     context.Context
-	log     *logrus.Logger
+	metrics        map[string]*prometheus.Desc
+	ctx            context.Context
+	log            *logrus.Logger
+	metricFilePath string
 }
 
-type InitSettings struct {
-	Log *logrus.Logger
+type ExporterOpts struct {
+	Log            *logrus.Logger
+	MetricFilePath string
 }
 
-func Init(s InitSettings) *Exporter {
+func InitExporter(s ExporterOpts) *Exporter {
 
 	metrics := map[string]*prometheus.Desc{
-		"size": prometheus.NewDesc(
+		BackupSize: prometheus.NewDesc(
 			prometheus.BuildFQName("backup", "file", "size"),
 			"Backup file size",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
-		"backup_ok": prometheus.NewDesc(
+		BackupOk: prometheus.NewDesc(
 			prometheus.BuildFQName("backup", "collection", "success"),
 			"Backup finished successfully",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
-		"backup_time": prometheus.NewDesc(
+		BackupTime: prometheus.NewDesc(
 			prometheus.BuildFQName("backup", "collection", "time"),
 			"Backup collection time",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
-		"delivery_ok": prometheus.NewDesc(
+		DeliveryOk: prometheus.NewDesc(
 			prometheus.BuildFQName("backup", "delivery", "success"),
 			"Backup delivery finished successfully",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
-		"delivery_time": prometheus.NewDesc(
+		DeliveryTime: prometheus.NewDesc(
 			prometheus.BuildFQName("backup", "delivery", "time"),
 			"Backup delivering time",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
-		"update": prometheus.NewDesc(
+		UpdateAvailable: prometheus.NewDesc(
 			prometheus.BuildFQName("", "update", "available"),
 			"A new version of nxs-backup is available",
 			[]string{"project", "server"}, nil,
@@ -53,8 +55,9 @@ func Init(s InitSettings) *Exporter {
 	}
 
 	return &Exporter{
-		metrics: metrics,
-		log:     s.Log,
+		metrics:        metrics,
+		log:            s.Log,
+		metricFilePath: s.MetricFilePath,
 	}
 }
 
@@ -72,7 +75,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // This function is called when a scrape is performed on the /metrics page
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
-	data, err := ReadFile()
+	data, err := readFile(e.metricFilePath)
 	if err != nil {
 		e.log.Warnf("Failed to read metric file: %v", err)
 		return
@@ -88,7 +91,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 					data.Project,
 					data.Server,
 					j.JobName,
-					j.JobType,
+					string(j.JobType),
 					t.Source,
 					t.Target,
 				)
@@ -103,7 +106,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	d, err := prometheus.NewConstMetric(
-		e.metrics["update"],
+		e.metrics[UpdateAvailable],
 		prometheus.GaugeValue,
 		data.NewVersionAvailable,
 		data.Project,

@@ -198,7 +198,7 @@ func (s *SFTP) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmpB
 
 func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == string(misc.IncFiles) {
+	if job.GetType() == misc.IncFiles {
 		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return s.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

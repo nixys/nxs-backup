@@ -152,7 +152,7 @@ func (n *NFS) copy(logCh chan logger.LogRecord, jobName, dst, src string) error 
 
 func (n *NFS) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == string(misc.IncFiles) {
+	if job.GetType() == misc.IncFiles {
 		return n.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return n.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

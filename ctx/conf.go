@@ -24,16 +24,21 @@ type ConfOpts struct {
 	IncludeCfgs     []string         `conf:"include_jobs_configs"`
 	WaitingTimeout  time.Duration    `conf:"waiting_timeout"`
 
-	Server serverConf `conf:"server"`
+	Server serverOpts `conf:"server"`
 
 	LogFile  string `conf:"logfile" conf_extraopts:"default=stdout"`
 	LogLevel string `conf:"loglevel" conf_extraopts:"default=info"`
 	ConfPath string
 }
 
-type serverConf struct {
-	Bind    string `conf:"bind" conf_extraopts:"default=:7979"`
-	Metrics bool   `conf:"metrics" conf_extraopts:"default=false"`
+type serverOpts struct {
+	Bind    string      `conf:"bind" conf_extraopts:"default=:7979"`
+	Metrics metricsOpts `conf:"metrics"`
+}
+
+type metricsOpts struct {
+	Enabled  bool   `conf:"enabled" conf_extraopts:"default=true"`
+	FilePath string `conf:"metrics_file_path" conf_extraopts:"default=/tmp/nxs-backup.metrics"`
 }
 
 type notifications struct {
@@ -63,15 +68,15 @@ type webhookConf struct {
 }
 
 type jobCfg struct {
-	JobName          string        `conf:"job_name" conf_extraopts:"required"`
-	JobType          string        `conf:"type" conf_extraopts:"required"`
-	TmpDir           string        `conf:"tmp_dir"`
-	SafetyBackup     bool          `conf:"safety_backup" conf_extraopts:"default=false"`
-	DeferredCopying  bool          `conf:"deferred_copying" conf_extraopts:"default=false"`
-	Sources          []sourceCfg   `conf:"sources"`
-	StoragesOptions  []storageOpts `conf:"storages_options"`
-	DumpCmd          string        `conf:"dump_cmd"`
-	SkipBackupRotate bool          `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // used by external
+	JobName          string          `conf:"job_name" conf_extraopts:"required"`
+	JobType          misc.BackupType `conf:"type" conf_extraopts:"required"`
+	TmpDir           string          `conf:"tmp_dir"`
+	SafetyBackup     bool            `conf:"safety_backup" conf_extraopts:"default=false"`
+	DeferredCopying  bool            `conf:"deferred_copying" conf_extraopts:"default=false"`
+	Sources          []sourceCfg     `conf:"sources"`
+	StoragesOptions  []storageOpts   `conf:"storages_options"`
+	DumpCmd          string          `conf:"dump_cmd"`
+	SkipBackupRotate bool            `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // used by external
 }
 
 type sourceCfg struct {

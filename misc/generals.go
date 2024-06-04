@@ -25,22 +25,21 @@ const (
 	WeeklyBackupDay  = "0"
 	LatestVersionURL = "https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup"
 	VersionURL       = "https://github.com/nixys/nxs-backup/releases/download/v"
-)
-const (
+
 	DescFiles            BackupType = "desc_files"
 	IncFiles             BackupType = "inc_files"
 	Mysql                BackupType = "mysql"
 	MysqlXtrabackup      BackupType = "mysql_xtrabackup"
 	Postgresql           BackupType = "postgresql"
 	PostgresqlBasebackup BackupType = "postgresql_basebackup"
-	Mongodb              BackupType = "mongodb"
+	MongoDB              BackupType = "mongodb"
 	Redis                BackupType = "redis"
 	External             BackupType = "external"
 )
 
 var DecadesBackupDays = []string{"1", "11", "21"}
 
-func AllowedBackupTypesGet() []string {
+func AllowedBackupTypesList() []string {
 	return []string{
 		string(DescFiles),
 		string(IncFiles),
@@ -48,7 +47,7 @@ func AllowedBackupTypesGet() []string {
 		string(MysqlXtrabackup),
 		string(Postgresql),
 		string(PostgresqlBasebackup),
-		string(Mongodb),
+		string(MongoDB),
 		string(Redis),
 		string(External),
 	}

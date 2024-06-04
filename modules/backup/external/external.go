@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/nixys/nxs-backup/interfaces"
-	"github.com/nixys/nxs-backup/modules/logger"
-	"github.com/nixys/nxs-backup/modules/metrics"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/nixys/nxs-backup/interfaces"
+	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 type job struct {
@@ -52,11 +54,11 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:         jp.Storages,
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
 		appMetrics:       jp.Metrics,
-	}
-	j.jobMetrics = metrics.JobData{
-		JobName:       jp.Name,
-		JobType:       j.GetType(),
-		TargetMetrics: make(map[string]metrics.TargetData),
+		jobMetrics: metrics.JobData{
+			JobName:       jp.Name,
+			JobType:       misc.External,
+			TargetMetrics: make(map[string]metrics.TargetData),
+		},
 	}
 
 	ojm := jp.OldMetrics.GetMetrics(jp.Name)
@@ -92,8 +94,8 @@ func (j *job) GetTempDir() string {
 	return ""
 }
 
-func (j *job) GetType() string {
-	return "external"
+func (j *job) GetType() misc.BackupType {
+	return misc.External
 }
 
 func (j *job) GetTargetOfsList() []string {
@@ -144,11 +146,11 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	var stderr, stdout bytes.Buffer
 
 	j.SetOfsMetrics("", map[string]float64{
-		"backup_ok":     float64(0),
-		"backup_time":   float64(0),
-		"delivery_ok":   float64(0),
-		"delivery_time": float64(0),
-		"size":          float64(0),
+		metrics.BackupOk:     float64(0),
+		metrics.BackupTime:   float64(0),
+		metrics.DeliveryOk:   float64(0),
+		metrics.DeliveryTime: float64(0),
+		metrics.BackupSize:   float64(0),
 	})
 
 	defer func() {
@@ -175,7 +177,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	startTime := time.Now()
 	if err = cmd.Run(); err != nil {
 		j.SetOfsMetrics("", map[string]float64{
-			"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+			metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
 		})
 		logCh <- logger.Log(j.name, "").Errorf("Unable to finish `%s`. Error: %s", j.dumpCmd, err)
 		logCh <- logger.Log(j.name, "").Debugf("STDOUT: %s", stdout.String())
@@ -183,8 +185,8 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 		return err
 	}
 	j.SetOfsMetrics("", map[string]float64{
-		"backup_ok":   float64(1),
-		"backup_time": float64(time.Since(startTime).Nanoseconds() / 1e6),
+		metrics.BackupOk:   float64(1),
+		metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
 	})
 
 	logCh <- logger.Log(j.name, "").Infof("Dumping completed")
@@ -208,7 +210,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	j.dumpedObjects[j.name] = interfaces.DumpObject{TmpFile: out.FullPath}
 	fileInfo, _ := os.Stat(out.FullPath)
 	j.SetOfsMetrics("", map[string]float64{
-		"size": float64(fileInfo.Size()),
+		metrics.BackupSize: float64(fileInfo.Size()),
 	})
 
 	return j.storages.Delivery(logCh, j)

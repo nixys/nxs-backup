@@ -87,7 +87,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 		}
 
 		switch j.JobType {
-		case string(misc.DescFiles):
+		case misc.DescFiles:
 			var sources []desc_files.SourceParams
 			for _, src := range j.Sources {
 				sources = append(sources, desc_files.SourceParams{
@@ -117,7 +117,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 
 			jobs = append(jobs, job)
 
-		case string(misc.IncFiles):
+		case misc.IncFiles:
 			var sources []inc_files.SourceParams
 			for _, src := range j.Sources {
 				sources = append(sources, inc_files.SourceParams{
@@ -146,7 +146,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 
 			jobs = append(jobs, job)
 
-		case string(misc.Mysql):
+		case misc.Mysql:
 			var sources []mysql.SourceParams
 
 			for _, src := range j.Sources {
@@ -190,7 +190,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.MysqlXtrabackup):
+		case misc.MysqlXtrabackup:
 			var sources []mysql_xtrabackup.SourceParams
 
 			for _, src := range j.Sources {
@@ -235,7 +235,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.Postgresql):
+		case misc.Postgresql:
 			var sources []psql.SourceParams
 
 			for _, src := range j.Sources {
@@ -281,7 +281,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.PostgresqlBasebackup):
+		case misc.PostgresqlBasebackup:
 			var sources []psql_basebackup.SourceParams
 
 			for _, src := range j.Sources {
@@ -325,7 +325,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.Mongodb):
+		case misc.MongoDB:
 			var sources []mongodump.SourceParams
 
 			for _, src := range j.Sources {
@@ -372,7 +372,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.Redis):
+		case misc.Redis:
 			var sources []redis.SourceParams
 
 			for _, src := range j.Sources {
@@ -405,7 +405,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 			jobs = append(jobs, job)
 
-		case string(misc.External):
+		case misc.External:
 			job, err := external.Init(external.JobParams{
 				Name:             j.JobName,
 				DumpCmd:          j.DumpCmd,
@@ -423,7 +423,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			jobs = append(jobs, job)
 
 		default:
-			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.JobType, strings.Join(misc.AllowedBackupTypesGet(), ", ")))
+			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.JobType, strings.Join(misc.AllowedBackupTypesList(), ", ")))
 			continue
 		}
 	}

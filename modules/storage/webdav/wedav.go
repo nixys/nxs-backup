@@ -141,7 +141,7 @@ func (wd *webDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath st
 
 func (wd *webDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == string(misc.IncFiles) {
+	if job.GetType() == misc.IncFiles {
 		return wd.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return wd.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())
