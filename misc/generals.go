@@ -17,28 +17,41 @@ import (
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
+type BackupType string
+
 const (
 	YearlyBackupDay  = "1"
 	MonthlyBackupDay = "1"
 	WeeklyBackupDay  = "0"
-	IncBackupType    = "inc_files"
 	LatestVersionURL = "https://github.com/nixys/nxs-backup/releases/latest/download/nxs-backup"
 	VersionURL       = "https://github.com/nixys/nxs-backup/releases/download/v"
+
+	DescFiles            BackupType = "desc_files"
+	IncFiles             BackupType = "inc_files"
+	Mysql                BackupType = "mysql"
+	MysqlXtrabackup      BackupType = "mysql_xtrabackup"
+	Postgresql           BackupType = "postgresql"
+	PostgresqlBasebackup BackupType = "postgresql_basebackup"
+	MongoDB              BackupType = "mongodb"
+	Redis                BackupType = "redis"
+	External             BackupType = "external"
 )
 
-var AllowedJobTypes = []string{
-	"desc_files",
-	"inc_files",
-	"mysql",
-	"mysql_xtrabackup",
-	"postgresql",
-	"postgresql_basebackup",
-	"mongodb",
-	"redis",
-	"external",
-}
-
 var DecadesBackupDays = []string{"1", "11", "21"}
+
+func AllowedBackupTypesList() []string {
+	return []string{
+		string(DescFiles),
+		string(IncFiles),
+		string(Mysql),
+		string(MysqlXtrabackup),
+		string(Postgresql),
+		string(PostgresqlBasebackup),
+		string(MongoDB),
+		string(Redis),
+		string(External),
+	}
+}
 
 func GetOfsPart(regex, target string) string {
 	var pathParts []string
@@ -127,7 +140,6 @@ func Contains(s []string, str string) bool {
 func RandString(strLen int64) string {
 	var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, strLen)
 	for i := range b {
 		b[i] = chars[rand.Intn(len(chars))]
@@ -154,7 +166,7 @@ func GetMessage(n logger.LogRecord, project, server string) (m string) {
 	}
 
 	if project != "" {
-		m += fmt.Sprintf("Project: %s\n", project)
+		m += fmt.Sprintf("project: %s\n", project)
 	}
 	if server != "" {
 		m += fmt.Sprintf("Server: %s\n\n", server)
@@ -212,7 +224,6 @@ func CheckNewVersionAvailable(ver string) (string, string, error) {
 	}
 
 	if curVer.LessThan(newVer) {
-		fmt.Printf("The new version is: %s\n", newVer)
 		return newVer.String(), url, nil
 	}
 

@@ -1,13 +1,16 @@
 package interfaces
 
 import (
+	"github.com/nixys/nxs-backup/misc"
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
 type Job interface {
+	SetOfsMetrics(ofs string, metrics map[string]float64)
+	ExportMetrics()
 	GetName() string
 	GetTempDir() string
-	GetType() string
+	GetType() misc.BackupType
 	GetTargetOfsList() []string
 	GetStoragesCount() int
 	GetDumpObjects() map[string]DumpObject

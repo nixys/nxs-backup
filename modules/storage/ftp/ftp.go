@@ -101,7 +101,7 @@ func (f *FTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile
 		return err
 	}
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakRemPaths, mtdRemPaths = GetIncBackupDstList(tmpBackupFile, ofs, f.backupPath)
 	} else {
 		bakRemPaths = GetDescBackupDstList(tmpBackupFile, ofs, f.backupPath, f.Retention)
@@ -156,7 +156,7 @@ func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job 
 		return err
 	}
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == misc.IncFiles {
 		return f.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return f.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

@@ -22,14 +22,24 @@ import (
 	"github.com/nixys/nxs-backup/modules/backup/psql"
 	"github.com/nixys/nxs-backup/modules/backup/psql_basebackup"
 	"github.com/nixys/nxs-backup/modules/backup/redis"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"github.com/nixys/nxs-backup/modules/storage"
 )
 
-func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfaces.Job, error) {
-	var errs *multierror.Error
-	var jobs []interfaces.Job
+type jobsOpts struct {
+	metricsData    *metrics.Data
+	oldMetricsData *metrics.Data
+	jobs           []jobCfg
+	storages       map[string]interfaces.Storage
+}
 
-	for _, j := range conf.Jobs {
+func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
+	var (
+		errs *multierror.Error
+		jobs []interfaces.Job
+	)
+
+	for _, j := range o.jobs {
 		var needToMakeBackup bool
 		var jobStorages interfaces.Storages
 		stErrs := 0
@@ -47,7 +57,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 		for _, opt := range j.StoragesOptions {
 
 			// storages validation
-			s, ok := storages[opt.StorageName]
+			s, ok := o.storages[opt.StorageName]
 			if !ok {
 				stErrs++
 				errs = multierror.Append(errs, fmt.Errorf("Failed to set storage `%s` for job `%s`: storage not available ", opt.StorageName, j.JobName))
@@ -76,12 +86,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			sort.Sort(jobStorages)
 		}
 
-		//if stErrs > 0 {
-		//	continue
-		//}
-
 		switch j.JobType {
-		case misc.AllowedJobTypes[0]:
+		case misc.DescFiles:
 			var sources []desc_files.SourceParams
 			for _, src := range j.Sources {
 				sources = append(sources, desc_files.SourceParams{
@@ -101,6 +107,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -109,7 +117,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[1]:
+		case misc.IncFiles:
 			var sources []inc_files.SourceParams
 			for _, src := range j.Sources {
 				sources = append(sources, inc_files.SourceParams{
@@ -128,6 +136,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying: j.DeferredCopying,
 				Storages:        jobStorages,
 				Sources:         sources,
+				Metrics:         o.metricsData,
+				OldMetrics:      o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -136,7 +146,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[2]:
+		case misc.Mysql:
 			var sources []mysql.SourceParams
 
 			for _, src := range j.Sources {
@@ -171,6 +181,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -178,7 +190,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[3]:
+		case misc.MysqlXtrabackup:
 			var sources []mysql_xtrabackup.SourceParams
 
 			for _, src := range j.Sources {
@@ -214,6 +226,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -221,7 +235,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[4]:
+		case misc.Postgresql:
 			var sources []psql.SourceParams
 
 			for _, src := range j.Sources {
@@ -258,6 +272,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -265,7 +281,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[5]:
+		case misc.PostgresqlBasebackup:
 			var sources []psql_basebackup.SourceParams
 
 			for _, src := range j.Sources {
@@ -300,6 +316,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -307,7 +325,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[6]:
+		case misc.MongoDB:
 			var sources []mongodump.SourceParams
 
 			for _, src := range j.Sources {
@@ -345,6 +363,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -352,7 +372,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[7]:
+		case misc.Redis:
 			var sources []redis.SourceParams
 
 			for _, src := range j.Sources {
@@ -376,6 +396,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				DeferredCopying:  j.DeferredCopying,
 				Storages:         jobStorages,
 				Sources:          sources,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -383,7 +405,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			}
 			jobs = append(jobs, job)
 
-		case misc.AllowedJobTypes[8]:
+		case misc.External:
 			job, err := external.Init(external.JobParams{
 				Name:             j.JobName,
 				DumpCmd:          j.DumpCmd,
@@ -391,6 +413,8 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 				SafetyBackup:     j.SafetyBackup,
 				SkipBackupRotate: j.SkipBackupRotate,
 				Storages:         jobStorages,
+				Metrics:          o.metricsData,
+				OldMetrics:       o.oldMetricsData,
 			})
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
@@ -399,7 +423,7 @@ func jobsInit(conf ConfOpts, storages map[string]interfaces.Storage) ([]interfac
 			jobs = append(jobs, job)
 
 		default:
-			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.JobType, strings.Join(misc.AllowedJobTypes, ", ")))
+			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.JobType, strings.Join(misc.AllowedBackupTypesList(), ", ")))
 			continue
 		}
 	}

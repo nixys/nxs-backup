@@ -49,6 +49,8 @@ func Perform(logCh chan logger.LogRecord, job interfaces.Job) error {
 		errs = multierror.Append(errs, err)
 	}
 
+	job.ExportMetrics()
+
 	_ = job.CleanupTmpData()
 	_ = filepath.Walk(tmpDirPath,
 		func(path string, info os.FileInfo, err error) error {

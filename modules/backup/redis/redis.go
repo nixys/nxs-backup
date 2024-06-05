@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/nixys/nxs-backup/modules/backend/exec_cmd"
 	"github.com/nixys/nxs-backup/modules/backend/targz"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
 type job struct {
@@ -27,6 +29,8 @@ type job struct {
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
+	appMetrics       *metrics.Data
+	jobMetrics       metrics.JobData
 }
 
 type target struct {
@@ -42,6 +46,8 @@ type JobParams struct {
 	DeferredCopying  bool
 	Storages         interfaces.Storages
 	Sources          []SourceParams
+	Metrics          *metrics.Data
+	OldMetrics       *metrics.Data
 }
 
 type SourceParams struct {
@@ -58,7 +64,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		return nil, fmt.Errorf("Job `%s` init failed. Failed to check redis-cli version. Please check that `redis-cli` installed. Error: %s ", jp.Name, err)
 	}
 
-	j := &job{
+	j := job{
 		name:             jp.Name,
 		tmpDir:           jp.TmpDir,
 		needToMakeBackup: jp.NeedToMakeBackup,
@@ -67,7 +73,15 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
+		appMetrics:       jp.Metrics,
+		jobMetrics: metrics.JobData{
+			JobName:       jp.Name,
+			JobType:       misc.Redis,
+			TargetMetrics: make(map[string]metrics.TargetData),
+		},
 	}
+
+	ojm := jp.OldMetrics.GetMetrics(jp.Name)
 
 	for _, src := range jp.Sources {
 
@@ -81,9 +95,29 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			gzip: src.Gzip,
 			dsn:  dsn,
 		}
+		if otm, ok := ojm.TargetMetrics[src.Name]; ok {
+			j.jobMetrics.TargetMetrics[src.Name] = otm
+		} else {
+			j.jobMetrics.TargetMetrics[src.Name] = metrics.TargetData{
+				Source: src.Name,
+				Target: "",
+				Values: make(map[string]float64),
+			}
+		}
 	}
 
-	return j, nil
+	j.ExportMetrics()
+	return &j, nil
+}
+
+func (j *job) SetOfsMetrics(ofs string, metricsMap map[string]float64) {
+	for m, v := range metricsMap {
+		j.jobMetrics.TargetMetrics[ofs].Values[m] = v
+	}
+}
+
+func (j *job) ExportMetrics() {
+	j.appMetrics.JobMetricsSet(j.jobMetrics)
 }
 
 func (j *job) GetName() string {
@@ -94,8 +128,8 @@ func (j *job) GetTempDir() string {
 	return j.tmpDir
 }
 
-func (j *job) GetType() string {
-	return "redis"
+func (j *job) GetType() misc.BackupType {
+	return misc.Redis
 }
 
 func (j *job) GetTargetOfsList() (ofsList []string) {
@@ -132,7 +166,7 @@ func (j *job) NeedToUpdateIncMeta() bool {
 }
 
 func (j *job) DeleteOldBackups(logCh chan logger.LogRecord, ofsPath string) error {
-	logCh <- logger.Log(j.name, "").Debugf("Starting rotate oudated backups.")
+	logCh <- logger.Log(j.name, "").Debugf("Starting rotate outdated backups.")
 	return j.storages.DeleteOldBackups(logCh, j, ofsPath)
 }
 
@@ -144,6 +178,14 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	var errs *multierror.Error
 
 	for ofsPart, tgt := range j.targets {
+		j.SetOfsMetrics(ofsPart, map[string]float64{
+			metrics.BackupOk:     float64(0),
+			metrics.BackupTime:   float64(0),
+			metrics.DeliveryOk:   float64(0),
+			metrics.DeliveryTime: float64(0),
+			metrics.BackupSize:   float64(0),
+		})
+
 		tmpBackupFile := misc.GetFileFullPath(tmpDir, ofsPart, "rdb", "", tgt.gzip)
 		err := os.MkdirAll(path.Dir(tmpBackupFile), os.ModePerm)
 		if err != nil {
@@ -152,11 +194,22 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 			continue
 		}
 
+		startTime := time.Now()
 		if err = j.createTmpBackup(logCh, tmpBackupFile, ofsPart, tgt); err != nil {
+			j.SetOfsMetrics(ofsPart, map[string]float64{
+				metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
+			})
 			logCh <- logger.Log(j.name, "").Error("Failed to create temp backup.")
 			errs = multierror.Append(errs, err)
 			continue
 		}
+		fileInfo, _ := os.Stat(tmpBackupFile)
+		j.SetOfsMetrics(ofsPart, map[string]float64{
+			metrics.BackupOk:   float64(1),
+			metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
+			metrics.BackupSize: float64(fileInfo.Size()),
+		})
+		logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s", tmpBackupFile)
 
 		if !j.deferredCopying {
 			if err = j.storages.Delivery(logCh, j); err != nil {

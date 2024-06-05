@@ -3,20 +3,35 @@ services:
     image: nixyslab/nxs-backup:latest
     container_name: nxs-backup
     command:
-    - nxs-backup
-    - -c
-    - /nxs-backup.conf
-    - start
-    - all
+      - nxs-backup
+      - -c
+      - /nxs-backup.conf
+      - start
+      - all
     volumes:
-    - type: bind
-      source: ./backup
-      target: /var/nxs-backup/dump_tmp
-    - type: bind
-      source: /path/to/backup
-      target: /path/to/backup
+      - metrics:/tmp/metrics
+      - type: bind
+        source: ./backup
+        target: /var/nxs-backup/dump_tmp
+      - type: bind
+        source: /path/to/backup
+        target: /path/to/backup
     configs:
-    - nxs-backup.conf
+      - nxs-backup.conf
+  metrics-server:
+    image: nixyslab/nxs-backup:latest
+    container_name: nxs-backup
+    command:
+      - nxs-backup
+      - -c
+      - /nxs-backup.conf
+      - server
+    volumes:
+      - metrics:/tmp/metrics
+    configs:
+      - nxs-backup.conf
 configs:
   nxs-backup.conf:
     file: ./nxs-backup.conf
+volumes:
+  metrics:

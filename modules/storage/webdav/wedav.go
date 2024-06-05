@@ -74,7 +74,7 @@ func (wd *webDav) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackup
 		links                  map[string]string
 	)
 
-	if bakType == misc.IncBackupType {
+	if bakType == string(misc.IncFiles) {
 		bakDstPath, mtdDstPath, links, err = GetIncBackupDstAndLinks(tmpBackupFile, ofs, wd.backupPath)
 	} else {
 		bakDstPath, links, err = GetDescBackupDstAndLinks(tmpBackupFile, ofs, wd.backupPath, wd.Retention)
@@ -141,7 +141,7 @@ func (wd *webDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath st
 
 func (wd *webDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
-	if job.GetType() == misc.IncBackupType {
+	if job.GetType() == misc.IncFiles {
 		return wd.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
 	} else {
 		return wd.deleteDescBackup(logCh, job.GetName(), ofsPart, job.IsBackupSafety())

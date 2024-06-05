@@ -21,8 +21,11 @@ type StartCmd struct {
 	JobName string `arg:"positional" placeholder:"JOB GROUP/NAME" default:"all"`
 }
 
+// ServerCmd "Running the nxs-backup in server mode"
+type ServerCmd struct{}
+
 type GenerateCmd struct {
-	Type     string            `arg:"-T,--backup-type,required" help:"Type of backup"`
+	Type     misc.BackupType   `arg:"-T,--backup-type,required" help:"Type of backup"`
 	Storages map[string]string `arg:"-S,--storage-types" help:"Storages names with type. Example: -S minio=s3 aws=s3"`
 	OutPath  string            `arg:"-O,--out-path" help:"Path to the generated configuration file" placeholder:"PATH"`
 }
@@ -33,6 +36,7 @@ type UpdateCmd struct {
 
 type args struct {
 	Start    *StartCmd    `arg:"subcommand:start"`
+	Server   *ServerCmd   `arg:"subcommand:server"`
 	Generate *GenerateCmd `arg:"subcommand:generate"`
 	Update   *UpdateCmd   `arg:"subcommand:update"`
 	ConfPath string       `arg:"-c,--config" help:"Path to config file" default:"/etc/nxs-backup/nxs-backup.conf" placeholder:"PATH"`
@@ -44,7 +48,6 @@ func ReadArgs() (p ArgsParams, err error) {
 
 	var a args
 
-	//err = misc.ErrArgSuccessExit
 	curArgs := arg.MustParse(&a)
 
 	p.ConfigPath = a.ConfPath

@@ -4,11 +4,13 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/nixys/nxs-backup/misc"
 	"github.com/nixys/nxs-backup/modules/logger"
+	"github.com/nixys/nxs-backup/modules/metrics"
 	"github.com/nixys/nxs-backup/modules/storage"
 )
 
@@ -57,14 +59,23 @@ func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
 
 	for ofs, dumpObj := range job.GetDumpObjects() {
 		if !dumpObj.Delivered {
+			startTime := time.Now()
+			ok := float64(0)
 			for _, st := range s {
-				if err := st.DeliveryBackup(logCh, job.GetName(), dumpObj.TmpFile, ofs, job.GetType()); err != nil {
+				if err := st.DeliveryBackup(logCh, job.GetName(), dumpObj.TmpFile, ofs, string(job.GetType())); err != nil {
 					errs = multierror.Append(errs, err)
 				}
+			}
+			if errs.Len() == 0 {
+				ok = float64(1)
 			}
 			if errs.Len() < len(s) {
 				job.SetDumpObjectDelivered(ofs)
 			}
+			job.SetOfsMetrics(ofs, map[string]float64{
+				metrics.DeliveryOk:   ok,
+				metrics.DeliveryTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
+			})
 		}
 	}
 
@@ -77,7 +88,7 @@ func (s Storages) CleanupTmpData(job Job) error {
 	for _, dumpObj := range job.GetDumpObjects() {
 
 		tmpBakFile := dumpObj.TmpFile
-		if job.GetType() == misc.IncBackupType {
+		if job.GetType() == misc.IncFiles {
 			// cleanup tmp metadata files
 			_ = os.Remove(path.Join(tmpBakFile + ".inc"))
 			initFile := path.Join(tmpBakFile + ".init")

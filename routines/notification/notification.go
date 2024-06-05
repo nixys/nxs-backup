@@ -26,7 +26,7 @@ func Runtime(app appctx.App) error {
 			}
 		case <-app.SelfCtxDone():
 			cc.EventsWG.Wait()
-			cc.Log.Trace("notification routine: shutdown")
+			cc.Log.Trace("notification routine: done")
 			return nil
 		}
 	}
