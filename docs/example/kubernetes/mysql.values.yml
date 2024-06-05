@@ -1,13 +1,13 @@
 releasePrefix: "-"
 
 secretEnvs:
-  ALERT_AUTH_KEY: ""
-  DB_HOST: ""
-  DB_USER: ""
-  DB_PASS: ""
-  DB_PORT: ""
-  S3_ACCESS_KEY: ""
-  S3_SECRET_KEY: ""
+  ALERT_AUTH_KEY: "myAlert@uthKey"
+  DB_HOST: "mysql"
+  DB_USER: "backup"
+  DB_PASS: "b@ckupUserPa$s"
+  DB_PORT: "3307"
+  S3_ACCESS_KEY: "my_ak"
+  S3_SECRET_KEY: "my_sk"
 
 defaultImage: nixyslab/nxs-backup
 defaultImageTag: alpine
@@ -18,6 +18,9 @@ configMaps:
       nxs-backup.conf: |-
         project_name: "My Project"
         server_name: backup-in-k8s
+        server:
+          metrics:
+            metrics_file_path: /var/nxs-backup/nxs-backup.metrics
         notifications:
           mail:
             enabled: false
@@ -29,13 +32,13 @@ configMaps:
             extra_payload:
               "isEmergencyAlert":  false
         storage_connects:
-        - name: ya_cloud_s3
+        - name: my_cloud_s3
           s3_params:
             bucket_name: nxs-backup-site-dev
             access_key_id: ENV:S3_ACCESS_KEY
             secret_access_key: ENV:S3_SECRET_KEY
-            endpoint: storage.yandexcloud.net
-            region: ru-central1
+            endpoint: storage.cloud.net
+            region: eu-central-1
         jobs:
         - job_name: backup-mysql
           type: mysql
@@ -52,20 +55,21 @@ configMaps:
             gzip: true
             db_extra_keys: '--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction'
           storages_options:
-          - storage_name: ya_cloud_s3
+          - storage_name: my_cloud_s3
             backup_path: /nxs-backup/databases
             retention:
               days: 14
               weeks: 6
               months: 6
 
-cronJobs:
+pvcs:
+  nxs-backup:
+    accessModes:
+      - ReadWriteMany
+    size: 200Gi
 
+cronJobs:
   nxs-backup-database-hourly:
-    affinity:
-      nodeAffinity: {}
-      podAntiAffinity: {}
-      podAffinity: {}
     schedule: "0 * * * *"
     containers:
     - name: nxs-backup
@@ -75,9 +79,50 @@ cronJobs:
       volumeMounts:
       - name: config
         mountPath: /etc/nxs-backup
+      - name: nxs-backup
+        mountPath: /var/nxs-backup
     volumes:
     - type: configMap
       name: config
+    - name: nxs-backup
+      type: pvc
     restartPolicy: Never
-    nodeSelector:
-      kind: infra-apps
+
+deployments:
+  nxs-backup-metrics:
+    extraSelectorLabels:
+      app: nxs-backup-metrics
+    containers:
+    - name: metrics
+      command: nxs-backup server
+      envSecrets:
+      - secret-envs
+      volumeMounts:
+      - name: config
+        mountPath: /etc/nxs-backup
+      - name: nxs-backup
+        mountPath: /var/nxs-backup
+    volumes:
+    - type: configMap
+      name: config
+    - name: nxs-backup
+      type: pvc
+    restartPolicy: Never
+
+services:
+  nxs-backup-metrics:
+    ports:
+    - name: http
+      protocol: TCP
+      port: 7979
+    extraSelectorLabels:
+      app: nxs-backup-metrics
+
+serviceMonitors:
+  nxs-backup:
+    endpoints:
+    - interval: 5m
+      port: 7979
+      path: /metrics
+    extraSelectorLabels:
+      app: nxs-backup-metrics

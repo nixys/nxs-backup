@@ -5,7 +5,7 @@ Here is example of configs for create backups of files and databases for project
 Files and psql database backup job config at [files+psql.values.yml](files+psql.values.yml) values file
 for [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart).
 
-Mysql database backup job config at [mysql.values.yml](mysql.values.yml) values file
+Mysql database backup config with exported metrics for Prometheus operator at [mysql.values.yml](mysql.values.yml) values file
 for [nxs-universal-chart](https://github.com/nixys/nxs-universal-chart).
 
 Check that cronjob created correct:
