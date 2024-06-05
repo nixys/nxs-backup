@@ -23,32 +23,32 @@ func InitExporter(s ExporterOpts) *Exporter {
 
 	metrics := map[string]*prometheus.Desc{
 		BackupSize: prometheus.NewDesc(
-			prometheus.BuildFQName("backup", "file", "size"),
+			prometheus.BuildFQName("nxs_backup", "file", "size"),
 			"Backup file size",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
 		BackupOk: prometheus.NewDesc(
-			prometheus.BuildFQName("backup", "collection", "success"),
+			prometheus.BuildFQName("nxs_backup", "collection", "success"),
 			"Backup finished successfully",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
 		BackupTime: prometheus.NewDesc(
-			prometheus.BuildFQName("backup", "collection", "time"),
+			prometheus.BuildFQName("nxs_backup", "collection", "time"),
 			"Backup collection time",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
 		DeliveryOk: prometheus.NewDesc(
-			prometheus.BuildFQName("backup", "delivery", "success"),
+			prometheus.BuildFQName("nxs_backup", "delivery", "success"),
 			"Backup delivery finished successfully",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
 		DeliveryTime: prometheus.NewDesc(
-			prometheus.BuildFQName("backup", "delivery", "time"),
+			prometheus.BuildFQName("nxs_backup", "delivery", "time"),
 			"Backup delivering time",
 			[]string{"project", "server", "job_name", "job_type", "source", "target"}, nil,
 		),
 		UpdateAvailable: prometheus.NewDesc(
-			prometheus.BuildFQName("", "update", "available"),
+			prometheus.BuildFQName("nxs_backup", "update", "available"),
 			"A new version of nxs-backup is available",
 			[]string{"project", "server"}, nil,
 		),
