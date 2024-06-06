@@ -183,34 +183,14 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 	var errs *multierror.Error
 	filesMap := make(map[string]*fileLinks, 64)
 	filesToDeleteMap := make(map[string]*fileLinks, 64)
-	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"monthly", "weekly", "daily"} {
-		var retentionDate time.Time
-		retentionCount := 0
-
-		switch period {
-		case "daily":
-			if s.Retention.Days == 0 {
-				continue
-			}
-			retentionCount = s.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -s.Retention.Days)
-		case "weekly":
-			if s.Retention.Weeks == 0 {
-				continue
-			}
-			retentionCount = s.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -s.Retention.Weeks*7)
-		case "monthly":
-			if s.Retention.Months == 0 {
-				continue
-			}
-			retentionCount = s.Retention.Months
-			retentionDate = curDate.AddDate(0, -s.Retention.Months, 0)
+	for _, p := range RetentionPeriodsList {
+		retentionCount, retentionDate := GetRetention(p, s.Retention)
+		if retentionCount == 0 && retentionDate.IsZero() {
+			continue
 		}
 
-		bakDir := path.Join(s.backupPath, ofsPart, period)
+		bakDir := path.Join(s.backupPath, ofsPart, p.String())
 		files, err := s.share.ReadDir(bakDir)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -233,10 +213,10 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 				linkPath := filepath.Join(bakDir, link)
 
 				if fl, ok := filesMap[linkPath]; ok {
-					switch period {
-					case "weekly":
+					switch p {
+					case Weekly:
 						fl.wLink = fPath
-					case "daily":
+					case Daily:
 						fl.dLink = fPath
 					}
 					filesMap[linkPath] = fl

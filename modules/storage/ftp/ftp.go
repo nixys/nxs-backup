@@ -165,34 +165,14 @@ func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job 
 
 func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string, safety bool) error {
 	var errs *multierror.Error
-	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"daily", "weekly", "monthly"} {
-		var retentionDate time.Time
-		retentionCount := 0
-
-		switch period {
-		case "daily":
-			if f.Retention.Days == 0 {
-				continue
-			}
-			retentionCount = f.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -f.Retention.Days)
-		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || f.Retention.Weeks == 0 {
-				continue
-			}
-			retentionCount = f.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -f.Retention.Weeks*7)
-		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || f.Retention.Months == 0 {
-				continue
-			}
-			retentionCount = f.Retention.Months
-			retentionDate = curDate.AddDate(0, -f.Retention.Months, 0)
+	for _, p := range RetentionPeriodsList {
+		retentionCount, retentionDate := GetRetention(p, f.Retention)
+		if retentionCount == 0 && retentionDate.IsZero() {
+			continue
 		}
 
-		bakDir := path.Join(f.backupPath, ofsPart, period)
+		bakDir := path.Join(f.backupPath, ofsPart, p.String())
 		files, err := f.conn.List(bakDir)
 		if err != nil {
 			var protoErr *textproto.Error
