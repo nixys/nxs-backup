@@ -149,36 +149,15 @@ func (wd *webDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, 
 }
 
 func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
-
 	var errs *multierror.Error
-	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"daily", "weekly", "monthly"} {
-		var retentionDate time.Time
-		retentionCount := 0
-
-		switch period {
-		case "daily":
-			if wd.Retention.Days == 0 {
-				continue
-			}
-			retentionCount = wd.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Days)
-		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || wd.Retention.Weeks == 0 {
-				continue
-			}
-			retentionCount = wd.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -wd.Retention.Weeks*7)
-		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || wd.Retention.Months == 0 {
-				continue
-			}
-			retentionCount = wd.Retention.Months
-			retentionDate = curDate.AddDate(0, -wd.Retention.Months, 0)
+	for _, p := range RetentionPeriodsList {
+		retentionCount, retentionDate := GetRetention(p, wd.Retention)
+		if retentionCount == 0 && retentionDate.IsZero() {
+			continue
 		}
 
-		bakDir := path.Join(wd.backupPath, ofsPart, period)
+		bakDir := path.Join(wd.backupPath, ofsPart, p.String())
 		files, err := wd.client.Ls(bakDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {

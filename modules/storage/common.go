@@ -7,9 +7,20 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/nixys/nxs-backup/misc"
 )
+
+type retentionPeriod string
+
+const (
+	Daily   retentionPeriod = "daily"
+	Weekly  retentionPeriod = "weekly"
+	Monthly retentionPeriod = "monthly"
+)
+
+var RetentionPeriodsList = []retentionPeriod{Monthly, Weekly, Daily}
 
 type Retention struct {
 	Days     int
@@ -18,8 +29,37 @@ type Retention struct {
 	UseCount bool
 }
 
-func GetNeedToMakeBackup(day, week, month int) bool {
+func (p retentionPeriod) String() string {
+	return string(p)
+}
 
+func GetRetention(p retentionPeriod, r Retention) (retentionCount int, retentionDate time.Time) {
+	curDate := time.Now().Round(24 * time.Hour)
+
+	switch p {
+	case Daily:
+		if r.Days == 0 {
+			return
+		}
+		retentionCount = r.Days
+		retentionDate = curDate.AddDate(0, 0, -r.Days+1)
+	case Weekly:
+		if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || r.Weeks == 0 {
+			return
+		}
+		retentionCount = r.Weeks
+		retentionDate = curDate.AddDate(0, 0, -r.Weeks*7+1)
+	case Monthly:
+		if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || r.Months == 0 {
+			return
+		}
+		retentionCount = r.Months
+		retentionDate = curDate.AddDate(0, -r.Months, +1)
+	}
+	return
+}
+
+func IsNeedToBackup(day, week, month int) bool {
 	if day > 0 ||
 		(week > 0 && misc.GetDateTimeNow("dow") == misc.WeeklyBackupDay) ||
 		(month > 0 && misc.GetDateTimeNow("dom") == misc.MonthlyBackupDay) {

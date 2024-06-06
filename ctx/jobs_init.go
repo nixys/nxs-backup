@@ -74,7 +74,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			st.SetBackupPath(opt.BackupPath)
 			st.SetRetention(storage.Retention(opt.Retention))
 
-			if storage.GetNeedToMakeBackup(opt.Retention.Days, opt.Retention.Weeks, opt.Retention.Months) {
+			if storage.IsNeedToBackup(opt.Retention.Days, opt.Retention.Weeks, opt.Retention.Months) {
 				needToMakeBackup = true
 			}
 

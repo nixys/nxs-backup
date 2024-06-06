@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/sirupsen/logrus"
+	"github.com/vmware/go-nfs-client/nfs"
+	"github.com/vmware/go-nfs-client/nfs/rpc"
 	"io"
 	"io/fs"
 	"os"
@@ -12,12 +16,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/hashicorp/go-multierror"
-	"github.com/sirupsen/logrus"
-	"github.com/vmware/go-nfs-client/nfs"
-	"github.com/vmware/go-nfs-client/nfs/rpc"
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
@@ -161,34 +159,14 @@ func (n *NFS) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job 
 
 func (n *NFS) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
 	var errs *multierror.Error
-	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"daily", "weekly", "monthly"} {
-		var retentionDate time.Time
-		retentionCount := 0
-
-		switch period {
-		case "daily":
-			if n.Retention.Days == 0 {
-				continue
-			}
-			retentionCount = n.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -n.Retention.Days)
-		case "weekly":
-			if misc.GetDateTimeNow("dow") != misc.WeeklyBackupDay || n.Retention.Weeks == 0 {
-				continue
-			}
-			retentionCount = n.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -n.Retention.Weeks*7)
-		case "monthly":
-			if misc.GetDateTimeNow("dom") != misc.MonthlyBackupDay || n.Retention.Months == 0 {
-				continue
-			}
-			retentionCount = n.Retention.Months
-			retentionDate = curDate.AddDate(0, -n.Retention.Months, 0)
+	for _, p := range RetentionPeriodsList {
+		retentionCount, retentionDate := GetRetention(p, n.Retention)
+		if retentionCount == 0 && retentionDate.IsZero() {
+			continue
 		}
 
-		bakDir := path.Join(n.backupPath, ofsPart, period)
+		bakDir := path.Join(n.backupPath, ofsPart, p.String())
 		files, err := n.target.ReadDirPlus(bakDir)
 		if err != nil {
 			if os.IsNotExist(err) {

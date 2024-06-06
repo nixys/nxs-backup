@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -53,7 +52,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		bakDstPath, links, err = GetDescBackupDstAndLinks(tmpBackupFile, ofs, l.backupPath, l.Retention)
 	}
 	if err != nil {
-		logCh <- logger.Log(jobName, "local").Errorf("Unable to get destination path and links: '%s'", err)
+		logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to get destination path and links: '%s'", err)
 		return
 	}
 
@@ -65,12 +64,12 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 
 	err = os.MkdirAll(path.Dir(bakDstPath), os.ModePerm)
 	if err != nil {
-		logCh <- logger.Log(jobName, "local").Errorf("Unable to create directory: '%s'", err)
+		logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to create directory: '%s'", err)
 		return err
 	}
 
 	if err = os.Rename(tmpBackupFile, bakDstPath); err != nil {
-		logCh <- logger.Log(jobName, "local").Debugf("Unable to move temp backup: %s", err)
+		logCh <- logger.Log(jobName, l.GetName()).Debugf("Unable to move temp backup: %s", err)
 		err = nil
 		bakDst, err := os.Create(bakDstPath)
 		if err != nil {
@@ -86,25 +85,25 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 
 		_, err = io.Copy(bakDst, bakSrc)
 		if err != nil {
-			logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to make copy: %s", err)
 			return err
 		}
-		logCh <- logger.Log(jobName, "local").Infof("Successfully copied temp backup to %s", bakDstPath)
+		logCh <- logger.Log(jobName, l.GetName()).Infof("Successfully copied temp backup to %s", bakDstPath)
 	} else {
-		logCh <- logger.Log(jobName, "local").Infof("Successfully moved temp backup to %s", bakDstPath)
+		logCh <- logger.Log(jobName, l.GetName()).Infof("Successfully moved temp backup to %s", bakDstPath)
 	}
 
 	for dst, src := range links {
 		err = os.MkdirAll(path.Dir(dst), os.ModePerm)
 		if err != nil {
-			logCh <- logger.Log(jobName, "local").Errorf("Unable to create directory: '%s'", err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to create directory: '%s'", err)
 			return err
 		}
 		_ = os.Remove(dst)
 		if err = os.Symlink(src, dst); err != nil {
 			return err
 		}
-		logCh <- logger.Log(jobName, "local").Infof("Successfully created symlink %s", dst)
+		logCh <- logger.Log(jobName, l.GetName()).Infof("Successfully created symlink %s", dst)
 	}
 
 	return
@@ -115,14 +114,14 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 
 	err := os.MkdirAll(path.Dir(mtdDstPath), os.ModePerm)
 	if err != nil {
-		logCh <- logger.Log(jobName, "local").Errorf("Unable to create directory: '%s'", err)
+		logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to create directory: '%s'", err)
 		return err
 	}
 
 	_ = os.Remove(mtdDstPath)
 
 	if err = os.Rename(mtdSrcPath, mtdDstPath); err != nil {
-		logCh <- logger.Log(jobName, "local").Debugf("Unable to move temp backup: %s", err)
+		logCh <- logger.Log(jobName, l.GetName()).Debugf("Unable to move temp backup: %s", err)
 
 		mtdDst, err := os.Create(mtdDstPath)
 		if err != nil {
@@ -138,12 +137,12 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 
 		_, err = io.Copy(mtdDst, mtdSrc)
 		if err != nil {
-			logCh <- logger.Log(jobName, "local").Errorf("Unable to make copy: %s", err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Unable to make copy: %s", err)
 			return err
 		}
-		logCh <- logger.Log(jobName, "local").Infof("Successfully copied metadata to %s", mtdDstPath)
+		logCh <- logger.Log(jobName, l.GetName()).Infof("Successfully copied metadata to %s", mtdDstPath)
 	} else {
-		logCh <- logger.Log(jobName, "local").Infof("Successfully moved metadata to %s", mtdDstPath)
+		logCh <- logger.Log(jobName, l.GetName()).Infof("Successfully moved metadata to %s", mtdDstPath)
 	}
 	return nil
 }
@@ -165,48 +164,28 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 	var errs *multierror.Error
 	filesMap := make(map[string]*fileLinks, 64)
 	filesToDeleteMap := make(map[string]*fileLinks, 64)
-	curDate := time.Now().Round(24 * time.Hour)
 
-	for _, period := range []string{"monthly", "weekly", "daily"} {
-		var retentionDate time.Time
-		retentionCount := 0
-
-		switch period {
-		case "daily":
-			if l.Retention.Days == 0 {
-				continue
-			}
-			retentionCount = l.Retention.Days
-			retentionDate = curDate.AddDate(0, 0, -l.Retention.Days)
-		case "weekly":
-			if l.Retention.Weeks == 0 {
-				continue
-			}
-			retentionCount = l.Retention.Weeks
-			retentionDate = curDate.AddDate(0, 0, -l.Retention.Weeks*7)
-		case "monthly":
-			if l.Retention.Months == 0 {
-				continue
-			}
-			retentionCount = l.Retention.Months
-			retentionDate = curDate.AddDate(0, -l.Retention.Months, 0)
+	for _, p := range RetentionPeriodsList {
+		retentionCount, retentionDate := GetRetention(p, l.Retention)
+		if retentionCount == 0 && retentionDate.IsZero() {
+			continue
 		}
 
-		bakDir := path.Join(l.backupPath, ofsPart, period)
+		bakDir := path.Join(l.backupPath, ofsPart, p.String())
 
 		dir, err := os.Open(bakDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				logCh <- logger.Log(jobName, "local").Debugf("Backups directory `%s` not found. Continue.", bakDir)
+				logCh <- logger.Log(jobName, l.GetName()).Debugf("Backups directory `%s` not found. Continue.", bakDir)
 				continue
 			}
-			logCh <- logger.Log(jobName, "local").Errorf("Failed to open directory '%s' with next error: %s", bakDir, err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to open directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
 		files, err := dir.ReadDir(-1)
 		if err != nil {
-			logCh <- logger.Log(jobName, "local").Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
@@ -216,7 +195,7 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			if file.Type()&fs.ModeSymlink != 0 {
 				link, err := os.Readlink(fPath)
 				if err != nil {
-					logCh <- logger.Log(jobName, "local").Errorf("Failed to read a symlink for file '%s': %s",
+					logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to read a symlink for file '%s': %s",
 						file, err)
 					errs = multierror.Append(errs, err)
 					continue
@@ -224,10 +203,10 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 				linkPath := filepath.Join(bakDir, link)
 
 				if fl, ok := filesMap[linkPath]; ok {
-					switch period {
-					case "weekly":
+					switch p {
+					case Weekly:
 						fl.wLink = fPath
-					case "daily":
+					case Daily:
 						fl.dLink = fPath
 					}
 					filesMap[linkPath] = fl
@@ -276,24 +255,24 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			if _, toDel := filesToDeleteMap[fl.wLink]; !toDel {
 				delFile = false
 				if err := moveFile(file, fl.wLink); err != nil {
-					logCh <- logger.Log(jobName, "local").Error(err)
+					logCh <- logger.Log(jobName, l.GetName()).Error(err)
 					errs = multierror.Append(errs, err)
 				} else {
-					logCh <- logger.Log(jobName, "local").Debugf("Successfully moved old backup to %s", fl.wLink)
+					logCh <- logger.Log(jobName, l.GetName()).Debugf("Successfully moved old backup to %s", fl.wLink)
 					moved = true
 				}
 				if _, toDel = filesToDeleteMap[fl.dLink]; !toDel {
 					if err := os.Remove(fl.dLink); err != nil {
-						logCh <- logger.Log(jobName, "local").Error(err)
+						logCh <- logger.Log(jobName, l.GetName()).Error(err)
 						errs = multierror.Append(errs, err)
 						break
 					}
 					relative, _ := filepath.Rel(filepath.Dir(fl.dLink), fl.wLink)
 					if err := os.Symlink(relative, fl.dLink); err != nil {
-						logCh <- logger.Log(jobName, "local").Error(err)
+						logCh <- logger.Log(jobName, l.GetName()).Error(err)
 						errs = multierror.Append(errs, err)
 					} else {
-						logCh <- logger.Log(jobName, "local").Debugf("Successfully changed symlink %s", fl.dLink)
+						logCh <- logger.Log(jobName, l.GetName()).Debugf("Successfully changed symlink %s", fl.dLink)
 					}
 				}
 			}
@@ -302,21 +281,21 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			if _, toDel := filesToDeleteMap[fl.dLink]; !toDel {
 				delFile = false
 				if err := moveFile(file, fl.dLink); err != nil {
-					logCh <- logger.Log(jobName, "local").Error(err)
+					logCh <- logger.Log(jobName, l.GetName()).Error(err)
 					errs = multierror.Append(errs, err)
 				} else {
-					logCh <- logger.Log(jobName, "local").Debugf("Successfully moved old backup to %s", fl.dLink)
+					logCh <- logger.Log(jobName, l.GetName()).Debugf("Successfully moved old backup to %s", fl.dLink)
 				}
 			}
 		}
 
 		if delFile {
 			if err := os.Remove(file); err != nil {
-				logCh <- logger.Log(jobName, "local").Errorf("Failed to delete file '%s' with next error: %s",
+				logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to delete file '%s' with next error: %s",
 					file, err)
 				errs = multierror.Append(errs, err)
 			} else {
-				logCh <- logger.Log(jobName, "local").Infof("Deleted old backup file '%s'", file)
+				logCh <- logger.Log(jobName, l.GetName()).Infof("Deleted old backup file '%s'", file)
 			}
 		}
 	}
@@ -330,7 +309,7 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 	if full {
 		backupDir := path.Join(l.backupPath, ofsPart)
 		if err := os.RemoveAll(backupDir); err != nil {
-			logCh <- logger.Log(jobName, "local").Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
+			logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
 			errs = multierror.Append(errs, err)
 		}
 	} else {
@@ -352,7 +331,7 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 			if errors.Is(err, fs.ErrNotExist) {
 				return nil
 			} else {
-				logCh <- logger.Log(jobName, "local").Errorf("Failed to get access to directory '%s' with next error: %v", backupDir, err)
+				logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to get access to directory '%s' with next error: %v", backupDir, err)
 				return err
 			}
 		}
@@ -364,11 +343,11 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 				dirMonth, _ := strconv.Atoi(dirParts[1])
 				if dirMonth < lastMonth {
 					if err = os.RemoveAll(path.Join(backupDir, dirName)); err != nil {
-						logCh <- logger.Log(jobName, "local").Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
+						logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to delete '%s' in dir '%s' with next error: %s",
 							dirName, backupDir, err)
 						errs = multierror.Append(errs, err)
 					} else {
-						logCh <- logger.Log(jobName, "local").Infof("Deleted old backup '%s' in directory '%s'", dirName, backupDir)
+						logCh <- logger.Log(jobName, l.GetName()).Infof("Deleted old backup '%s' in directory '%s'", dirName, backupDir)
 					}
 				}
 			}
