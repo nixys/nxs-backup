@@ -2,12 +2,14 @@ package targz
 
 import (
 	"bytes"
-	"github.com/klauspost/pgzip"
 	"io"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
+
+	"github.com/juju/ratelimit"
+	"github.com/klauspost/pgzip"
 )
 
 const regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
@@ -21,24 +23,48 @@ func (e Error) Error() string {
 	return e.Err.Error()
 }
 
-func GetFileWriter(filePath string, gZip bool) (io.WriteCloser, error) {
+type limitedWriteCloser struct {
+	w io.Writer
+	c io.Closer
+}
+
+func (lwc *limitedWriteCloser) Write(p []byte) (int, error) {
+	return lwc.w.Write(p)
+}
+
+func (lwc *limitedWriteCloser) Close() error {
+	return lwc.c.Close()
+}
+
+func GetFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, error) {
+	var wc io.WriteCloser
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	var writer io.WriteCloser
-	if gZip {
-		writer, err = pgzip.NewWriterLevel(file, pgzip.BestCompression)
+	lwc := &limitedWriteCloser{
+		c: file,
+	}
+	if rateLim != 0 {
+		bucket := ratelimit.NewBucketWithRate(float64(rateLim), rateLim*2)
+		lwc.w = ratelimit.Writer(file, bucket)
 	} else {
-		writer = file
+		lwc.w = file
 	}
 
-	return writer, err
+	if gZip {
+		wc, err = pgzip.NewWriterLevel(lwc, pgzip.BestCompression)
+	} else {
+		wc = lwc
+	}
+
+	return wc, err
 }
 
-func GZip(src, dst string) error {
-	fileWriter, err := GetFileWriter(dst, true)
+func GZip(src, dst string, rateLim int64) error {
+	fileWriter, err := GetFileWriter(dst, true, rateLim)
 	if err != nil {
 		return err
 	}
@@ -54,9 +80,9 @@ func GZip(src, dst string) error {
 	return err
 }
 
-func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string) error {
+func Tar(src, dst string, incremental, gzip, saveAbsPath bool, rateLim int64, excludes []string) error {
 
-	tarWriter, err := GetFileWriter(dst, gzip)
+	tarWriter, err := GetFileWriter(dst, gzip, rateLim)
 	if err != nil {
 		return err
 	}

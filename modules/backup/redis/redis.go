@@ -26,11 +26,12 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
+	appMetrics       *metrics.Data
+	jobMetrics       metrics.JobData
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
-	appMetrics       *metrics.Data
-	jobMetrics       metrics.JobData
 }
 
 type target struct {
@@ -44,6 +45,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -70,6 +72,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -258,7 +261,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	}
 
 	if tgt.gzip {
-		if err := targz.GZip(tmpBackupRdb, tmpBackupFile); err != nil {
+		if err := targz.GZip(tmpBackupRdb, tmpBackupFile, j.diskRateLimit); err != nil {
 			logCh <- logger.Log(j.name, "").Errorf("Unable to archivate tmp backup: %s", err)
 			return err
 		}

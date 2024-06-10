@@ -206,6 +206,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 			metricsData:    a.metricsData,
 			oldMetricsData: oldMetrics,
 		},
+		conf.Limits,
 	)
 	if err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)

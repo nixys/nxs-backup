@@ -26,6 +26,7 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
@@ -46,6 +47,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -73,6 +75,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -228,7 +231,7 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		}
 
 		startTime := time.Now()
-		if err = targz.Tar(tgt.path, tmpBackupFile, false, tgt.gzip, tgt.saveAbsPath, tgt.excludes); err != nil {
+		if err = targz.Tar(tgt.path, tmpBackupFile, false, tgt.gzip, tgt.saveAbsPath, j.diskRateLimit, tgt.excludes); err != nil {
 			j.SetOfsMetrics(ofsPart, map[string]float64{
 				metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})

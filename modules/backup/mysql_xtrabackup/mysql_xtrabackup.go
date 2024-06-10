@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/go-multierror"
 	"gopkg.in/ini.v1"
 
@@ -28,6 +30,7 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
@@ -50,6 +53,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -84,6 +88,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -287,6 +292,14 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	if target.isSlave {
 		backupArgs = append(backupArgs, "--safe-slave-backup")
 	}
+	if j.diskRateLimit != 0 {
+		rateLim := j.diskRateLimit / units.MB
+		if rateLim < 1 {
+			rateLim = 1
+		}
+		// This option limits the number of chunks copied per second. The chunk size is 10 MB.
+		backupArgs = append(backupArgs, "--throttle="+strconv.FormatInt(rateLim, 10))
+	}
 	// add extra backup options
 	if len(target.extraKeys) > 0 {
 		backupArgs = append(backupArgs, target.extraKeys...)
@@ -345,7 +358,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		}
 	}
 
-	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
+	if err := targz.Tar(tmpXtrabackupPath, tmpBackupFile, false, target.gzip, false, j.diskRateLimit, nil); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		if serr, ok := err.(targz.Error); ok {
 			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)

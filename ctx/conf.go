@@ -25,10 +25,15 @@ type ConfOpts struct {
 	WaitingTimeout  time.Duration    `conf:"waiting_timeout"`
 
 	Server serverOpts `conf:"server"`
+	Limits *limits    `conf:"limits"`
 
 	LogFile  string `conf:"logfile" conf_extraopts:"default=stdout"`
 	LogLevel string `conf:"loglevel" conf_extraopts:"default=info"`
 	ConfPath string
+}
+
+type limits struct {
+	Disk string `conf:"disk"`
 }
 
 type serverOpts struct {
@@ -77,6 +82,7 @@ type jobCfg struct {
 	StoragesOptions  []storageOpts   `conf:"storages_options"`
 	DumpCmd          string          `conf:"dump_cmd"`
 	SkipBackupRotate bool            `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // used by external
+	Limits           *limits         `conf:"limits"`
 }
 
 type sourceCfg struct {

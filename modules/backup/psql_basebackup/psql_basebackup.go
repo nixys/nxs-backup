@@ -27,6 +27,7 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
@@ -46,6 +47,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -77,6 +79,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -250,9 +253,16 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, tgt target) error {
 
-	var stderr, stdout bytes.Buffer
+	var stderr bytes.Buffer
 
-	tmpBasebackupPath := path.Join(path.Dir(tmpBackupFile), "pg_basebackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
+	backupWriter, err := targz.GetFileWriter(tmpBackupFile, tgt.gzip, j.diskRateLimit)
+	if err != nil {
+		logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp file. Error: %s", err)
+		return err
+	}
+	defer func() { _ = backupWriter.Close() }()
+
+	//tmpBasebackupPath := path.Join(path.Dir(tmpBackupFile), "pg_basebackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
 
 	var args []string
 	// define command args
@@ -263,10 +273,11 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	// add db connect
 	args = append(args, "--dbname="+tgt.connUrl.String())
 	// add data catalog path
-	args = append(args, "--pgdata="+tmpBasebackupPath)
+	args = append(args, "--pgdata=-")
+	args = append(args, "--format=tar")
 
 	cmd := exec.Command("pg_basebackup", args...)
-	cmd.Stdout = &stdout
+	cmd.Stdout = backupWriter
 	cmd.Stderr = &stderr
 
 	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
@@ -281,15 +292,6 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make dump `%s`. Error: %s", tgtName, stderr.String())
 		return err
 	}
-
-	if err := targz.Tar(tmpBasebackupPath, tmpBackupFile, false, tgt.gzip, false, nil); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
-		if serr, ok := err.(targz.Error); ok {
-			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
-		}
-		return err
-	}
-	_ = os.RemoveAll(tmpBasebackupPath)
 
 	logCh <- logger.Log(j.name, "").Infof("Dumping of source `%s` completed", tgtName)
 
