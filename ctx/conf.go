@@ -33,7 +33,8 @@ type ConfOpts struct {
 }
 
 type limits struct {
-	Disk string `conf:"disk"`
+	DiskRate string `conf:"disk_rate"`
+	NetRate  string `conf:"net_rate"`
 }
 
 type serverOpts struct {
@@ -73,8 +74,8 @@ type webhookConf struct {
 }
 
 type jobCfg struct {
-	JobName          string          `conf:"job_name" conf_extraopts:"required"`
-	JobType          misc.BackupType `conf:"type" conf_extraopts:"required"`
+	Name             string          `conf:"job_name" conf_extraopts:"required"`
+	Type             misc.BackupType `conf:"type" conf_extraopts:"required"`
 	TmpDir           string          `conf:"tmp_dir"`
 	SafetyBackup     bool            `conf:"safety_backup" conf_extraopts:"default=false"`
 	DeferredCopying  bool            `conf:"deferred_copying" conf_extraopts:"default=false"`
@@ -132,6 +133,7 @@ type retention struct {
 
 type storageConnect struct {
 	Name         string        `conf:"name" conf_extraopts:"required"`
+	RateLimit    string        `conf:"rate_limit"`
 	S3Params     *s3Params     `conf:"s3_params"`
 	ScpParams    *sftpParams   `conf:"scp_params"`
 	SftpParams   *sftpParams   `conf:"sftp_params"`

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/docker/go-units"
 	"github.com/hashicorp/go-multierror"
 	appctx "github.com/nixys/nxs-go-appctx/v3"
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,13 @@ import (
 	"github.com/nixys/nxs-backup/modules/cmd_handler/test_config"
 	"github.com/nixys/nxs-backup/modules/logger"
 	"github.com/nixys/nxs-backup/modules/metrics"
+)
+
+type rateType string
+
+const (
+	disk rateType = "disk"
+	net  rateType = "net"
 )
 
 // Ctx defines application custom context
@@ -255,4 +263,27 @@ func logInit(c *Ctx, file, level string) error {
 
 	c.Log, err = appctx.DefaultLogInit(f, l, &logger.LogFormatter{})
 	return err
+}
+
+func getRateLimit(rate rateType, newLim, baseLim *limits) (rl int64, err error) {
+	lim := &limits{
+		NetRate:  "0",
+		DiskRate: "0",
+	}
+	if newLim != nil {
+		lim = newLim
+	} else if baseLim != nil {
+		lim = baseLim
+	}
+
+	switch rate {
+	case disk:
+		rl, err = units.FromHumanSize(lim.DiskRate)
+	case net:
+		rl, err = units.FromHumanSize(lim.NetRate)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("Failed to parse `%s` rate limit: %w. ", rate, err)
+	}
+	return
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
@@ -29,10 +30,11 @@ type SMB struct {
 	share      *smb2.Share
 	backupPath string
 	name       string
+	rateLimit  int64
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	Host              string
 	Port              int
 	User              string
@@ -42,9 +44,10 @@ type Params struct {
 	ConnectionTimeout time.Duration
 }
 
-func Init(sName string, params Params) (s *SMB, err error) {
+func Init(sName string, params Opts, rl int64) (s *SMB, err error) {
 	s = &SMB{
-		name: sName,
+		name:      sName,
+		rateLimit: rl,
 	}
 
 	conn, err := net.DialTimeout(
@@ -83,6 +86,10 @@ func (s *SMB) IsLocal() int { return 0 }
 
 func (s *SMB) SetBackupPath(path string) {
 	s.backupPath = strings.TrimPrefix(path, "/")
+}
+
+func (s *SMB) SetRateLimit(rl int64) {
+	s.rateLimit = rl
 }
 
 func (s *SMB) SetRetention(r Retention) {
@@ -150,7 +157,7 @@ func (s *SMB) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath string
 	}
 	defer func() { _ = dstFile.Close() }()
 
-	srcFile, err := os.Open(srcPath)
+	srcFile, err := files.GetLimitedFileReader(srcPath, s.rateLimit)
 	if err != nil {
 		logCh <- logger.Log(jobName, s.name).Errorf("Unable to open '%s'", err)
 		return

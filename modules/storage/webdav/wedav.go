@@ -18,19 +18,21 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/backend/webdav"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
 
-type webDav struct {
+type WebDav struct {
 	client     *webdav.Client
 	backupPath string
 	name       string
+	rateLimit  int64
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	URL               string
 	Username          string
 	Password          string
@@ -38,7 +40,7 @@ type Params struct {
 	ConnectionTimeout time.Duration
 }
 
-func Init(name string, params Params) (*webDav, error) {
+func Init(name string, params Opts, rl int64) (*WebDav, error) {
 
 	client, err := webdav.Init(webdav.Params{
 		URL:               params.URL,
@@ -51,23 +53,28 @@ func Init(name string, params Params) (*webDav, error) {
 		return nil, fmt.Errorf("Failed to init '%s' WebDav storage. Error: %v ", name, err)
 	}
 
-	return &webDav{
-		name:   name,
-		client: client,
+	return &WebDav{
+		name:      name,
+		client:    client,
+		rateLimit: rl,
 	}, nil
 }
 
-func (wd *webDav) IsLocal() int { return 0 }
+func (wd *WebDav) IsLocal() int { return 0 }
 
-func (wd *webDav) SetBackupPath(path string) {
+func (wd *WebDav) SetBackupPath(path string) {
 	wd.backupPath = path
 }
 
-func (wd *webDav) SetRetention(r Retention) {
+func (wd *WebDav) SetRateLimit(rl int64) {
+	wd.rateLimit = rl
+}
+
+func (wd *WebDav) SetRetention(r Retention) {
 	wd.Retention = r
 }
 
-func (wd *webDav) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
+func (wd *WebDav) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
 
 	var (
 		bakDstPath, mtdDstPath string
@@ -113,7 +120,7 @@ func (wd *webDav) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackup
 	return
 }
 
-func (wd *webDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath string) (err error) {
+func (wd *WebDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath string) (err error) {
 
 	// Make remote directories
 	remDir := path.Dir(dstPath)
@@ -122,7 +129,7 @@ func (wd *webDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath st
 		return
 	}
 
-	srcFile, err := os.Open(srcPath)
+	srcFile, err := files.GetLimitedFileReader(srcPath, wd.rateLimit)
 	if err != nil {
 		logCh <- logger.Log(jobName, wd.name).Errorf("Unable to open '%s'", err)
 		return
@@ -139,7 +146,7 @@ func (wd *webDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath st
 	return err
 }
 
-func (wd *webDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+func (wd *WebDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
 
 	if job.GetType() == misc.IncFiles {
 		return wd.deleteIncBackup(logCh, job.GetName(), ofsPart, full)
@@ -148,7 +155,7 @@ func (wd *webDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, 
 	}
 }
 
-func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
+func (wd *WebDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart string, safety bool) error {
 	var errs *multierror.Error
 
 	for _, p := range RetentionPeriodsList {
@@ -210,7 +217,7 @@ func (wd *webDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 	return errs.ErrorOrNil()
 }
 
-func (wd *webDav) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart string, full bool) error {
+func (wd *WebDav) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart string, full bool) error {
 	var errs *multierror.Error
 
 	if full {
@@ -262,7 +269,7 @@ func (wd *webDav) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart 
 	return errs.ErrorOrNil()
 }
 
-func (wd *webDav) mkDir(dstPath string) error {
+func (wd *WebDav) mkDir(dstPath string) error {
 
 	dstPath = path.Clean(dstPath)
 	if dstPath == "." || dstPath == "/" {
@@ -291,7 +298,7 @@ func (wd *webDav) mkDir(dstPath string) error {
 	return nil
 }
 
-func (wd *webDav) getInfo(dstPath string) (os.FileInfo, error) {
+func (wd *WebDav) getInfo(dstPath string) (os.FileInfo, error) {
 
 	dir := path.Dir(dstPath)
 	base := path.Base(dstPath)
@@ -309,7 +316,7 @@ func (wd *webDav) getInfo(dstPath string) (os.FileInfo, error) {
 	return nil, fs.ErrNotExist
 }
 
-func (wd *webDav) GetFileReader(ofsPath string) (io.Reader, error) {
+func (wd *WebDav) GetFileReader(ofsPath string) (io.Reader, error) {
 	f, err := wd.client.Read(ofsPath)
 	if err != nil {
 		return nil, err
@@ -325,15 +332,15 @@ func (wd *webDav) GetFileReader(ofsPath string) (io.Reader, error) {
 	return bytes.NewReader(buf), err
 }
 
-func (wd *webDav) Close() error {
+func (wd *WebDav) Close() error {
 	return nil
 }
 
-func (wd *webDav) Clone() interfaces.Storage {
+func (wd *WebDav) Clone() interfaces.Storage {
 	cl := *wd
 	return &cl
 }
 
-func (wd *webDav) GetName() string {
+func (wd *WebDav) GetName() string {
 	return wd.name
 }

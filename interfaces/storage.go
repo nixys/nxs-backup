@@ -17,6 +17,7 @@ import (
 type Storage interface {
 	IsLocal() int
 	SetBackupPath(path string)
+	SetRateLimit(rl int64)
 	SetRetention(r storage.Retention)
 	DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupPath, ofs, bakType string) error
 	DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job Job, full bool) error

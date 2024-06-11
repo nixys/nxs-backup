@@ -17,23 +17,31 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
 
 type Local struct {
 	backupPath string
+	rateLimit  int64
 	Retention
 }
 
-func Init() *Local {
-	return &Local{}
+func Init(rl int64) *Local {
+	return &Local{
+		rateLimit: rl,
+	}
 }
 
 func (l *Local) IsLocal() int { return 1 }
 
 func (l *Local) SetBackupPath(path string) {
 	l.backupPath = path
+}
+
+func (l *Local) SetRateLimit(rl int64) {
+	l.rateLimit = rl
 }
 
 func (l *Local) SetRetention(r Retention) {
@@ -77,7 +85,7 @@ func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFi
 		}
 		defer func() { _ = bakDst.Close() }()
 
-		bakSrc, err := os.Open(tmpBackupFile)
+		bakSrc, err := files.GetLimitedFileReader(tmpBackupFile, l.rateLimit)
 		if err != nil {
 			return err
 		}
@@ -129,7 +137,7 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 		}
 		defer func() { _ = mtdDst.Close() }()
 
-		mtdSrc, err := os.Open(mtdSrcPath)
+		mtdSrc, err := files.GetLimitedFileReader(mtdSrcPath, l.rateLimit)
 		if err != nil {
 			return err
 		}
@@ -362,7 +370,7 @@ func (l *Local) GetFileReader(ofsPath string) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.Open(fp)
+	return files.GetLimitedFileReader(fp, l.rateLimit)
 }
 
 func (l *Local) Close() error {

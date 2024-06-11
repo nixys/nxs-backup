@@ -255,7 +255,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 
 	var stderr bytes.Buffer
 
-	backupWriter, err := targz.GetFileWriter(tmpBackupFile, tgt.gzip, j.diskRateLimit)
+	backupWriter, err := targz.GetGZipFileWriter(tmpBackupFile, tgt.gzip, j.diskRateLimit)
 	if err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp file. Error: %s", err)
 		return err

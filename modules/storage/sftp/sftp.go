@@ -21,6 +21,7 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
@@ -29,10 +30,11 @@ type SFTP struct {
 	client     *sftp.Client
 	backupPath string
 	name       string
+	rateLimit  int64
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	User           string
 	Host           string
 	Port           int
@@ -41,23 +43,23 @@ type Params struct {
 	ConnectTimeout time.Duration
 }
 
-func Init(name string, params Params) (*SFTP, error) {
+func Init(name string, opts Opts, rl int64) (*SFTP, error) {
 
 	sshConfig := &ssh.ClientConfig{
-		User:            params.User,
+		User:            opts.User,
 		Auth:            []ssh.AuthMethod{},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         params.ConnectTimeout * time.Second,
+		Timeout:         opts.ConnectTimeout * time.Second,
 		ClientVersion:   "SSH-2.0-" + "nxs-backup/" + misc.VERSION,
 	}
 
-	if params.Password != "" {
-		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(params.Password))
+	if opts.Password != "" {
+		sshConfig.Auth = append(sshConfig.Auth, ssh.Password(opts.Password))
 	}
 
 	// Load key file if specified
-	if params.KeyFile != "" {
-		key, err := os.ReadFile(params.KeyFile)
+	if opts.KeyFile != "" {
+		key, err := os.ReadFile(opts.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to init '%s' SFTP storage. Error: %v ", name, fmt.Errorf("failed to read private key file: %w", err))
 		}
@@ -68,7 +70,7 @@ func Init(name string, params Params) (*SFTP, error) {
 		sshConfig.Auth = append(sshConfig.Auth, ssh.PublicKeys(signer))
 	}
 
-	sshConn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", params.Host, params.Port), sshConfig)
+	sshConn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", opts.Host, opts.Port), sshConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' SFTP storage. Error: %v ", name, fmt.Errorf("couldn't connect SSH: %w", err))
 	}
@@ -80,8 +82,9 @@ func Init(name string, params Params) (*SFTP, error) {
 	}
 
 	return &SFTP{
-		name:   name,
-		client: sftpClient,
+		name:      name,
+		client:    sftpClient,
+		rateLimit: rl,
 	}, nil
 
 }
@@ -90,6 +93,10 @@ func (s *SFTP) IsLocal() int { return 0 }
 
 func (s *SFTP) SetBackupPath(path string) {
 	s.backupPath = path
+}
+
+func (s *SFTP) SetRateLimit(rl int64) {
+	s.rateLimit = rl
 }
 
 func (s *SFTP) SetRetention(r Retention) {
@@ -132,7 +139,7 @@ func (s *SFTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFil
 	}
 	defer func() { _ = dstFile.Close() }()
 
-	srcFile, err := os.Open(tmpBackupFile)
+	srcFile, err := files.GetLimitedFileReader(tmpBackupFile, s.rateLimit)
 	if err != nil {
 		logCh <- logger.Log(jobName, s.name).Errorf("Unable to open tmp backup: '%s'", err)
 		return err
@@ -180,7 +187,7 @@ func (s *SFTP) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmpB
 	}
 	defer func() { _ = mtdDst.Close() }()
 
-	mtdSrc, err := os.Open(mtdSrcPath)
+	mtdSrc, err := files.GetLimitedFileReader(mtdSrcPath, s.rateLimit)
 	if err != nil {
 		return err
 	}

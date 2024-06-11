@@ -2,14 +2,14 @@ package targz
 
 import (
 	"bytes"
+	"github.com/klauspost/pgzip"
 	"io"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
 
-	"github.com/juju/ratelimit"
-	"github.com/klauspost/pgzip"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 )
 
 const regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
@@ -23,37 +23,13 @@ func (e Error) Error() string {
 	return e.Err.Error()
 }
 
-type limitedWriteCloser struct {
-	w io.Writer
-	c io.Closer
-}
-
-func (lwc *limitedWriteCloser) Write(p []byte) (int, error) {
-	return lwc.w.Write(p)
-}
-
-func (lwc *limitedWriteCloser) Close() error {
-	return lwc.c.Close()
-}
-
-func GetFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, error) {
+func GetGZipFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, error) {
 	var wc io.WriteCloser
 
-	file, err := os.Create(filePath)
+	lwc, err := files.GetLimitedFileWriter(filePath, rateLim)
 	if err != nil {
 		return nil, err
 	}
-
-	lwc := &limitedWriteCloser{
-		c: file,
-	}
-	if rateLim != 0 {
-		bucket := ratelimit.NewBucketWithRate(float64(rateLim), rateLim*2)
-		lwc.w = ratelimit.Writer(file, bucket)
-	} else {
-		lwc.w = file
-	}
-
 	if gZip {
 		wc, err = pgzip.NewWriterLevel(lwc, pgzip.BestCompression)
 	} else {
@@ -64,7 +40,7 @@ func GetFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, e
 }
 
 func GZip(src, dst string, rateLim int64) error {
-	fileWriter, err := GetFileWriter(dst, true, rateLim)
+	fileWriter, err := GetGZipFileWriter(dst, true, rateLim)
 	if err != nil {
 		return err
 	}
@@ -82,7 +58,7 @@ func GZip(src, dst string, rateLim int64) error {
 
 func Tar(src, dst string, incremental, gzip, saveAbsPath bool, rateLim int64, excludes []string) error {
 
-	tarWriter, err := GetFileWriter(dst, gzip, rateLim)
+	tarWriter, err := GetGZipFileWriter(dst, gzip, rateLim)
 	if err != nil {
 		return err
 	}
@@ -110,7 +86,7 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, rateLim int64, ex
 		args = append(args, path.Base(src))
 	}
 
-	cmd := exec.Command("tar", args...)
+	cmd := exec.Command("gtar", args...)
 	cmd.Stdout = tarWriter
 	cmd.Stderr = &stderr
 
