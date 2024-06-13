@@ -37,7 +37,10 @@ const (
 	External             BackupType = "external"
 )
 
-var DecadesBackupDays = []string{"1", "11", "21"}
+var (
+	DecadesBackupDays = []string{"1", "11", "21"}
+	Version           string
+)
 
 func AllowedBackupTypesList() []string {
 	return []string{
@@ -190,7 +193,7 @@ func CheckNewVersionAvailable(ver string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	curVer, err := semver.NewVersion(VERSION)
+	curVer, err := semver.NewVersion(Version)
 	if err != nil {
 		return "", "", err
 	}

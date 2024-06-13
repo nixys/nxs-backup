@@ -71,5 +71,5 @@ func ReadArgs() (p ArgsParams, err error) {
 }
 
 func (args) Version() string {
-	return "nxs-backup " + misc.VERSION
+	return "nxs-backup " + misc.Version
 }
