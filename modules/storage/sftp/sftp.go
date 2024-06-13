@@ -48,7 +48,7 @@ func Init(name string, params Params) (*SFTP, error) {
 		Auth:            []ssh.AuthMethod{},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         params.ConnectTimeout * time.Second,
-		ClientVersion:   "SSH-2.0-" + "nxs-backup/" + misc.VERSION,
+		ClientVersion:   "SSH-2.0-" + "nxs-backup/" + misc.Version,
 	}
 
 	if params.Password != "" {

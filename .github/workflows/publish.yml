@@ -32,11 +32,12 @@ jobs:
       with:
         go-version: '1.20'
 
-    - name: Set version
-      run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
+    - name: Get version
+      id: get_version
+      uses: battila7/get-version-action@v2
 
     - name: Build
-      run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w" -v -o nxs-backup
+      run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/nixys/nxs-backup/misc.Version=${{ steps.get_version.outputs.version-without-v }}" -v -o nxs-backup
 
     - name: Run UPX
       uses: crazy-max/ghaction-upx@v3

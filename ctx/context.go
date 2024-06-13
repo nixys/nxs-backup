@@ -165,7 +165,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 
 	if conf.Server.Metrics.Enabled {
 		nva := 0.0
-		ver, _ := semver.NewVersion(misc.VERSION)
+		ver, _ := semver.NewVersion(misc.Version)
 		newVer, _, _ := misc.CheckNewVersionAvailable(strconv.FormatUint(ver.Major(), 10))
 		if newVer != "" {
 			nva = 1
