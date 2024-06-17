@@ -347,7 +347,15 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		stderr.Reset()
 	}
 
-	if err := targz.Tar(tmpMongodumpPath, tmpBackupFile, false, target.gzip, false, j.diskRateLimit, nil); err != nil {
+	if err := targz.Tar(targz.TarOpts{
+		Src:         tmpMongodumpPath,
+		Dst:         tmpBackupFile,
+		Incremental: false,
+		Gzip:        target.gzip,
+		SaveAbsPath: false,
+		RateLim:     j.diskRateLimit,
+		Excludes:    nil,
+	}); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		var serr targz.Error
 		if errors.As(err, &serr) {

@@ -29,11 +29,12 @@ import (
 type jobsOpts struct {
 	metricsData    *metrics.Data
 	oldMetricsData *metrics.Data
-	jobs           []jobCfg
+	mainLim        *limitsConf
+	jobs           []jobConf
 	storages       map[string]interfaces.Storage
 }
 
-func jobsInit(o jobsOpts, genLim *limits) ([]interfaces.Job, error) {
+func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 	var (
 		errs *multierror.Error
 		job  interfaces.Job
@@ -44,8 +45,10 @@ func jobsInit(o jobsOpts, genLim *limits) ([]interfaces.Job, error) {
 		var (
 			needToMakeBackup bool
 			withStorageRate  bool
+			diskRate         int64
 			nrl              int64
 			stErrs           = 0
+			err              error
 			jobStorages      interfaces.Storages
 		)
 
@@ -59,13 +62,8 @@ func jobsInit(o jobsOpts, genLim *limits) ([]interfaces.Job, error) {
 			continue
 		}
 
-		diskRate, err := getRateLimit(disk, j.Limits, genLim)
-		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("%s The limit won't be used for job `%s`", err, j.Name))
-		}
-
 		if j.Limits != nil {
-			if j.Limits.NetRate != "" {
+			if j.Limits.NetRate != nil {
 				nrl, err = getRateLimit(net, j.Limits, nil)
 				if err != nil {
 					errs = multierror.Append(errs, fmt.Errorf("%s The job `%s` won't be use limit defined on job level for its storages", err, j.Name))

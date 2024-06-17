@@ -246,7 +246,15 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 		}
 
 		startTime := time.Now()
-		if err = targz.Tar(tgt.path, tmpBackupFile, true, tgt.gzip, tgt.saveAbsPath, j.diskRateLimit, tgt.excludes); err != nil {
+		if err = targz.Tar(targz.TarOpts{
+			Src:         tgt.path,
+			Dst:         tmpBackupFile,
+			Incremental: true,
+			Gzip:        tgt.gzip,
+			SaveAbsPath: tgt.saveAbsPath,
+			RateLim:     j.diskRateLimit,
+			Excludes:    tgt.excludes,
+		}); err != nil {
 			j.SetOfsMetrics(ofsPart, map[string]float64{
 				metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
 			})

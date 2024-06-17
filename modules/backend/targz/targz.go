@@ -19,6 +19,16 @@ type Error struct {
 	Stderr string
 }
 
+type TarOpts struct {
+	Src         string
+	Dst         string
+	Incremental bool
+	Gzip        bool
+	SaveAbsPath bool
+	RateLim     int64
+	Excludes    []string
+}
+
 func (e Error) Error() string {
 	return e.Err.Error()
 }
@@ -56,9 +66,8 @@ func GZip(src, dst string, rateLim int64) error {
 	return err
 }
 
-func Tar(src, dst string, incremental, gzip, saveAbsPath bool, rateLim int64, excludes []string) error {
-
-	tarWriter, err := GetGZipFileWriter(dst, gzip, rateLim)
+func Tar(o TarOpts) error {
+	tarWriter, err := GetGZipFileWriter(o.Dst, o.Gzip, o.RateLim)
 	if err != nil {
 		return err
 	}
@@ -69,24 +78,24 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, rateLim int64, ex
 
 	args = append(args, "--format=pax")
 
-	if incremental {
-		args = append(args, "--listed-incremental="+dst+".inc")
+	if o.Incremental {
+		args = append(args, "--listed-incremental="+o.Dst+".inc")
 	}
-	for _, ex := range excludes {
+	for _, ex := range o.Excludes {
 		args = append(args, "--exclude="+ex)
 
 	}
 	args = append(args, "--ignore-failed-read")
 	args = append(args, "--create")
 	args = append(args, "--file=-")
-	if saveAbsPath {
-		args = append(args, src)
+	if o.SaveAbsPath {
+		args = append(args, o.Src)
 	} else {
-		args = append(args, "--directory="+path.Dir(src))
-		args = append(args, path.Base(src))
+		args = append(args, "--directory="+path.Dir(o.Src))
+		args = append(args, path.Base(o.Src))
 	}
 
-	cmd := exec.Command("gtar", args...)
+	cmd := exec.Command("tar", args...)
 	cmd.Stdout = tarWriter
 	cmd.Stderr = &stderr
 

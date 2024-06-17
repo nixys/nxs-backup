@@ -77,7 +77,7 @@ func AppCtxInit() (any, error) {
 			},
 		)
 	case "generate":
-		if _, err = confRead(ra.ConfigPath); err != nil {
+		if _, err = readConfig(ra.ConfigPath); err != nil {
 			printInitError("Failed to read configuration file: %v\n", err)
 			return nil, err
 		}
@@ -162,7 +162,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		jobs: make(map[string]interfaces.Job),
 	}
 
-	conf, err := confRead(cfgPath)
+	conf, err := readConfig(cfgPath)
 	if err != nil {
 		printInitError("Failed to read configuration file: %v\n", err)
 		return a, err
@@ -213,8 +213,8 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 			storages:       storages,
 			metricsData:    a.metricsData,
 			oldMetricsData: oldMetrics,
+			mainLim:        conf.Limits,
 		},
-		conf.Limits,
 	)
 	if err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
@@ -265,25 +265,39 @@ func logInit(c *Ctx, file, level string) error {
 	return err
 }
 
-func getRateLimit(rate rateType, newLim, baseLim *limits) (rl int64, err error) {
-	lim := &limits{
-		NetRate:  "0",
-		DiskRate: "0",
+func getRateLimit(rate rateType, newLim, baseLim *limitsConf) (rl int64, err error) {
+	noLim := "0"
+	lim := &limitsConf{
+		NetRate:  &noLim,
+		DiskRate: &noLim,
+	}
+
+	if baseLim != nil {
+		if baseLim.DiskRate != nil {
+			lim.DiskRate = baseLim.DiskRate
+		}
+		if baseLim.NetRate != nil {
+			lim.NetRate = baseLim.NetRate
+		}
 	}
 	if newLim != nil {
-		lim = newLim
-	} else if baseLim != nil {
-		lim = baseLim
+		if newLim.DiskRate != nil {
+			lim.DiskRate = newLim.DiskRate
+		}
+		if newLim.NetRate != nil {
+			lim.NetRate = newLim.NetRate
+		}
 	}
 
 	switch rate {
 	case disk:
-		rl, err = units.FromHumanSize(lim.DiskRate)
+		rl, err = units.FromHumanSize(*lim.DiskRate)
 	case net:
-		rl, err = units.FromHumanSize(lim.NetRate)
+		rl, err = units.FromHumanSize(*lim.NetRate)
 	}
 	if err != nil {
-		return 0, fmt.Errorf("Failed to parse `%s` rate limit: %w. ", rate, err)
+		return 0, fmt.Errorf("Failed to parse rate limit: %w. ", err)
 	}
+
 	return
 }

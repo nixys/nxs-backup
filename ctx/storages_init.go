@@ -46,8 +46,8 @@ func storagesInit(conf ConfOpts) (storagesMap map[string]interfaces.Storage, err
 			continue
 		}
 
-		if st.RateLimit != "" {
-			rl, err = getRateLimit(net, &limits{NetRate: st.RateLimit}, conf.Limits)
+		if st.RateLimit != nil {
+			rl, err = getRateLimit(net, &limitsConf{NetRate: st.RateLimit}, conf.Limits)
 		} else {
 			rl, err = getRateLimit(net, nil, conf.Limits)
 		}
