@@ -29,29 +29,48 @@ import (
 type jobsOpts struct {
 	metricsData    *metrics.Data
 	oldMetricsData *metrics.Data
-	jobs           []jobCfg
+	mainLim        *limitsConf
+	jobs           []jobConf
 	storages       map[string]interfaces.Storage
 }
 
 func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 	var (
 		errs *multierror.Error
+		job  interfaces.Job
 		jobs []interfaces.Job
 	)
 
 	for _, j := range o.jobs {
-		var needToMakeBackup bool
-		var jobStorages interfaces.Storages
-		stErrs := 0
+		var (
+			needToMakeBackup bool
+			withStorageRate  bool
+			diskRate         int64
+			nrl              int64
+			stErrs           = 0
+			err              error
+			jobStorages      interfaces.Storages
+		)
 
-		if len(j.JobName) == 0 {
+		if len(j.Name) == 0 {
 			errs = multierror.Append(errs, fmt.Errorf("Empty job name is unacceptable "))
 			continue
 		}
 
-		if misc.Contains([]string{"files", "databases", "external"}, j.JobName) {
-			errs = multierror.Append(errs, fmt.Errorf("A job cannot have the name `%s` reserved", j.JobName))
+		if misc.Contains([]string{"files", "databases", "external"}, j.Name) {
+			errs = multierror.Append(errs, fmt.Errorf("A job cannot have the name `%s` reserved", j.Name))
 			continue
+		}
+
+		if j.Limits != nil {
+			if j.Limits.NetRate != nil {
+				nrl, err = getRateLimit(net, j.Limits, nil)
+				if err != nil {
+					errs = multierror.Append(errs, fmt.Errorf("%s The job `%s` won't be use limit defined on job level for its storages", err, j.Name))
+				} else {
+					withStorageRate = true
+				}
+			}
 		}
 
 		for _, opt := range j.StoragesOptions {
@@ -60,19 +79,25 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			s, ok := o.storages[opt.StorageName]
 			if !ok {
 				stErrs++
-				errs = multierror.Append(errs, fmt.Errorf("Failed to set storage `%s` for job `%s`: storage not available ", opt.StorageName, j.JobName))
+				errs = multierror.Append(errs, fmt.Errorf("Failed to set storage `%s` for job `%s`: storage not available ", opt.StorageName, j.Name))
 				continue
 			}
 
 			if opt.Retention.Days < 0 || opt.Retention.Weeks < 0 || opt.Retention.Months < 0 {
 				stErrs++
-				errs = multierror.Append(errs, fmt.Errorf("Failed to set storage `%s` for job `%s`: retention period can't be negative ", opt.StorageName, j.JobName))
+				errs = multierror.Append(errs, fmt.Errorf("Failed to set storage `%s` for job `%s`: retention period can't be negative ", opt.StorageName, j.Name))
 				continue
 			}
 
 			st := s.Clone()
 			st.SetBackupPath(opt.BackupPath)
 			st.SetRetention(storage.Retention(opt.Retention))
+
+			if opt.StorageName == "local" {
+				st.SetRateLimit(diskRate)
+			} else if withStorageRate {
+				st.SetRateLimit(nrl)
+			}
 
 			if storage.IsNeedToBackup(opt.Retention.Days, opt.Retention.Weeks, opt.Retention.Months) {
 				needToMakeBackup = true
@@ -86,9 +111,10 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			sort.Sort(jobStorages)
 		}
 
-		switch j.JobType {
+		switch j.Type {
 		case misc.DescFiles:
 			var sources []desc_files.SourceParams
+
 			for _, src := range j.Sources {
 				sources = append(sources, desc_files.SourceParams{
 					Name:        src.Name,
@@ -99,26 +125,22 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := desc_files.Init(desc_files.JobParams{
-				Name:             j.JobName,
+			job, err = desc_files.Init(desc_files.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-
-			jobs = append(jobs, job)
 
 		case misc.IncFiles:
 			var sources []inc_files.SourceParams
+
 			for _, src := range j.Sources {
 				sources = append(sources, inc_files.SourceParams{
 					Name:        src.Name,
@@ -129,22 +151,17 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := inc_files.Init(inc_files.JobParams{
-				Name:            j.JobName,
+			job, err = inc_files.Init(inc_files.JobParams{
+				Name:            j.Name,
 				TmpDir:          j.TmpDir,
 				SafetyBackup:    j.SafetyBackup,
 				DeferredCopying: j.DeferredCopying,
+				DiskRateLimit:   diskRate,
 				Storages:        jobStorages,
 				Sources:         sources,
 				Metrics:         o.metricsData,
 				OldMetrics:      o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-
-			jobs = append(jobs, job)
 
 		case misc.Mysql:
 			var sources []mysql.SourceParams
@@ -173,22 +190,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := mysql.Init(mysql.JobParams{
-				Name:             j.JobName,
+			job, err = mysql.Init(mysql.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.MysqlXtrabackup:
 			var sources []mysql_xtrabackup.SourceParams
@@ -218,22 +231,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := mysql_xtrabackup.Init(mysql_xtrabackup.JobParams{
-				Name:             j.JobName,
+			job, err = mysql_xtrabackup.Init(mysql_xtrabackup.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.Postgresql:
 			var sources []psql.SourceParams
@@ -264,22 +273,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := psql.Init(psql.JobParams{
-				Name:             j.JobName,
+			job, err = psql.Init(psql.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.PostgresqlBasebackup:
 			var sources []psql_basebackup.SourceParams
@@ -308,22 +313,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := psql_basebackup.Init(psql_basebackup.JobParams{
-				Name:             j.JobName,
+			job, err = psql_basebackup.Init(psql_basebackup.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.MongoDB:
 			var sources []mongodump.SourceParams
@@ -355,22 +356,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := mongodump.Init(mongodump.JobParams{
-				Name:             j.JobName,
+			job, err = mongodump.Init(mongodump.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.Redis:
 			var sources []redis.SourceParams
@@ -388,26 +385,22 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err := redis.Init(redis.JobParams{
-				Name:             j.JobName,
+			job, err = redis.Init(redis.JobParams{
+				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		case misc.External:
-			job, err := external.Init(external.JobParams{
-				Name:             j.JobName,
+			job, err = external.Init(external.JobParams{
+				Name:             j.Name,
 				DumpCmd:          j.DumpCmd,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
@@ -416,16 +409,18 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Metrics:          o.metricsData,
 				OldMetrics:       o.oldMetricsData,
 			})
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.JobName, err))
-				continue
-			}
-			jobs = append(jobs, job)
 
 		default:
-			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.JobType, strings.Join(misc.AllowedBackupTypesList(), ", ")))
+			errs = multierror.Append(errs, fmt.Errorf("Unknown job type \"%s\". Allowd types: %s ", j.Type, strings.Join(misc.AllowedBackupTypesList(), ", ")))
 			continue
 		}
+
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("Failed to init job `%s` with error: %w ", j.Name, err))
+		} else {
+			jobs = append(jobs, job)
+		}
+
 	}
 
 	return jobs, errs.ErrorOrNil()

@@ -29,6 +29,7 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
@@ -50,6 +51,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -80,6 +82,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -298,8 +301,9 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 }
 
 func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupPath string, target target) error {
+	var stderr bytes.Buffer
 
-	backupWriter, err := targz.GetFileWriter(tmpBackupPath, target.gzip)
+	backupWriter, err := targz.GetGZipFileWriter(tmpBackupPath, target.gzip, j.diskRateLimit)
 	if err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp file. Error: %s", err)
 		return err
@@ -318,7 +322,6 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupPath string,
 	}
 	args = append(args, "--dbname="+target.connUrl.String())
 
-	var stderr bytes.Buffer
 	cmd := exec.Command("pg_dump", args...)
 	cmd.Stdout = backupWriter
 	cmd.Stderr = &stderr

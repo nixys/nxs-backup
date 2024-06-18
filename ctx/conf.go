@@ -16,32 +16,38 @@ import (
 )
 
 type ConfOpts struct {
-	ProjectName     string           `conf:"project_name"`
-	ServerName      string           `conf:"server_name" conf_extraopts:"default=localhost"`
-	Notifications   notifications    `conf:"notifications"`
-	Jobs            []jobCfg         `conf:"jobs"`
-	StorageConnects []storageConnect `conf:"storage_connects"`
-	IncludeCfgs     []string         `conf:"include_jobs_configs"`
-	WaitingTimeout  time.Duration    `conf:"waiting_timeout"`
+	ProjectName     string               `conf:"project_name"`
+	ServerName      string               `conf:"server_name" conf_extraopts:"default=localhost"`
+	Notifications   notificationsConf    `conf:"notifications"`
+	Jobs            []jobConf            `conf:"jobs"`
+	StorageConnects []storageConnectConf `conf:"storage_connects"`
+	IncludeCfgs     []string             `conf:"include_jobs_configs"`
+	WaitingTimeout  time.Duration        `conf:"waiting_timeout"`
 
-	Server serverOpts `conf:"server"`
+	Server serverConf  `conf:"server"`
+	Limits *limitsConf `conf:"limits" conf_extraopts:"default={}"`
 
 	LogFile  string `conf:"logfile" conf_extraopts:"default=stdout"`
 	LogLevel string `conf:"loglevel" conf_extraopts:"default=info"`
 	ConfPath string
 }
 
-type serverOpts struct {
-	Bind    string      `conf:"bind" conf_extraopts:"default=:7979"`
-	Metrics metricsOpts `conf:"metrics"`
+type limitsConf struct {
+	DiskRate *string `conf:"disk_rate"`
+	NetRate  *string `conf:"net_rate"`
 }
 
-type metricsOpts struct {
+type serverConf struct {
+	Bind    string      `conf:"bind" conf_extraopts:"default=:7979"`
+	Metrics metricsConf `conf:"metrics"`
+}
+
+type metricsConf struct {
 	Enabled  bool   `conf:"enabled" conf_extraopts:"default=true"`
 	FilePath string `conf:"metrics_file_path" conf_extraopts:"default=/tmp/nxs-backup.metrics"`
 }
 
-type notifications struct {
+type notificationsConf struct {
 	Mail     mailConf      `conf:"mail"`
 	Webhooks []webhookConf `conf:"webhooks"`
 }
@@ -67,35 +73,36 @@ type webhookConf struct {
 	MessageLevel      string                 `conf:"message_level" conf_extraopts:"default=warn"`
 }
 
-type jobCfg struct {
-	JobName          string          `conf:"job_name" conf_extraopts:"required"`
-	JobType          misc.BackupType `conf:"type" conf_extraopts:"required"`
+type jobConf struct {
+	Name             string          `conf:"job_name" conf_extraopts:"required"`
+	Type             misc.BackupType `conf:"type" conf_extraopts:"required"`
 	TmpDir           string          `conf:"tmp_dir"`
 	SafetyBackup     bool            `conf:"safety_backup" conf_extraopts:"default=false"`
 	DeferredCopying  bool            `conf:"deferred_copying" conf_extraopts:"default=false"`
-	Sources          []sourceCfg     `conf:"sources"`
-	StoragesOptions  []storageOpts   `conf:"storages_options"`
+	Sources          []sourceConf    `conf:"sources"`
+	StoragesOptions  []storageConf   `conf:"storages_options"`
 	DumpCmd          string          `conf:"dump_cmd"`
 	SkipBackupRotate bool            `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // used by external
+	Limits           *limitsConf     `conf:"limits"`
 }
 
-type sourceCfg struct {
-	Name               string        `conf:"name" conf_extraopts:"required"`
-	Connect            sourceConnect `conf:"connect"`
-	Targets            []string      `conf:"targets"`
-	TargetDBs          []string      `conf:"target_dbs"`
-	TargetCollections  []string      `conf:"target_collections"`
-	Excludes           []string      `conf:"excludes"`
-	ExcludeDBs         []string      `conf:"exclude_dbs"`
-	ExcludeCollections []string      `conf:"exclude_collections"`
-	ExtraKeys          string        `conf:"db_extra_keys"`
-	IsSlave            bool          `conf:"is_slave" conf_extraopts:"default=false"`
-	Gzip               bool          `conf:"gzip" conf_extraopts:"default=false"`
-	SaveAbsPath        bool          `conf:"save_abs_path" conf_extraopts:"default=true"`
-	PrepareXtrabackup  bool          `conf:"prepare_xtrabackup" conf_extraopts:"default=false"`
+type sourceConf struct {
+	Name               string            `conf:"name" conf_extraopts:"required"`
+	Connect            sourceConnectConf `conf:"connect"`
+	Targets            []string          `conf:"targets"`
+	TargetDBs          []string          `conf:"target_dbs"`
+	TargetCollections  []string          `conf:"target_collections"`
+	Excludes           []string          `conf:"excludes"`
+	ExcludeDBs         []string          `conf:"exclude_dbs"`
+	ExcludeCollections []string          `conf:"exclude_collections"`
+	ExtraKeys          string            `conf:"db_extra_keys"`
+	IsSlave            bool              `conf:"is_slave" conf_extraopts:"default=false"`
+	Gzip               bool              `conf:"gzip" conf_extraopts:"default=false"`
+	SaveAbsPath        bool              `conf:"save_abs_path" conf_extraopts:"default=true"`
+	PrepareXtrabackup  bool              `conf:"prepare_xtrabackup" conf_extraopts:"default=false"`
 }
 
-type sourceConnect struct {
+type sourceConnectConf struct {
 	DBHost          string `conf:"db_host"`
 	DBPort          string `conf:"db_port"`
 	Socket          string `conf:"socket"`
@@ -111,31 +118,32 @@ type sourceConnect struct {
 	MongoAuthDB     string `conf:"mongo_auth_db"`
 }
 
-type storageOpts struct {
-	StorageName string    `conf:"storage_name" conf_extraopts:"required"`
-	BackupPath  string    `conf:"backup_path" conf_extraopts:"required"`
-	Retention   retention `conf:"retention" conf_extraopts:"required"`
+type storageConf struct {
+	StorageName string        `conf:"storage_name" conf_extraopts:"required"`
+	BackupPath  string        `conf:"backup_path" conf_extraopts:"required"`
+	Retention   retentionConf `conf:"retention" conf_extraopts:"required"`
 }
 
-type retention struct {
+type retentionConf struct {
 	Days     int  `conf:"days" conf_extraopts:"default=7"`
 	Weeks    int  `conf:"weeks" conf_extraopts:"default=5"`
 	Months   int  `conf:"months" conf_extraopts:"default=12"`
 	UseCount bool `conf:"count_instead_of_period" conf_extraopts:"default=false"`
 }
 
-type storageConnect struct {
-	Name         string        `conf:"name" conf_extraopts:"required"`
-	S3Params     *s3Params     `conf:"s3_params"`
-	ScpParams    *sftpParams   `conf:"scp_params"`
-	SftpParams   *sftpParams   `conf:"sftp_params"`
-	FtpParams    *ftpParams    `conf:"ftp_params"`
-	NfsParams    *nfsParams    `conf:"nfs_params"`
-	WebDavParams *webDavParams `conf:"webdav_params"`
-	SmbParams    *smbParams    `conf:"smb_params"`
+type storageConnectConf struct {
+	Name         string          `conf:"name" conf_extraopts:"required"`
+	RateLimit    *string         `conf:"rate_limit"`
+	S3Params     *s3ConnConf     `conf:"s3_params"`
+	ScpParams    *sftpConnConf   `conf:"scp_params"`
+	SftpParams   *sftpConnConf   `conf:"sftp_params"`
+	FtpParams    *ftpConnConf    `conf:"ftp_params"`
+	NfsParams    *nfsConnConf    `conf:"nfs_params"`
+	WebDavParams *webDavConnConf `conf:"webdav_params"`
+	SmbParams    *smbConnConf    `conf:"smb_params"`
 }
 
-type s3Params struct {
+type s3ConnConf struct {
 	BucketName    string `conf:"bucket_name" conf_extraopts:"required"`
 	AccessKeyID   string `conf:"access_key_id"`
 	SecretKey     string `conf:"secret_access_key"`
@@ -145,7 +153,7 @@ type s3Params struct {
 	Secure        bool   `conf:"secure" conf_extraopts:"default=true"`
 }
 
-type sftpParams struct {
+type sftpConnConf struct {
 	User           string        `conf:"user" conf_extraopts:"required"`
 	Host           string        `conf:"host" conf_extraopts:"required"`
 	Port           int           `conf:"port" conf_extraopts:"default=22"`
@@ -154,7 +162,7 @@ type sftpParams struct {
 	ConnectTimeout time.Duration `conf:"connection_timeout" conf_extraopts:"default=10"`
 }
 
-type ftpParams struct {
+type ftpConnConf struct {
 	Host              string        `conf:"host"  conf_extraopts:"required"`
 	User              string        `conf:"user"`
 	Password          string        `conf:"password"`
@@ -163,14 +171,14 @@ type ftpParams struct {
 	ConnectionTimeout time.Duration `conf:"connection_timeout" conf_extraopts:"default=10"`
 }
 
-type nfsParams struct {
+type nfsConnConf struct {
 	Host   string `conf:"host"  conf_extraopts:"required"`
 	Target string `conf:"target"`
 	UID    uint32 `conf:"uid" conf_extraopts:"default=0"`
 	GID    uint32 `conf:"gid" conf_extraopts:"default=0"`
 }
 
-type webDavParams struct {
+type webDavConnConf struct {
 	URL               string        `conf:"url" conf_extraopts:"required"`
 	Username          string        `conf:"username"`
 	Password          string        `conf:"password"`
@@ -178,7 +186,7 @@ type webDavParams struct {
 	ConnectionTimeout time.Duration `conf:"connection_timeout" conf_extraopts:"default=10"`
 }
 
-type smbParams struct {
+type smbConnConf struct {
 	Host              string        `conf:"host" conf_extraopts:"required"`
 	Port              int           `conf:"port" conf_extraopts:"default=445"`
 	User              string        `conf:"user" conf_extraopts:"default=Guest"`
@@ -188,7 +196,7 @@ type smbParams struct {
 	ConnectionTimeout time.Duration `conf:"connection_timeout" conf_extraopts:"default=10"`
 }
 
-func confRead(confPath string) (ConfOpts, error) {
+func readConfig(confPath string) (ConfOpts, error) {
 
 	var c ConfOpts
 
@@ -213,7 +221,7 @@ func confRead(confPath string) (ConfOpts, error) {
 	c.ConfPath = confPath
 
 	if len(c.IncludeCfgs) > 0 {
-		err = c.extraConfigsRead()
+		err = c.readExtraConfigs()
 		if err != nil {
 			return c, err
 		}
@@ -222,7 +230,7 @@ func confRead(confPath string) (ConfOpts, error) {
 	return c, nil
 }
 
-func (c *ConfOpts) extraConfigsRead() error {
+func (c *ConfOpts) readExtraConfigs() error {
 
 	for _, pathRegexp := range c.IncludeCfgs {
 		var p string
@@ -245,7 +253,7 @@ func (c *ConfOpts) extraConfigsRead() error {
 
 		var errs *multierror.Error
 		for _, cfgFile := range confs {
-			var j jobCfg
+			var j jobConf
 
 			err = conf.Load(&j, conf.Settings{
 				ConfPath:    cfgFile,

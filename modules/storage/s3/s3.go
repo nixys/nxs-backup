@@ -18,20 +18,22 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
 
-type s3 struct {
+type S3 struct {
 	client        *minio.Client
 	bucketName    string
 	backupPath    string
 	name          string
 	batchDeletion bool
+	rateLimit     int64
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	BucketName    string
 	AccessKeyID   string
 	SecretKey     string
@@ -41,43 +43,48 @@ type Params struct {
 	Secure        bool
 }
 
-func Init(name string, params Params) (*s3, error) {
+func Init(name string, opts Opts, rl int64) (*S3, error) {
 
-	s3Client, err := minio.New(params.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(params.AccessKeyID, params.SecretKey, ""),
-		Secure: params.Secure,
+	s3Client, err := minio.New(opts.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(opts.AccessKeyID, opts.SecretKey, ""),
+		Secure: opts.Secure,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' S3 storage. Error: %v ", name, err)
 	}
 
-	exist, err := s3Client.BucketExists(context.Background(), params.BucketName)
+	exist, err := s3Client.BucketExists(context.Background(), opts.BucketName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to check bucket exist in S3 storage '%s'. Error: %v ", name, err)
 	}
 	if !exist {
-		return nil, fmt.Errorf("Bucket '%s' doesn't exist. ", params.BucketName)
+		return nil, fmt.Errorf("Bucket '%s' doesn't exist. ", opts.BucketName)
 	}
 
-	return &s3{
+	return &S3{
 		name:          name,
 		client:        s3Client,
-		bucketName:    params.BucketName,
-		batchDeletion: params.BatchDeletion,
+		bucketName:    opts.BucketName,
+		batchDeletion: opts.BatchDeletion,
+		rateLimit:     rl,
 	}, nil
 }
 
-func (s *s3) IsLocal() int { return 0 }
+func (s *S3) IsLocal() int { return 0 }
 
-func (s *s3) SetBackupPath(path string) {
+func (s *S3) SetBackupPath(path string) {
 	s.backupPath = strings.TrimPrefix(path, "/")
 }
 
-func (s *s3) SetRetention(r Retention) {
+func (s *S3) SetRateLimit(rl int64) {
+	s.rateLimit = rl
+}
+
+func (s *S3) SetRetention(r Retention) {
 	s.Retention = r
 }
 
-func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
+func (s *S3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
 
 	if bakType == string(misc.IncFiles) {
@@ -87,13 +94,13 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 	}
 
 	if len(mtdRemPaths) > 0 {
-		mtdSrc, err := os.Open(tmpBackupFile + ".inc")
+		mtdSrc, err := files.GetLimitedFileReader(tmpBackupFile+".inc", s.rateLimit)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = mtdSrc.Close() }()
 
-		mtdSrcStat, err := mtdSrc.Stat()
+		mtdSrcStat, err := os.Stat(tmpBackupFile + ".inc")
 		if err != nil {
 			return err
 		}
@@ -107,13 +114,13 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 		}
 	}
 
-	source, err := os.Open(tmpBackupFile)
+	source, err := files.GetLimitedFileReader(tmpBackupFile, s.rateLimit)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = source.Close() }()
 
-	sourceStat, err := source.Stat()
+	sourceStat, err := os.Stat(tmpBackupFile)
 	if err != nil {
 		return err
 	}
@@ -132,7 +139,7 @@ func (s *s3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 	return nil
 }
 
-func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job interfaces.Job, full bool) error {
+func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job interfaces.Job, full bool) error {
 
 	curDate := time.Now().Round(24 * time.Hour)
 
@@ -243,7 +250,7 @@ func (s *s3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 	return nil
 }
 
-func (s *s3) GetFileReader(ofsPath string) (io.Reader, error) {
+func (s *S3) GetFileReader(ofsPath string) (io.Reader, error) {
 	o, err := s.client.GetObject(context.Background(), s.bucketName, path.Join(s.backupPath, ofsPath), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
@@ -259,15 +266,15 @@ func (s *s3) GetFileReader(ofsPath string) (io.Reader, error) {
 	return bytes.NewReader(buf), err
 }
 
-func (s *s3) Close() error {
+func (s *S3) Close() error {
 	return nil
 }
 
-func (s *s3) Clone() interfaces.Storage {
+func (s *S3) Clone() interfaces.Storage {
 	cl := *s
 	return &cl
 }
 
-func (s *s3) GetName() string {
+func (s *S3) GetName() string {
 	return s.name
 }

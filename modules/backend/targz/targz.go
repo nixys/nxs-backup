@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+
+	"github.com/nixys/nxs-backup/modules/backend/files"
 )
 
 const regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
@@ -17,28 +19,38 @@ type Error struct {
 	Stderr string
 }
 
+type TarOpts struct {
+	Src         string
+	Dst         string
+	Incremental bool
+	Gzip        bool
+	SaveAbsPath bool
+	RateLim     int64
+	Excludes    []string
+}
+
 func (e Error) Error() string {
 	return e.Err.Error()
 }
 
-func GetFileWriter(filePath string, gZip bool) (io.WriteCloser, error) {
-	file, err := os.Create(filePath)
+func GetGZipFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, error) {
+	var wc io.WriteCloser
+
+	lwc, err := files.GetLimitedFileWriter(filePath, rateLim)
 	if err != nil {
 		return nil, err
 	}
-
-	var writer io.WriteCloser
 	if gZip {
-		writer, err = pgzip.NewWriterLevel(file, pgzip.BestCompression)
+		wc, err = pgzip.NewWriterLevel(lwc, pgzip.BestCompression)
 	} else {
-		writer = file
+		wc = lwc
 	}
 
-	return writer, err
+	return wc, err
 }
 
-func GZip(src, dst string) error {
-	fileWriter, err := GetFileWriter(dst, true)
+func GZip(src, dst string, rateLim int64) error {
+	fileWriter, err := GetGZipFileWriter(dst, true, rateLim)
 	if err != nil {
 		return err
 	}
@@ -54,9 +66,8 @@ func GZip(src, dst string) error {
 	return err
 }
 
-func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string) error {
-
-	tarWriter, err := GetFileWriter(dst, gzip)
+func Tar(o TarOpts) error {
+	tarWriter, err := GetGZipFileWriter(o.Dst, o.Gzip, o.RateLim)
 	if err != nil {
 		return err
 	}
@@ -67,21 +78,21 @@ func Tar(src, dst string, incremental, gzip, saveAbsPath bool, excludes []string
 
 	args = append(args, "--format=pax")
 
-	if incremental {
-		args = append(args, "--listed-incremental="+dst+".inc")
+	if o.Incremental {
+		args = append(args, "--listed-incremental="+o.Dst+".inc")
 	}
-	for _, ex := range excludes {
+	for _, ex := range o.Excludes {
 		args = append(args, "--exclude="+ex)
 
 	}
 	args = append(args, "--ignore-failed-read")
 	args = append(args, "--create")
 	args = append(args, "--file=-")
-	if saveAbsPath {
-		args = append(args, src)
+	if o.SaveAbsPath {
+		args = append(args, o.Src)
 	} else {
-		args = append(args, "--directory="+path.Dir(src))
-		args = append(args, path.Base(src))
+		args = append(args, "--directory="+path.Dir(o.Src))
+		args = append(args, path.Base(o.Src))
 	}
 
 	cmd := exec.Command("tar", args...)

@@ -1,13 +1,41 @@
 package files
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/juju/ratelimit"
 	"gopkg.in/ini.v1"
 
 	"github.com/nixys/nxs-backup/misc"
 )
+
+type limitedWriteCloser struct {
+	w io.Writer
+	c io.Closer
+}
+
+type limitedReadCloser struct {
+	r io.Reader
+	c io.Closer
+}
+
+func (lwc *limitedWriteCloser) Write(p []byte) (int, error) {
+	return lwc.w.Write(p)
+}
+
+func (lwc *limitedWriteCloser) Close() error {
+	return lwc.c.Close()
+}
+
+func (lrc *limitedReadCloser) Read(p []byte) (int, error) {
+	return lrc.r.Read(p)
+}
+
+func (lrc *limitedReadCloser) Close() error {
+	return lrc.c.Close()
+}
 
 func CreateTmpMysqlAuthFile(af *ini.File) (authFile string, err error) {
 	authFile = filepath.Join("/tmp", misc.RandString(20))
@@ -25,4 +53,42 @@ func CreateTmpMysqlAuthFile(af *ini.File) (authFile string, err error) {
 
 func DeleteTmpMysqlAuthFile(path string) error {
 	return os.RemoveAll(path)
+}
+
+func GetLimitedFileWriter(filePath string, rateLim int64) (io.WriteCloser, error) {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	lwc := &limitedWriteCloser{
+		c: file,
+	}
+	if rateLim != 0 {
+		bucket := ratelimit.NewBucketWithRate(float64(rateLim), rateLim*2)
+		lwc.w = ratelimit.Writer(file, bucket)
+	} else {
+		lwc.w = file
+	}
+
+	return lwc, nil
+}
+
+func GetLimitedFileReader(filePath string, rateLim int64) (io.ReadCloser, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	lrc := &limitedReadCloser{
+		c: file,
+	}
+	if rateLim != 0 {
+		bucket := ratelimit.NewBucketWithRate(float64(rateLim), rateLim*2)
+		lrc.r = ratelimit.Reader(file, bucket)
+	} else {
+		lrc.r = file
+	}
+
+	return lrc, err
 }

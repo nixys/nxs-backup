@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
-	"github.com/sirupsen/logrus"
-	"github.com/vmware/go-nfs-client/nfs"
-	"github.com/vmware/go-nfs-client/nfs/rpc"
 	"io"
 	"io/fs"
 	"os"
@@ -17,8 +13,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/sirupsen/logrus"
+	"github.com/vmware/go-nfs-client/nfs"
+	"github.com/vmware/go-nfs-client/nfs/rpc"
+
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
@@ -27,17 +29,18 @@ type NFS struct {
 	target     *nfs.Target
 	backupPath string
 	name       string
+	rateLimit  int64
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	Host   string
 	Target string
 	UID    uint32
 	GID    uint32
 }
 
-func Init(name string, params Params) (*NFS, error) {
+func Init(name string, params Opts, rl int64) (*NFS, error) {
 	mount, err := nfs.DialMount(params.Host)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' NFS storage. Dial MOUNT service error: %v ", name, err)
@@ -64,8 +67,9 @@ func Init(name string, params Params) (*NFS, error) {
 	}
 
 	return &NFS{
-		name:   name,
-		target: target,
+		name:      name,
+		target:    target,
+		rateLimit: rl,
 	}, nil
 }
 
@@ -73,6 +77,10 @@ func (n *NFS) IsLocal() int { return 0 }
 
 func (n *NFS) SetBackupPath(path string) {
 	n.backupPath = path
+}
+
+func (n *NFS) SetRateLimit(rl int64) {
+	n.rateLimit = rl
 }
 
 func (n *NFS) SetRetention(r Retention) {
@@ -106,7 +114,7 @@ func (n *NFS) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile
 }
 
 func (n *NFS) copy(logCh chan logger.LogRecord, jobName, dst, src string) error {
-	srcFile, err := os.Open(src)
+	srcFile, err := files.GetLimitedFileReader(src, n.rateLimit)
 	if err != nil {
 		logCh <- logger.LogRecord{
 			Level:       logrus.ErrorLevel,

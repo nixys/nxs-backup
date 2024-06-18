@@ -29,6 +29,7 @@ type job struct {
 	needToMakeBackup bool
 	safetyBackup     bool
 	deferredCopying  bool
+	diskRateLimit    int64
 	storages         interfaces.Storages
 	targets          map[string]target
 	dumpedObjects    map[string]interfaces.DumpObject
@@ -51,6 +52,7 @@ type JobParams struct {
 	NeedToMakeBackup bool
 	SafetyBackup     bool
 	DeferredCopying  bool
+	DiskRateLimit    int64
 	Storages         interfaces.Storages
 	Sources          []SourceParams
 	Metrics          *metrics.Data
@@ -85,6 +87,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		needToMakeBackup: jp.NeedToMakeBackup,
 		safetyBackup:     jp.SafetyBackup,
 		deferredCopying:  jp.DeferredCopying,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		targets:          make(map[string]target),
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
@@ -344,7 +347,15 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile string,
 		stderr.Reset()
 	}
 
-	if err := targz.Tar(tmpMongodumpPath, tmpBackupFile, false, target.gzip, false, nil); err != nil {
+	if err := targz.Tar(targz.TarOpts{
+		Src:         tmpMongodumpPath,
+		Dst:         tmpBackupFile,
+		Incremental: false,
+		Gzip:        target.gzip,
+		SaveAbsPath: false,
+		RateLim:     j.diskRateLimit,
+		Excludes:    nil,
+	}); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
 		var serr targz.Error
 		if errors.As(err, &serr) {

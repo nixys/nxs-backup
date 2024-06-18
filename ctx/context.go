@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/docker/go-units"
 	"github.com/hashicorp/go-multierror"
 	appctx "github.com/nixys/nxs-go-appctx/v3"
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,13 @@ import (
 	"github.com/nixys/nxs-backup/modules/cmd_handler/test_config"
 	"github.com/nixys/nxs-backup/modules/logger"
 	"github.com/nixys/nxs-backup/modules/metrics"
+)
+
+type rateType string
+
+const (
+	disk rateType = "disk"
+	net  rateType = "net"
 )
 
 // Ctx defines application custom context
@@ -69,7 +77,7 @@ func AppCtxInit() (any, error) {
 			},
 		)
 	case "generate":
-		if _, err = confRead(ra.ConfigPath); err != nil {
+		if _, err = readConfig(ra.ConfigPath); err != nil {
 			printInitError("Failed to read configuration file: %v\n", err)
 			return nil, err
 		}
@@ -154,7 +162,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		jobs: make(map[string]interfaces.Job),
 	}
 
-	conf, err := confRead(cfgPath)
+	conf, err := readConfig(cfgPath)
 	if err != nil {
 		printInitError("Failed to read configuration file: %v\n", err)
 		return a, err
@@ -205,6 +213,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 			storages:       storages,
 			metricsData:    a.metricsData,
 			oldMetricsData: oldMetrics,
+			mainLim:        conf.Limits,
 		},
 	)
 	if err != nil {
@@ -254,4 +263,41 @@ func logInit(c *Ctx, file, level string) error {
 
 	c.Log, err = appctx.DefaultLogInit(f, l, &logger.LogFormatter{})
 	return err
+}
+
+func getRateLimit(rate rateType, newLim, baseLim *limitsConf) (rl int64, err error) {
+	noLim := "0"
+	lim := &limitsConf{
+		NetRate:  &noLim,
+		DiskRate: &noLim,
+	}
+
+	if baseLim != nil {
+		if baseLim.DiskRate != nil {
+			lim.DiskRate = baseLim.DiskRate
+		}
+		if baseLim.NetRate != nil {
+			lim.NetRate = baseLim.NetRate
+		}
+	}
+	if newLim != nil {
+		if newLim.DiskRate != nil {
+			lim.DiskRate = newLim.DiskRate
+		}
+		if newLim.NetRate != nil {
+			lim.NetRate = newLim.NetRate
+		}
+	}
+
+	switch rate {
+	case disk:
+		rl, err = units.FromHumanSize(*lim.DiskRate)
+	case net:
+		rl, err = units.FromHumanSize(*lim.NetRate)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("Failed to parse rate limit: %w. ", err)
+	}
+
+	return
 }

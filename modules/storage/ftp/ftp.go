@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"net/textproto"
-	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
+	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/logger"
 	. "github.com/nixys/nxs-backup/modules/storage"
 )
@@ -28,11 +28,12 @@ type FTP struct {
 	conn       *ftp.ServerConn
 	backupPath string
 	name       string
-	params     Params
+	rateLimit  int64
+	opts       Opts
 	Retention
 }
 
-type Params struct {
+type Opts struct {
 	Host              string
 	User              string
 	Password          string
@@ -41,11 +42,12 @@ type Params struct {
 	ConnectionTimeout time.Duration
 }
 
-func Init(name string, params Params) (s *FTP, err error) {
+func Init(name string, opts Opts, rl int64) (s *FTP, err error) {
 
 	s = &FTP{
-		name:   name,
-		params: params,
+		name:      name,
+		opts:      opts,
+		rateLimit: rl,
 	}
 
 	err = s.updateConn()
@@ -65,13 +67,13 @@ func (f *FTP) updateConn() error {
 		}
 	}
 
-	c, err := ftp.Dial(fmt.Sprintf("%s:%d", f.params.Host, f.params.Port),
-		ftp.DialWithTimeout(f.params.ConnectionTimeout*time.Second))
+	c, err := ftp.Dial(fmt.Sprintf("%s:%d", f.opts.Host, f.opts.Port),
+		ftp.DialWithTimeout(f.opts.ConnectionTimeout*time.Second))
 	if err != nil {
 		return err
 	}
 
-	err = c.Login(f.params.User, f.params.Password)
+	err = c.Login(f.opts.User, f.opts.Password)
 	if err != nil {
 		return err
 	}
@@ -88,6 +90,10 @@ func (f *FTP) IsLocal() int { return 0 }
 
 func (f *FTP) SetBackupPath(path string) {
 	f.backupPath = path
+}
+
+func (f *FTP) SetRateLimit(rl int64) {
+	f.rateLimit = rl
 }
 
 func (f *FTP) SetRetention(r Retention) {
@@ -133,7 +139,7 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 		return err
 	}
 
-	srcFile, err := os.Open(src)
+	srcFile, err := files.GetLimitedFileReader(src, f.rateLimit)
 	if err != nil {
 		logCh <- logger.Log(job, f.name).Errorf("Unable to open file: '%s'", err)
 		return err

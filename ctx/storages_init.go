@@ -27,10 +27,18 @@ var allowedConnectParams = []string{
 }
 
 func storagesInit(conf ConfOpts) (storagesMap map[string]interfaces.Storage, err error) {
-	var errs *multierror.Error
+	var (
+		rl   int64
+		errs *multierror.Error
+	)
 
 	storagesMap = make(map[string]interfaces.Storage)
-	storagesMap["local"] = local.Init()
+
+	rl, err = getRateLimit(disk, nil, conf.Limits)
+	if err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("%s The limit won't be used for storage `local`", err))
+	}
+	storagesMap["local"] = local.Init(rl)
 
 	for _, st := range conf.StorageConnects {
 		if _, exist := storagesMap[st.Name]; exist {
@@ -38,49 +46,52 @@ func storagesInit(conf ConfOpts) (storagesMap map[string]interfaces.Storage, err
 			continue
 		}
 
-		if st.S3Params != nil {
-			storagesMap[st.Name], err = s3.Init(st.Name, s3.Params(*st.S3Params))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.ScpParams != nil {
-			storagesMap[st.Name], err = sftp.Init(st.Name, sftp.Params(*st.ScpParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.SftpParams != nil {
-			storagesMap[st.Name], err = sftp.Init(st.Name, sftp.Params(*st.SftpParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.FtpParams != nil {
-			storagesMap[st.Name], err = ftp.Init(st.Name, ftp.Params(*st.FtpParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.NfsParams != nil {
-			storagesMap[st.Name], err = nfs.Init(st.Name, nfs.Params(*st.NfsParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.WebDavParams != nil {
-			storagesMap[st.Name], err = webdav.Init(st.Name, webdav.Params(*st.WebDavParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
-		} else if st.SmbParams != nil {
-			storagesMap[st.Name], err = smb.Init(st.Name, smb.Params(*st.SmbParams))
-			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
-			}
-
+		if st.RateLimit != nil {
+			rl, err = getRateLimit(net, &limitsConf{NetRate: st.RateLimit}, conf.Limits)
 		} else {
+			rl, err = getRateLimit(net, nil, conf.Limits)
+		}
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("%s The limit won't be used for storage `%s`", err, st.Name))
+		}
+
+		switch {
+		case st.S3Params != nil:
+			storagesMap[st.Name], err = s3.Init(st.Name, s3.Opts(*st.S3Params), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.ScpParams != nil:
+			storagesMap[st.Name], err = sftp.Init(st.Name, sftp.Opts(*st.ScpParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.SftpParams != nil:
+			storagesMap[st.Name], err = sftp.Init(st.Name, sftp.Opts(*st.SftpParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.FtpParams != nil:
+			storagesMap[st.Name], err = ftp.Init(st.Name, ftp.Opts(*st.FtpParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.NfsParams != nil:
+			storagesMap[st.Name], err = nfs.Init(st.Name, nfs.Opts(*st.NfsParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.WebDavParams != nil:
+			storagesMap[st.Name], err = webdav.Init(st.Name, webdav.Opts(*st.WebDavParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		case st.SmbParams != nil:
+			storagesMap[st.Name], err = smb.Init(st.Name, smb.Opts(*st.SmbParams), rl)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("Failed to init storage `%s` with error: %w ", st.Name, err))
+			}
+		default:
 			errs = multierror.Append(errs, fmt.Errorf("unable to define `%s` storage connect type by its params. Allowed connect params: %s", st.Name, strings.Join(allowedConnectParams, ", ")))
 		}
 	}
