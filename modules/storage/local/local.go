@@ -317,8 +317,13 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 	if full {
 		backupDir := path.Join(l.backupPath, ofsPart)
 		if err := os.RemoveAll(backupDir); err != nil {
-			logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
-			errs = multierror.Append(errs, err)
+			if errors.Is(err, fs.ErrNotExist) {
+				logCh <- logger.Log(jobName, l.GetName()).Debugf("Directory '%s' not exist. Skipping delete.", backupDir)
+				return nil
+			} else {
+				logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
+				errs = multierror.Append(errs, err)
+			}
 		}
 	} else {
 		intMoy, _ := strconv.Atoi(misc.GetDateTimeNow("moy"))
@@ -337,6 +342,7 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 		dirs, err := os.ReadDir(backupDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
+				logCh <- logger.Log(jobName, l.GetName()).Debugf("Directory '%s' not exist. Skipping rotate.", backupDir)
 				return nil
 			} else {
 				logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to get access to directory '%s' with next error: %v", backupDir, err)
