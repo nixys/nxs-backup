@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -101,7 +102,14 @@ func Init(jp JobParams) (interfaces.Job, error) {
 			}
 		}
 
-		connUrl := psql_connect.GetConnUrl(src.ConnectParams)
+		cp := src.ConnectParams
+		udb := strings.Split(src.ConnectParams.User, "@")
+		if len(udb) > 1 {
+			cp.Database = udb[1]
+			cp.User = udb[0]
+		}
+
+		connUrl := psql_connect.GetConnUrl(cp)
 		conn, err := psql_connect.GetConnect(connUrl)
 		if err != nil {
 			return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
