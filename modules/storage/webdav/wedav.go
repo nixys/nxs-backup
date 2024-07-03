@@ -317,7 +317,7 @@ func (wd *WebDav) getInfo(dstPath string) (os.FileInfo, error) {
 }
 
 func (wd *WebDav) GetFileReader(ofsPath string) (io.Reader, error) {
-	f, err := wd.client.Read(ofsPath)
+	f, err := wd.client.Read(path.Join(wd.backupPath, ofsPath))
 	if err != nil {
 		return nil, err
 	}
