@@ -368,7 +368,7 @@ func (j *job) getMetadataFile(logCh chan logger.LogRecord, ofsPart, metadata str
 		break
 	}
 
-	if reader == nil {
+	if err == nil && reader == nil {
 		err = fs.ErrNotExist
 	}
 

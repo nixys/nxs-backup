@@ -322,7 +322,7 @@ func (f *FTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	// return fs.ErrNotExist if entry not available
-	if _, err := f.conn.GetEntry(ofsPath); err != nil {
+	if _, err := f.conn.GetEntry(path.Join(f.backupPath, ofsPath)); err != nil {
 		protoErr := err.(*textproto.Error)
 		if protoErr.Code == 550 {
 			return nil, fs.ErrNotExist

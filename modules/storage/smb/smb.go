@@ -374,7 +374,7 @@ func (s *SMB) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart stri
 }
 
 func (s *SMB) GetFileReader(ofsPath string) (io.Reader, error) {
-	f, err := s.share.Open(ofsPath)
+	f, err := s.share.Open(path.Join(s.backupPath, ofsPath))
 	if err != nil {
 		return nil, err
 	}

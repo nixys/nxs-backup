@@ -356,6 +356,10 @@ func (s *SFTP) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 	if full {
 		backupDir := path.Join(s.backupPath, ofsPart)
 		if err := s.client.Remove(backupDir); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				logCh <- logger.Log(jobName, s.name).Warnf("Directory '%s' not exist. Skipping delete.", backupDir)
+				return nil
+			}
 			logCh <- logger.Log(jobName, s.name).Errorf("Failed to delete '%s' with next error: %s", backupDir, err)
 			errs = multierror.Append(errs, err)
 		}
@@ -375,6 +379,10 @@ func (s *SFTP) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 
 		dirs, err := s.client.ReadDir(backupDir)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				logCh <- logger.Log(jobName, s.name).Warnf("Directory '%s' not exist. Skipping rotate.", backupDir)
+				return nil
+			}
 			logCh <- logger.Log(jobName, s.name).Errorf("Failed to get access to directory '%s' with next error: %v", backupDir, err)
 			return err
 		}
@@ -401,11 +409,11 @@ func (s *SFTP) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 }
 
 func (s *SFTP) GetFileReader(ofsPath string) (io.Reader, error) {
-	f, err := s.client.Open(ofsPath)
+	f, err := s.client.Open(path.Join(s.backupPath, ofsPath))
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = s.Close() }()
+	defer func() { _ = f.Close() }()
 
 	var buf []byte
 	buf, err = io.ReadAll(f)
