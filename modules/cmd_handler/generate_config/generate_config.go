@@ -368,7 +368,7 @@ func (gc *generateConfig) Run() {
 
 	fmt.Printf("Successfully added new sample config file: %s\n", newCfgPath)
 
-	return
+	gc.done <- nil
 }
 
 func genStorageOpts(storages map[string]string, incBackup bool) (sts []storageOptsYaml) {
