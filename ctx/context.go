@@ -156,7 +156,6 @@ func printInitError(ft string, err error) {
 }
 
 func appInit(c *Ctx, cfgPath string) (app, error) {
-	var oldMetrics *metrics.Data
 
 	a := app{
 		jobs: make(map[string]interfaces.Job),
@@ -171,6 +170,15 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 	a.waitTimeout = conf.WaitingTimeout
 	a.serverBind = conf.Server.Bind
 
+	a.metricsData = metrics.InitData(
+		metrics.DataOpts{
+			Project:     conf.ProjectName,
+			Server:      conf.ServerName,
+			MetricsFile: conf.Server.Metrics.FilePath,
+			Enabled:     false,
+		},
+	)
+
 	if conf.Server.Metrics.Enabled {
 		nva := 0.0
 		ver, _ := semver.NewVersion(misc.VERSION)
@@ -178,18 +186,8 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		if newVer != "" {
 			nva = 1
 		}
-		a.metricsData, oldMetrics, err = metrics.InitData(
-			metrics.DataOpts{
-				Project:             conf.ProjectName,
-				Server:              conf.ServerName,
-				MetricsFile:         conf.Server.Metrics.FilePath,
-				NewVersionAvailable: nva,
-			},
-		)
-		if err != nil {
-			printInitError("Failed to init metrics: %v\n", err)
-			return a, err
-		}
+		a.metricsData.NewVersionAvailable = nva
+		a.metricsData.Enabled = true
 	}
 
 	if err = logInit(c, conf.LogFile, conf.LogLevel); err != nil {
@@ -209,11 +207,10 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 
 	jobs, err := jobsInit(
 		jobsOpts{
-			jobs:           conf.Jobs,
-			storages:       storages,
-			metricsData:    a.metricsData,
-			oldMetricsData: oldMetrics,
-			mainLim:        conf.Limits,
+			jobs:        conf.Jobs,
+			storages:    storages,
+			metricsData: a.metricsData,
+			mainLim:     conf.Limits,
 		},
 	)
 	if err != nil {

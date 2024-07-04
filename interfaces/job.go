@@ -7,7 +7,6 @@ import (
 
 type Job interface {
 	SetOfsMetrics(ofs string, metrics map[string]float64)
-	ExportMetrics()
 	GetName() string
 	GetTempDir() string
 	GetType() misc.BackupType

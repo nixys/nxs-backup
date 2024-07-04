@@ -27,11 +27,10 @@ import (
 )
 
 type jobsOpts struct {
-	metricsData    *metrics.Data
-	oldMetricsData *metrics.Data
-	mainLim        *limitsConf
-	jobs           []jobConf
-	storages       map[string]interfaces.Storage
+	metricsData *metrics.Data
+	mainLim     *limitsConf
+	jobs        []jobConf
+	storages    map[string]interfaces.Storage
 }
 
 func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
@@ -135,7 +134,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.IncFiles:
@@ -160,7 +158,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:        jobStorages,
 				Sources:         sources,
 				Metrics:         o.metricsData,
-				OldMetrics:      o.oldMetricsData,
 			})
 
 		case misc.Mysql:
@@ -200,7 +197,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.MysqlXtrabackup:
@@ -241,7 +237,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.Postgresql:
@@ -283,7 +278,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.PostgresqlBasebackup:
@@ -323,7 +317,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.MongoDB:
@@ -366,7 +359,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.Redis:
@@ -395,7 +387,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		case misc.External:
@@ -407,7 +398,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				SkipBackupRotate: j.SkipBackupRotate,
 				Storages:         jobStorages,
 				Metrics:          o.metricsData,
-				OldMetrics:       o.oldMetricsData,
 			})
 
 		default:

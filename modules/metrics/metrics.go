@@ -16,6 +16,7 @@ const (
 
 	BackupOk        = "backup_ok"
 	BackupTime      = "backup_time"
+	BackupTimestamp = "backup_timestamp"
 	BackupSize      = "size"
 	DeliveryOk      = "delivery_ok"
 	DeliveryTime    = "delivery_time"
@@ -26,6 +27,7 @@ type Data struct {
 	Project             string
 	Server              string
 	NewVersionAvailable float64
+	Enabled             bool
 
 	Job map[string]JobData
 
@@ -49,48 +51,49 @@ type DataOpts struct {
 	Server              string
 	MetricsFile         string
 	NewVersionAvailable float64
+	Enabled             bool
 }
 
-// InitData initializes the metrics data by reading from a file and
+// InitData initializes the metrics data by
 // creating a new Data instance with the provided options.
-// It returns the old metrics data, the new initialized data, and any error encountered.
-//
-// TODO Remove the reading of old metrics for the save step.
-func InitData(opts DataOpts) (data, oldMetrics *Data, err error) {
-	oldMetrics, err = readFile(opts.MetricsFile)
-	if err != nil {
-		return
-	}
-
-	data = &Data{
+func InitData(opts DataOpts) *Data {
+	return &Data{
 		Project:             opts.Project,
 		Server:              opts.Server,
 		NewVersionAvailable: opts.NewVersionAvailable,
+		Enabled:             opts.Enabled,
 		Job:                 make(map[string]JobData),
 		metricsFile:         opts.MetricsFile,
 	}
-
-	return
 }
 
 func (md *Data) MetricFilePath() string {
 	return md.metricsFile
 }
 
-func (md *Data) GetMetrics(jobName string) JobData {
-	if job, ok := md.Job[jobName]; ok {
-		return job
-	}
-	return JobData{
-		TargetMetrics: make(map[string]TargetData),
-	}
-}
-
-func (md *Data) JobMetricsSet(jd JobData) {
+func (md *Data) RegisterJob(jd JobData) *Data {
 	md.Job[jd.JobName] = jd
+	return md
 }
 
 func (md *Data) SaveFile() error {
+	//skip if metrics disabled
+	if !md.Enabled {
+		return nil
+	}
+
+	od, err := readFile(md.metricsFile)
+	if err != nil {
+		return err
+	}
+
+	// reuse old metrics for not run jobs
+	for jobName, job := range od.Job {
+		if _, ok := md.Job[jobName]; !ok {
+			md.Job[jobName] = job
+		}
+	}
+
 	f, err := os.OpenFile(md.metricsFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err

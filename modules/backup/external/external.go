@@ -25,7 +25,6 @@ type job struct {
 	storages         interfaces.Storages
 	dumpedObjects    map[string]interfaces.DumpObject
 	appMetrics       *metrics.Data
-	jobMetrics       metrics.JobData
 }
 
 type JobParams struct {
@@ -38,7 +37,6 @@ type JobParams struct {
 	SkipBackupRotate bool
 	Storages         interfaces.Storages
 	Metrics          *metrics.Data
-	OldMetrics       *metrics.Data
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
@@ -53,37 +51,28 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		skipBackupRotate: jp.SkipBackupRotate,
 		storages:         jp.Storages,
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
-		appMetrics:       jp.Metrics,
-		jobMetrics: metrics.JobData{
-			JobName:       jp.Name,
-			JobType:       misc.External,
-			TargetMetrics: make(map[string]metrics.TargetData),
-		},
+		appMetrics: jp.Metrics.RegisterJob(
+			metrics.JobData{
+				JobName:       jp.Name,
+				JobType:       misc.External,
+				TargetMetrics: make(map[string]metrics.TargetData),
+			},
+		),
 	}
 
-	ojm := jp.OldMetrics.GetMetrics(jp.Name)
-	if otm, ok := ojm.TargetMetrics[jp.Name]; ok {
-		j.jobMetrics.TargetMetrics[jp.Name] = otm
-	} else {
-		j.jobMetrics.TargetMetrics[jp.Name] = metrics.TargetData{
-			Source: "",
-			Target: "",
-			Values: make(map[string]float64),
-		}
+	j.appMetrics.Job[j.name].TargetMetrics[jp.Name] = metrics.TargetData{
+		Source: "",
+		Target: "",
+		Values: make(map[string]float64),
 	}
 
-	j.ExportMetrics()
 	return &j, nil
 }
 
 func (j *job) SetOfsMetrics(_ string, metrics map[string]float64) {
 	for m, v := range metrics {
-		j.jobMetrics.TargetMetrics[j.name].Values[m] = v
+		j.appMetrics.Job[j.name].TargetMetrics[j.name].Values[m] = v
 	}
-}
-
-func (j *job) ExportMetrics() {
-	j.appMetrics.JobMetricsSet(j.jobMetrics)
 }
 
 func (j *job) GetName() string {
@@ -145,12 +134,15 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 
 	var stderr, stdout bytes.Buffer
 
+	startTime := time.Now()
+
 	j.SetOfsMetrics("", map[string]float64{
-		metrics.BackupOk:     float64(0),
-		metrics.BackupTime:   float64(0),
-		metrics.DeliveryOk:   float64(0),
-		metrics.DeliveryTime: float64(0),
-		metrics.BackupSize:   float64(0),
+		metrics.BackupOk:        float64(0),
+		metrics.BackupTime:      float64(0),
+		metrics.DeliveryOk:      float64(0),
+		metrics.DeliveryTime:    float64(0),
+		metrics.BackupSize:      float64(0),
+		metrics.BackupTimestamp: float64(startTime.Unix()),
 	})
 
 	defer func() {
@@ -174,7 +166,6 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
 
 	logCh <- logger.Log(j.name, "").Infof("Starting of `%s`", j.dumpCmd)
-	startTime := time.Now()
 	if err = cmd.Run(); err != nil {
 		j.SetOfsMetrics("", map[string]float64{
 			metrics.BackupTime: float64(time.Since(startTime).Nanoseconds() / 1e6),
