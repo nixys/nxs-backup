@@ -57,7 +57,17 @@ func Init(o Opts) *startBackup {
 }
 
 func (sb *startBackup) Run() {
-	var errs *multierror.Error
+	var (
+		err  error
+		errs *multierror.Error
+	)
+
+	defer func() {
+		if err := sb.metricsData.SaveFile(); err != nil {
+			sb.evCh <- logger.Log("", "").Errorf("Failed to save metrics to file: %v", err)
+		}
+		sb.done <- err
+	}()
 
 	if sb.initErr != nil {
 		sb.evCh <- logger.Log("", "").Errorf("Backup plan initialised with errors: %v", sb.initErr)
@@ -83,7 +93,6 @@ func (sb *startBackup) Run() {
 	if err != nil {
 		err = fmt.Errorf("Can't start nxs-backup. Another nxs-backup process already running. ")
 		sb.evCh <- logger.Log("", "").Error(err)
-		sb.done <- err
 		return
 	}
 	defer func() { _ = lock.Unlock() }()
@@ -132,13 +141,8 @@ func (sb *startBackup) Run() {
 	}
 
 	sb.evCh <- logger.Log("", "").Infof("Backup finished.\n")
-	if sb.metricsData != nil {
-		if err = sb.metricsData.SaveFile(); err != nil {
-			sb.evCh <- logger.Log("", "").Errorf("Failed to save metrics to file: %v", err)
-		}
-	}
+
 	if errs.ErrorOrNil() != nil {
-		sb.done <- fmt.Errorf("Some of backups failed with next errors:\n%w", errs)
+		err = fmt.Errorf("Some of backups failed with next errors:\n%w", errs)
 	}
-	sb.done <- nil
 }
