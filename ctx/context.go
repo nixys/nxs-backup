@@ -199,8 +199,23 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 	if err = notifiersInit(c, conf); err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
+
+	noLim := "0"
+	lim := &limitsConf{
+		NetRate:  &noLim,
+		DiskRate: &noLim,
+	}
+	if conf.Limits != nil {
+		if conf.Limits.NetRate != nil {
+			lim.NetRate = conf.Limits.NetRate
+		}
+		if conf.Limits.DiskRate != nil {
+			lim.DiskRate = conf.Limits.DiskRate
+		}
+	}
+
 	// Init app
-	storages, err := storagesInit(conf)
+	storages, err := storagesInit(conf.StorageConnects, lim)
 	if err != nil {
 		a.initErrs = multierror.Append(a.initErrs, err.(*multierror.Error).WrappedErrors()...)
 	}
@@ -210,7 +225,7 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 			jobs:        conf.Jobs,
 			storages:    storages,
 			metricsData: a.metricsData,
-			mainLim:     conf.Limits,
+			mainLim:     lim,
 		},
 	)
 	if err != nil {
@@ -262,36 +277,8 @@ func logInit(c *Ctx, file, level string) error {
 	return err
 }
 
-func getRateLimit(rate rateType, newLim, baseLim *limitsConf) (rl int64, err error) {
-	noLim := "0"
-	lim := &limitsConf{
-		NetRate:  &noLim,
-		DiskRate: &noLim,
-	}
-
-	if baseLim != nil {
-		if baseLim.DiskRate != nil {
-			lim.DiskRate = baseLim.DiskRate
-		}
-		if baseLim.NetRate != nil {
-			lim.NetRate = baseLim.NetRate
-		}
-	}
-	if newLim != nil {
-		if newLim.DiskRate != nil {
-			lim.DiskRate = newLim.DiskRate
-		}
-		if newLim.NetRate != nil {
-			lim.NetRate = newLim.NetRate
-		}
-	}
-
-	switch rate {
-	case disk:
-		rl, err = units.FromHumanSize(*lim.DiskRate)
-	case net:
-		rl, err = units.FromHumanSize(*lim.NetRate)
-	}
+func getRateLimit(limit *string) (rl int64, err error) {
+	rl, err = units.FromHumanSize(*limit)
 	if err != nil {
 		return 0, fmt.Errorf("Failed to parse rate limit: %w. ", err)
 	}

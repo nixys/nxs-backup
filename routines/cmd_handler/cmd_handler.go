@@ -24,6 +24,7 @@ func Runtime(app appctx.App) error {
 			if err != nil {
 				cc.Log.WithFields(logrus.Fields{"details": err}).Errorf("cmd routine fail:")
 				app.Shutdown(err)
+				return err
 			}
 			cc.Log.Trace("cmd routine: done")
 			app.RoutineShutdown("notification")

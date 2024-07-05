@@ -2,6 +2,7 @@ package psql_basebackup
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/nixys/nxs-backup/ds/psql_connect"
@@ -65,7 +67,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 	// check if mysqldump available
 	if _, err := exec_cmd.Exec("pg_basebackup", "--version"); err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Can't check `pg_basebackup` version. Please cinstall `pg_basebackup`. Error: %s ", jp.Name, err)
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `pg_basebackup` version. Please install `pg_basebackup`. Error: %s ", jp.Name, err)
 	}
 	// check if tar and gzip available
 	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
@@ -251,16 +253,9 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 
 func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, tgt target) error {
 
-	var stderr bytes.Buffer
+	var stderr, stdout bytes.Buffer
 
-	backupWriter, err := targz.GetGZipFileWriter(tmpBackupFile, tgt.gzip, j.diskRateLimit)
-	if err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to create tmp file. Error: %s", err)
-		return err
-	}
-	defer func() { _ = backupWriter.Close() }()
-
-	//tmpBasebackupPath := path.Join(path.Dir(tmpBackupFile), "pg_basebackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
+	tmpBasebackupPath := path.Join(path.Dir(tmpBackupFile), "pg_basebackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
 
 	var args []string
 	// define command args
@@ -271,11 +266,20 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 	// add db connect
 	args = append(args, "--dbname="+tgt.connUrl.String())
 	// add data catalog path
-	args = append(args, "--pgdata=-")
-	args = append(args, "--format=tar")
+	args = append(args, "--pgdata="+tmpBasebackupPath)
+	args = append(args, "--format=plain")
+	if j.diskRateLimit > 0 {
+		maxRate := j.diskRateLimit / units.KB
+		if maxRate < 32 {
+			maxRate = 32
+		} else if maxRate > 1024*units.KB {
+			maxRate = 1024 * units.KB
+		}
+		args = append(args, fmt.Sprintf("--max-rate=%d", maxRate))
+	}
 
 	cmd := exec.Command("pg_basebackup", args...)
-	cmd.Stdout = backupWriter
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
@@ -290,6 +294,24 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make dump `%s`. Error: %s", tgtName, stderr.String())
 		return err
 	}
+
+	if err := targz.Tar(targz.TarOpts{
+		Src:         tmpBasebackupPath,
+		Dst:         tmpBackupFile,
+		Incremental: false,
+		Gzip:        tgt.gzip,
+		SaveAbsPath: false,
+		RateLim:     j.diskRateLimit,
+		Excludes:    nil,
+	}); err != nil {
+		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
+		var serr targz.Error
+		if errors.As(err, &serr) {
+			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
+		}
+		return err
+	}
+	_ = os.RemoveAll(tmpBasebackupPath)
 
 	logCh <- logger.Log(j.name, "").Infof("Dumping of source `%s` completed", tgtName)
 

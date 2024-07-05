@@ -61,13 +61,24 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			continue
 		}
 
+		diskRate, err = getRateLimit(o.mainLim.DiskRate)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("%s The job `%s` won't be use limit defined on job level for its storages", err, j.Name))
+		}
+
 		if j.Limits != nil {
 			if j.Limits.NetRate != nil {
-				nrl, err = getRateLimit(net, j.Limits, nil)
+				nrl, err = getRateLimit(j.Limits.NetRate)
 				if err != nil {
 					errs = multierror.Append(errs, fmt.Errorf("%s The job `%s` won't be use limit defined on job level for its storages", err, j.Name))
 				} else {
 					withStorageRate = true
+				}
+			}
+			if j.Limits.DiskRate != nil {
+				diskRate, err = getRateLimit(j.Limits.DiskRate)
+				if err != nil {
+					errs = multierror.Append(errs, fmt.Errorf("%s The job `%s` won't be use limit defined on job level for its storages", err, j.Name))
 				}
 			}
 		}
