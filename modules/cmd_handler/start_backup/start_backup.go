@@ -63,8 +63,12 @@ func (sb *startBackup) Run() {
 	)
 
 	defer func() {
-		if err := sb.metricsData.SaveFile(); err != nil {
+		if err = sb.metricsData.SaveFile(); err != nil {
 			sb.evCh <- logger.Log("", "").Errorf("Failed to save metrics to file: %v", err)
+			errs = multierror.Append(errs, err)
+		}
+		if errs.ErrorOrNil() != nil {
+			err = fmt.Errorf("Some of backups failed with next errors:\n%w", errs)
 		}
 		sb.done <- err
 	}()
@@ -141,8 +145,4 @@ func (sb *startBackup) Run() {
 	}
 
 	sb.evCh <- logger.Log("", "").Infof("Backup finished.\n")
-
-	if errs.ErrorOrNil() != nil {
-		err = fmt.Errorf("Some of backups failed with next errors:\n%w", errs)
-	}
 }

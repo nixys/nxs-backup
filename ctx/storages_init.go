@@ -26,7 +26,7 @@ var allowedConnectParams = []string{
 	"webdav_params",
 }
 
-func storagesInit(conf ConfOpts) (storagesMap map[string]interfaces.Storage, err error) {
+func storagesInit(storageConnects []storageConnectConf, mainLim *limitsConf) (storagesMap map[string]interfaces.Storage, err error) {
 	var (
 		rl   int64
 		errs *multierror.Error
@@ -34,22 +34,22 @@ func storagesInit(conf ConfOpts) (storagesMap map[string]interfaces.Storage, err
 
 	storagesMap = make(map[string]interfaces.Storage)
 
-	rl, err = getRateLimit(disk, nil, conf.Limits)
+	rl, err = getRateLimit(mainLim.DiskRate)
 	if err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("%s The limit won't be used for storage `local`", err))
 	}
 	storagesMap["local"] = local.Init(rl)
 
-	for _, st := range conf.StorageConnects {
+	for _, st := range storageConnects {
 		if _, exist := storagesMap[st.Name]; exist {
 			errs = multierror.Append(errs, fmt.Errorf("Storage with the name `%s` already defined. Please update configs ", st.Name))
 			continue
 		}
 
 		if st.RateLimit != nil {
-			rl, err = getRateLimit(net, &limitsConf{NetRate: st.RateLimit}, conf.Limits)
+			rl, err = getRateLimit(st.RateLimit)
 		} else {
-			rl, err = getRateLimit(net, nil, conf.Limits)
+			rl, err = getRateLimit(mainLim.NetRate)
 		}
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("%s The limit won't be used for storage `%s`", err, st.Name))
