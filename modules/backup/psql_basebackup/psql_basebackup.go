@@ -294,6 +294,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make dump `%s`. Error: %s", tgtName, stderr.String())
 		return err
 	}
+	logCh <- logger.Log(j.name, "").Debug("Got psql data. Compressing...")
 
 	if err := targz.Tar(targz.TarOpts{
 		Src:         tmpBasebackupPath,

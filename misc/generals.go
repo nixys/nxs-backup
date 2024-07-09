@@ -38,6 +38,7 @@ const (
 )
 
 var DecadesBackupDays = []string{"1", "11", "21"}
+var CPULimit = 0
 
 func AllowedBackupTypesList() []string {
 	return []string{
