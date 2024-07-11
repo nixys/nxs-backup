@@ -100,14 +100,17 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			}
 
 			st := s.Clone()
-			st.SetBackupPath(opt.BackupPath)
-			st.SetRetention(storage.Retention(opt.Retention))
-
-			if opt.StorageName == "local" {
-				st.SetRateLimit(diskRate)
-			} else if withStorageRate {
-				st.SetRateLimit(nrl)
+			stParams := storage.Params{
+				BackupPath:    opt.BackupPath,
+				RotateEnabled: opt.EnableRotate,
+				Retention:     storage.Retention(opt.Retention),
 			}
+			if opt.StorageName == "local" {
+				stParams.RateLimit = diskRate
+			} else if withStorageRate {
+				stParams.RateLimit = nrl
+			}
+			st.Configure(stParams)
 
 			if storage.IsNeedToBackup(opt.Retention.Days, opt.Retention.Weeks, opt.Retention.Months) {
 				needToMakeBackup = true
@@ -401,6 +404,9 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			})
 
 		case misc.External:
+			if j.SkipBackupRotate {
+				errs = multierror.Append(errs, fmt.Errorf("Used deprecated option `skip_backup_rotate` for job \"%s\". Use `storages_options[].enable_rotate` instead. ", j.Name))
+			}
 			job, err = external.Init(external.JobParams{
 				Name:             j.Name,
 				DumpCmd:          j.DumpCmd,

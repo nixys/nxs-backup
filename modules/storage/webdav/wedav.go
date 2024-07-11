@@ -25,10 +25,11 @@ import (
 )
 
 type WebDav struct {
-	client     *webdav.Client
-	backupPath string
-	name       string
-	rateLimit  int64
+	client        *webdav.Client
+	name          string
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
 	Retention
 }
 
@@ -60,19 +61,14 @@ func Init(name string, params Opts, rl int64) (*WebDav, error) {
 	}, nil
 }
 
+func (wd *WebDav) Configure(p Params) {
+	wd.backupPath = p.BackupPath
+	wd.rateLimit = p.RateLimit
+	wd.rotateEnabled = p.RotateEnabled
+	wd.Retention = p.Retention
+}
+
 func (wd *WebDav) IsLocal() int { return 0 }
-
-func (wd *WebDav) SetBackupPath(path string) {
-	wd.backupPath = path
-}
-
-func (wd *WebDav) SetRateLimit(rl int64) {
-	wd.rateLimit = rl
-}
-
-func (wd *WebDav) SetRetention(r Retention) {
-	wd.Retention = r
-}
 
 func (wd *WebDav) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
 
@@ -147,6 +143,10 @@ func (wd *WebDav) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath st
 }
 
 func (wd *WebDav) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !wd.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), wd.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if job.GetType() == misc.IncFiles {
 		return wd.deleteIncBackup(logCh, job.GetName(), ofsPart, full)

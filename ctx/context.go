@@ -285,3 +285,7 @@ func getRateLimit(limit *string) (rl int64, err error) {
 
 	return
 }
+
+func checkDeprecated(o ConfOpts) {
+
+}
