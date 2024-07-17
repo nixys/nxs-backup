@@ -21,7 +21,7 @@ type job struct {
 	envs             map[string]string
 	needToMakeBackup bool
 	safetyBackup     bool
-	skipBackupRotate bool
+	skipBackupRotate bool // deprecated
 	storages         interfaces.Storages
 	dumpedObjects    map[string]interfaces.DumpObject
 	appMetrics       *metrics.Data
@@ -34,7 +34,7 @@ type JobParams struct {
 	Envs             map[string]string
 	NeedToMakeBackup bool
 	SafetyBackup     bool
-	SkipBackupRotate bool
+	SkipBackupRotate bool // deprecated
 	Storages         interfaces.Storages
 	Metrics          *metrics.Data
 }

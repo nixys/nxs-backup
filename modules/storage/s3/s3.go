@@ -25,11 +25,12 @@ import (
 
 type S3 struct {
 	client        *minio.Client
+	name          string
 	bucketName    string
 	backupPath    string
-	name          string
-	batchDeletion bool
 	rateLimit     int64
+	rotateEnabled bool
+	batchDeletion bool
 	Retention
 }
 
@@ -70,19 +71,14 @@ func Init(name string, opts Opts, rl int64) (*S3, error) {
 	}, nil
 }
 
+func (s *S3) Configure(p Params) {
+	s.backupPath = p.BackupPath
+	s.rateLimit = p.RateLimit
+	s.rotateEnabled = p.RotateEnabled
+	s.Retention = p.Retention
+}
+
 func (s *S3) IsLocal() int { return 0 }
-
-func (s *S3) SetBackupPath(path string) {
-	s.backupPath = strings.TrimPrefix(path, "/")
-}
-
-func (s *S3) SetRateLimit(rl int64) {
-	s.rateLimit = rl
-}
-
-func (s *S3) SetRetention(r Retention) {
-	s.Retention = r
-}
 
 func (s *S3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
@@ -140,6 +136,10 @@ func (s *S3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 }
 
 func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job interfaces.Job, full bool) error {
+	if !s.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), s.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	curDate := time.Now().Round(24 * time.Hour)
 

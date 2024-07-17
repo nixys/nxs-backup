@@ -26,11 +26,12 @@ import (
 )
 
 type SMB struct {
-	session    *smb2.Session
-	share      *smb2.Share
-	backupPath string
-	name       string
-	rateLimit  int64
+	session       *smb2.Session
+	share         *smb2.Share
+	name          string
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
 	Retention
 }
 
@@ -82,19 +83,14 @@ func Init(sName string, params Opts, rl int64) (s *SMB, err error) {
 	return
 }
 
+func (s *SMB) Configure(p Params) {
+	s.backupPath = p.BackupPath
+	s.rateLimit = p.RateLimit
+	s.rotateEnabled = p.RotateEnabled
+	s.Retention = p.Retention
+}
+
 func (s *SMB) IsLocal() int { return 0 }
-
-func (s *SMB) SetBackupPath(path string) {
-	s.backupPath = strings.TrimPrefix(path, "/")
-}
-
-func (s *SMB) SetRateLimit(rl int64) {
-	s.rateLimit = rl
-}
-
-func (s *SMB) SetRetention(r Retention) {
-	s.Retention = r
-}
 
 func (s *SMB) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
 
@@ -174,6 +170,10 @@ func (s *SMB) copy(logCh chan logger.LogRecord, jobName, srcPath, dstPath string
 }
 
 func (s *SMB) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !s.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), s.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if job.GetType() == misc.IncFiles {
 		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)

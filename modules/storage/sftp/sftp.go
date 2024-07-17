@@ -27,10 +27,11 @@ import (
 )
 
 type SFTP struct {
-	client     *sftp.Client
-	backupPath string
-	name       string
-	rateLimit  int64
+	client        *sftp.Client
+	name          string
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
 	Retention
 }
 
@@ -89,19 +90,14 @@ func Init(name string, opts Opts, rl int64) (*SFTP, error) {
 
 }
 
+func (s *SFTP) Configure(p Params) {
+	s.backupPath = p.BackupPath
+	s.rateLimit = p.RateLimit
+	s.rotateEnabled = p.RotateEnabled
+	s.Retention = p.Retention
+}
+
 func (s *SFTP) IsLocal() int { return 0 }
-
-func (s *SFTP) SetBackupPath(path string) {
-	s.backupPath = path
-}
-
-func (s *SFTP) SetRateLimit(rl int64) {
-	s.rateLimit = rl
-}
-
-func (s *SFTP) SetRetention(r Retention) {
-	s.Retention = r
-}
 
 func (s *SFTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
 	var (
@@ -204,6 +200,10 @@ func (s *SFTP) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmpB
 }
 
 func (s *SFTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !s.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), s.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if job.GetType() == misc.IncFiles {
 		return s.deleteIncBackup(logCh, job.GetName(), ofsPart, full)

@@ -56,9 +56,10 @@ type srcConnectYaml struct {
 }
 
 type storageOptsYaml struct {
-	StorageName string           `yaml:"storage_name"`
-	BackupPath  string           `yaml:"backup_path"`
-	Retention   cfgRetentionYaml `yaml:"retention"`
+	StorageName  string           `yaml:"storage_name"`
+	BackupPath   string           `yaml:"backup_path"`
+	EnableRotate bool             `yaml:"enable_rotate"`
+	Retention    cfgRetentionYaml `yaml:"retention"`
 }
 
 type cfgRetentionYaml struct {
@@ -384,16 +385,18 @@ func genStorageOpts(storages map[string]string, incBackup bool) (sts []storageOp
 	}
 
 	sts = append(sts, storageOptsYaml{
-		StorageName: "local",
-		BackupPath:  "/var/nxs-backup/dump",
-		Retention:   defaultRetention,
+		StorageName:  "local",
+		BackupPath:   "/var/nxs-backup/dump",
+		EnableRotate: true,
+		Retention:    defaultRetention,
 	})
 
 	for nm := range storages {
 		sts = append(sts, storageOptsYaml{
-			StorageName: nm,
-			BackupPath:  "/nxs-backup/dump",
-			Retention:   defaultRetention,
+			StorageName:  nm,
+			BackupPath:   "/nxs-backup/dump",
+			EnableRotate: true,
+			Retention:    defaultRetention,
 		})
 	}
 

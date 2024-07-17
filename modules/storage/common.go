@@ -22,6 +22,13 @@ const (
 
 var RetentionPeriodsList = []retentionPeriod{Monthly, Weekly, Daily}
 
+type Params struct {
+	RateLimit     int64
+	BackupPath    string
+	RotateEnabled bool
+	Retention
+}
+
 type Retention struct {
 	Days     int
 	Weeks    int

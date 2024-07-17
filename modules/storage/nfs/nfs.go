@@ -26,10 +26,11 @@ import (
 )
 
 type NFS struct {
-	target     *nfs.Target
-	backupPath string
-	name       string
-	rateLimit  int64
+	target        *nfs.Target
+	name          string
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
 	Retention
 }
 
@@ -73,19 +74,14 @@ func Init(name string, params Opts, rl int64) (*NFS, error) {
 	}, nil
 }
 
+func (n *NFS) Configure(p Params) {
+	n.backupPath = p.BackupPath
+	n.rateLimit = p.RateLimit
+	n.rotateEnabled = p.RotateEnabled
+	n.Retention = p.Retention
+}
+
 func (n *NFS) IsLocal() int { return 0 }
-
-func (n *NFS) SetBackupPath(path string) {
-	n.backupPath = path
-}
-
-func (n *NFS) SetRateLimit(rl int64) {
-	n.rateLimit = rl
-}
-
-func (n *NFS) SetRetention(r Retention) {
-	n.Retention = r
-}
 
 func (n *NFS) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
@@ -157,6 +153,10 @@ func (n *NFS) copy(logCh chan logger.LogRecord, jobName, dst, src string) error 
 }
 
 func (n *NFS) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !n.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), n.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if job.GetType() == misc.IncFiles {
 		return n.deleteIncBackup(logCh, job.GetName(), ofsPart, full)

@@ -25,11 +25,12 @@ import (
 )
 
 type FTP struct {
-	conn       *ftp.ServerConn
-	backupPath string
-	name       string
-	rateLimit  int64
-	opts       Opts
+	conn          *ftp.ServerConn
+	name          string
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
+	opts          Opts
 	Retention
 }
 
@@ -56,6 +57,13 @@ func Init(name string, opts Opts, rl int64) (s *FTP, err error) {
 	}
 
 	return
+}
+
+func (f *FTP) Configure(p Params) {
+	f.backupPath = p.BackupPath
+	f.rateLimit = p.RateLimit
+	f.rotateEnabled = p.RotateEnabled
+	f.Retention = p.Retention
 }
 
 func (f *FTP) updateConn() error {
@@ -87,18 +95,6 @@ func (f *FTP) updateConn() error {
 }
 
 func (f *FTP) IsLocal() int { return 0 }
-
-func (f *FTP) SetBackupPath(path string) {
-	f.backupPath = path
-}
-
-func (f *FTP) SetRateLimit(rl int64) {
-	f.rateLimit = rl
-}
-
-func (f *FTP) SetRetention(r Retention) {
-	f.Retention = r
-}
 
 func (f *FTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs string, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
@@ -157,6 +153,10 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 }
 
 func (f *FTP) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !f.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), f.name).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if err := f.updateConn(); err != nil {
 		return err

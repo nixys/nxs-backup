@@ -23,8 +23,9 @@ import (
 )
 
 type Local struct {
-	backupPath string
-	rateLimit  int64
+	backupPath    string
+	rateLimit     int64
+	rotateEnabled bool
 	Retention
 }
 
@@ -34,19 +35,14 @@ func Init(rl int64) *Local {
 	}
 }
 
+func (l *Local) Configure(p Params) {
+	l.backupPath = p.BackupPath
+	l.rateLimit = p.RateLimit
+	l.rotateEnabled = p.RotateEnabled
+	l.Retention = p.Retention
+}
+
 func (l *Local) IsLocal() int { return 1 }
-
-func (l *Local) SetBackupPath(path string) {
-	l.backupPath = path
-}
-
-func (l *Local) SetRateLimit(rl int64) {
-	l.rateLimit = rl
-}
-
-func (l *Local) SetRetention(r Retention) {
-	l.Retention = r
-}
 
 func (l *Local) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs, bakType string) (err error) {
 	var (
@@ -156,6 +152,10 @@ func (l *Local) deliveryBackupMetadata(logCh chan logger.LogRecord, jobName, tmp
 }
 
 func (l *Local) DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job interfaces.Job, full bool) error {
+	if !l.rotateEnabled {
+		logCh <- logger.Log(job.GetName(), l.GetName()).Debugf("Backup rotate skipped by config.")
+		return nil
+	}
 
 	if job.GetType() == misc.IncFiles {
 		return l.deleteIncBackup(logCh, job.GetName(), ofsPart, full)

@@ -83,7 +83,7 @@ type jobConf struct {
 	Sources          []sourceConf    `conf:"sources"`
 	StoragesOptions  []storageConf   `conf:"storages_options"`
 	DumpCmd          string          `conf:"dump_cmd"`
-	SkipBackupRotate bool            `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // used by external
+	SkipBackupRotate bool            `conf:"skip_backup_rotate" conf_extraopts:"default=false"` // deprecated, used by external
 	Limits           *limitsConf     `conf:"limits"`
 }
 
@@ -120,9 +120,10 @@ type sourceConnectConf struct {
 }
 
 type storageConf struct {
-	StorageName string        `conf:"storage_name" conf_extraopts:"required"`
-	BackupPath  string        `conf:"backup_path" conf_extraopts:"required"`
-	Retention   retentionConf `conf:"retention" conf_extraopts:"required"`
+	StorageName  string        `conf:"storage_name" conf_extraopts:"required"`
+	BackupPath   string        `conf:"backup_path" conf_extraopts:"required"`
+	EnableRotate bool          `conf:"enable_rotate" conf_extraopts:"default=true"`
+	Retention    retentionConf `conf:"retention" conf_extraopts:"required"`
 }
 
 type retentionConf struct {

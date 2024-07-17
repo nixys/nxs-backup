@@ -16,12 +16,10 @@ import (
 
 type Storage interface {
 	IsLocal() int
-	SetBackupPath(path string)
-	SetRateLimit(rl int64)
-	SetRetention(r storage.Retention)
+	Configure(storage.Params)
 	DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupPath, ofs, bakType string) error
 	DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job Job, full bool) error
-	GetFileReader(path string) (io.Reader, error)
+	GetFileReader(string) (io.Reader, error)
 	Close() error
 	Clone() Storage
 	GetName() string
