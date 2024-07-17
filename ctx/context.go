@@ -25,13 +25,6 @@ import (
 	"github.com/nixys/nxs-backup/modules/metrics"
 )
 
-type rateType string
-
-const (
-	disk rateType = "disk"
-	net  rateType = "net"
-)
-
 // Ctx defines application custom context
 type Ctx struct {
 	Cmd       interfaces.Handler
@@ -211,6 +204,9 @@ func appInit(c *Ctx, cfgPath string) (app, error) {
 		}
 		if conf.Limits.DiskRate != nil {
 			lim.DiskRate = conf.Limits.DiskRate
+		}
+		if conf.Limits.CPUCount != nil {
+			misc.CPULimit = *conf.Limits.CPUCount
 		}
 	}
 

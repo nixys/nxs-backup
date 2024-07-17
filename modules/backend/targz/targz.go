@@ -2,17 +2,23 @@ package targz
 
 import (
 	"bytes"
-	"github.com/klauspost/pgzip"
 	"io"
 	"os"
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 
+	"github.com/klauspost/pgzip"
+
+	"github.com/nixys/nxs-backup/misc"
 	"github.com/nixys/nxs-backup/modules/backend/files"
 )
 
-const regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
+const (
+	defaultBlockSize = 1 << 20
+	regexToIgnoreErr = "^tar:.*(Removing leading|socket ignored|file changed as we read it|Удаляется начальный|сокет проигнорирован|файл изменился во время чтения)"
+)
 
 type Error struct {
 	Err    error
@@ -34,19 +40,22 @@ func (e Error) Error() string {
 }
 
 func GetGZipFileWriter(filePath string, gZip bool, rateLim int64) (io.WriteCloser, error) {
-	var wc io.WriteCloser
+	var gzw *pgzip.Writer
 
 	lwc, err := files.GetLimitedFileWriter(filePath, rateLim)
 	if err != nil {
 		return nil, err
 	}
+
 	if gZip {
-		wc, err = pgzip.NewWriterLevel(lwc, pgzip.BestCompression)
-	} else {
-		wc = lwc
+		if gzw, err = pgzip.NewWriterLevel(lwc, pgzip.BestCompression); err != nil {
+			return nil, err
+		}
+		err = gzw.SetConcurrency(defaultBlockSize, runtime.GOMAXPROCS(misc.CPULimit))
+		lwc = gzw
 	}
 
-	return wc, err
+	return lwc, err
 }
 
 func GZip(src, dst string, rateLim int64) error {

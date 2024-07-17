@@ -35,6 +35,7 @@ type ConfOpts struct {
 type limitsConf struct {
 	DiskRate *string `conf:"disk_rate"`
 	NetRate  *string `conf:"net_rate"`
+	CPUCount *int    `conf:"cpu_max_count"`
 }
 
 type serverConf struct {
