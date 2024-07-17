@@ -47,7 +47,7 @@ configMaps:
                 "isEmergencyAlert":  false
                 "rawTriggerMessage": false
                 "monitoringURL":     "-"
-        include_jobs_configs: ["conf.d/*.yaml"]
+        include_jobs_configs: ["conf.d/*.conf"]
         jobs: []
         storage_connects:
         - name: ssh
