@@ -161,6 +161,7 @@ func (s *SFTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFil
 			logCh <- logger.Log(jobName, s.name).Errorf("Unable to create symlink: %s", err)
 			return
 		}
+		logCh <- logger.Log(jobName, s.name).Debugf("Created symlink `%s` to file `%s`", dst, src)
 	}
 
 	return

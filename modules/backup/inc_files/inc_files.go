@@ -350,15 +350,18 @@ func (j *job) getMetadataFile(logCh chan logger.LogRecord, ofsPart, metadata str
 	for i := len(j.storages) - 1; i >= 0; i-- {
 		st := j.storages[i]
 
-		reader, err = st.GetFileReader(path.Join(ofsPart, year, "inc_meta_info", metadata))
+		fp := path.Join(ofsPart, year, "inc_meta_info", metadata)
+		reader, err = st.GetFileReader(fp)
 		if err != nil {
-			logCh <- logger.Log(j.name, st.GetName()).Warnf("Unable to get previous metadata '%s' from storage. Error: %s ", metadata, err)
+			logCh <- logger.Log(j.name, st.GetName()).Warnf("Unable to get previous metadata '%s' from storage. Error: %s ", fp, err)
 			continue
 		}
+		logCh <- logger.Log(j.name, st.GetName()).Debugf("Got previous metadata '%s' from storage", fp)
 		break
 	}
 
 	if err == nil && reader == nil {
+		logCh <- logger.Log(j.name, "").Debugf("Got `nil` reader for '%s' metadata file. Returninig `NotExist` err.", metadata)
 		err = fs.ErrNotExist
 	}
 
