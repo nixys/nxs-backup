@@ -99,10 +99,6 @@ func (f *FTP) IsLocal() int { return 0 }
 func (f *FTP) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile, ofs string, bakType string) error {
 	var bakRemPaths, mtdRemPaths []string
 
-	if err := f.updateConn(); err != nil {
-		return err
-	}
-
 	if bakType == string(misc.IncFiles) {
 		bakRemPaths, mtdRemPaths = GetIncBackupDstList(tmpBackupFile, ofs, f.backupPath)
 	} else {
@@ -142,9 +138,12 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 	}
 	defer func() { _ = srcFile.Close() }()
 
+	if err = f.updateConn(); err != nil {
+		return err
+	}
 	err = f.conn.Stor(dst, srcFile)
 	if err != nil {
-		logCh <- logger.Log(job, f.name).Errorf("Unable to upload file: %s", err)
+		logCh <- logger.Log(job, f.name).Errorf("Unable to upload file '%s'. %s", dst, err)
 		return err
 	}
 
