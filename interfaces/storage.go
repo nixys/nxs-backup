@@ -14,15 +14,23 @@ import (
 	"github.com/nixys/nxs-backup/modules/storage"
 )
 
+type TargetFiles struct {
+	List    []string
+	ListErr error
+}
+
+type TargetsOnStorages map[string]TargetFiles
+
 type Storage interface {
-	IsLocal() int
+	Clone() Storage
 	Configure(storage.Params)
 	DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupPath, ofs, bakType string) error
 	DeleteOldBackups(logCh chan logger.LogRecord, ofsPart string, job Job, full bool) error
 	GetFileReader(string) (io.Reader, error)
-	Close() error
-	Clone() Storage
 	GetName() string
+	IsLocal() int
+	ListBackups(string) ([]string, error)
+	Close() error
 }
 
 type Storages []Storage
@@ -32,7 +40,7 @@ func (s Storages) Less(i, j int) bool { return s[i].IsLocal() < s[j].IsLocal() }
 func (s Storages) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func (s Storages) DeleteOldBackups(logCh chan logger.LogRecord, j Job, ofsPath string) error {
-	var errs *multierror.Error
+	errs := new(multierror.Error)
 
 	for _, st := range s {
 		if ofsPath != "" {
@@ -53,7 +61,6 @@ func (s Storages) DeleteOldBackups(logCh chan logger.LogRecord, j Job, ofsPath s
 }
 
 func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
-
 	errs := new(multierror.Error)
 
 	for ofs, dumpObj := range job.GetDumpObjects() {
@@ -84,8 +91,21 @@ func (s Storages) Delivery(logCh chan logger.LogRecord, job Job) error {
 	return errs.ErrorOrNil()
 }
 
+func (s Storages) ListBackups(ofs string) TargetsOnStorages {
+	result := make(TargetsOnStorages)
+	for _, st := range s {
+		list, err := st.ListBackups(ofs)
+		result[st.GetName()] = TargetFiles{
+			List:    list,
+			ListErr: err,
+		}
+	}
+
+	return result
+}
+
 func (s Storages) CleanupTmpData(job Job) error {
-	var errs *multierror.Error
+	errs := new(multierror.Error)
 
 	for _, dumpObj := range job.GetDumpObjects() {
 

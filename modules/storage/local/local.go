@@ -191,13 +191,13 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			return err
 		}
 
-		files, err := dir.ReadDir(-1)
+		lFiles, err := dir.ReadDir(-1)
 		if err != nil {
 			logCh <- logger.Log(jobName, l.GetName()).Errorf("Failed to read files in directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
-		for _, file := range files {
+		for _, file := range lFiles {
 			fPath := path.Join(bakDir, file.Name())
 			filesMap[fPath] = &fileLinks{}
 			if file.Type()&fs.ModeSymlink != 0 {
@@ -223,9 +223,9 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 		}
 
 		if l.Retention.UseCount {
-			sort.Slice(files, func(i, j int) bool {
-				iInfo, _ := files[i].Info()
-				jInfo, _ := files[j].Info()
+			sort.Slice(lFiles, func(i, j int) bool {
+				iInfo, _ := lFiles[i].Info()
+				jInfo, _ := lFiles[j].Info()
 				return iInfo.ModTime().Before(jInfo.ModTime())
 			})
 
@@ -233,24 +233,24 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 				retentionCount--
 			}
 
-			if retentionCount <= len(files) {
-				files = files[:len(files)-retentionCount]
+			if retentionCount <= len(lFiles) {
+				lFiles = lFiles[:len(lFiles)-retentionCount]
 			} else {
-				files = files[:0]
+				lFiles = lFiles[:0]
 			}
 		} else {
 			i := 0
-			for _, file := range files {
+			for _, file := range lFiles {
 				fileInfo, _ := file.Info()
 				if fileInfo.ModTime().Before(retentionDate) {
-					files[i] = file
+					lFiles[i] = file
 					i++
 				}
 			}
-			files = files[:i]
+			lFiles = lFiles[:i]
 		}
 
-		for _, file := range files {
+		for _, file := range lFiles {
 			fPath := path.Join(bakDir, file.Name())
 			filesToDeleteMap[fPath] = filesMap[fPath]
 		}
@@ -371,12 +371,27 @@ func (l *Local) deleteIncBackup(logCh chan logger.LogRecord, jobName, ofsPart st
 	return errs.ErrorOrNil()
 }
 
-func (l *Local) GetFileReader(ofsPath string) (io.Reader, error) {
-	fp, err := filepath.EvalSymlinks(path.Join(l.backupPath, ofsPath))
+func (l *Local) GetFileReader(filePath string) (io.Reader, error) {
+	fp, err := filepath.EvalSymlinks(path.Join(l.backupPath, filePath))
 	if err != nil {
 		return nil, err
 	}
 	return files.GetLimitedFileReader(fp, l.rateLimit)
+}
+
+func (l *Local) ListBackups(ofsPart string) ([]string, error) {
+	backups := make([]string, 0)
+	err := filepath.WalkDir(path.Join(l.backupPath, ofsPart), func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		backups = append(backups, path)
+		return nil
+	})
+	return backups, err
 }
 
 func (l *Local) Close() error {

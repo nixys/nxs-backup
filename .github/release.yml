@@ -13,6 +13,10 @@ changelog:
     labels:
     - Semver-Minor
     - enhancement
+  - title: Fixes 🪲
+    labels:
+      - Semver-Patch
+      - bug
   - title: Other Changes
     labels:
     - "*"

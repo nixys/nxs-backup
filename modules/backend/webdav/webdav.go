@@ -67,7 +67,7 @@ func Init(p Params) (*Client, error) {
 	wd.URL = wdURL
 
 	wd.Client = http.Client{
-		Timeout: wd.ConnectionTimeout,
+		Timeout: wd.ConnectionTimeout * time.Second,
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
 				Timeout:   10 * time.Second,
@@ -120,6 +120,9 @@ func (w *Client) getQuotaAvailableBytes() (int, error) {
 }
 
 func (w *Client) Ls(path string) ([]os.FileInfo, error) {
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
 	files := make([]os.FileInfo, 0)
 	query := `<d:propfind xmlns:d='DAV:'>
 			<d:prop>
@@ -139,7 +142,7 @@ func (w *Client) Ls(path string) ([]os.FileInfo, error) {
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode >= 400 {
 		if res.StatusCode == 404 {
-			return nil, err
+			return nil, fmt.Errorf("%s: %v", path, fs.ErrNotExist)
 		}
 		return nil, fmt.Errorf("%s(%d): can't get things in %s", httpFriendlyStatus(res.StatusCode), res.StatusCode, filepath.Base(path))
 	}
@@ -169,7 +172,7 @@ func (w *Client) Ls(path string) ([]os.FileInfo, error) {
 					if p == "collection" {
 						return fs.ModeDir
 					}
-					return fs.ModeType
+					return fs.FileMode(0)
 				}(prop.Type.Local),
 				mtime: func() time.Time {
 					t, err := time.Parse(time.RFC1123, prop.Modified)
