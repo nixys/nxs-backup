@@ -178,7 +178,10 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 		}
 
 		bakDir := path.Join(f.backupPath, ofsPart, p.String())
-		files, err := f.conn.List(bakDir)
+		if err := f.updateConn(); err != nil {
+			return err
+		}
+		fptFiles, err := f.conn.List(bakDir)
 		if err != nil {
 			var protoErr *textproto.Error
 			errors.As(err, &protoErr)
@@ -190,33 +193,36 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 		}
 
 		if f.Retention.UseCount {
-			sort.Slice(files, func(i, j int) bool {
-				return files[i].Time.Before(files[j].Time)
+			sort.Slice(fptFiles, func(i, j int) bool {
+				return fptFiles[i].Time.Before(fptFiles[j].Time)
 			})
 			if !safety {
 				retentionCount--
 			}
-			if retentionCount <= len(files) {
-				files = files[:len(files)-retentionCount]
+			if retentionCount <= len(fptFiles) {
+				fptFiles = fptFiles[:len(fptFiles)-retentionCount]
 			} else {
-				files = files[:0]
+				fptFiles = fptFiles[:0]
 			}
 		} else {
 			i := 0
-			for _, file := range files {
+			for _, file := range fptFiles {
 				if file.Time.Before(retentionDate) {
-					files[i] = file
+					fptFiles[i] = file
 					i++
 				}
 			}
-			files = files[:i]
+			fptFiles = fptFiles[:i]
 		}
 
-		for _, file := range files {
+		for _, file := range fptFiles {
 			if file.Name == ".." || file.Name == "." {
 				continue
 			}
 
+			if err = f.updateConn(); err != nil {
+				return err
+			}
 			err = f.conn.Delete(path.Join(bakDir, file.Name))
 			if err != nil {
 				logCh <- logger.Log(job, f.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
@@ -234,6 +240,9 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 func (f *FTP) deleteIncBackup(logCh chan logger.LogRecord, job, ofsPart string, full bool) error {
 	var errs *multierror.Error
 
+	if err := f.updateConn(); err != nil {
+		return err
+	}
 	if full {
 		backupDir := path.Join(f.backupPath, ofsPart)
 
@@ -292,6 +301,9 @@ func (f *FTP) deleteIncBackup(logCh chan logger.LogRecord, job, ofsPart string, 
 }
 
 func (f *FTP) mkDir(dstPath string) error {
+	if err := f.updateConn(); err != nil {
+		return err
+	}
 
 	dstPath = path.Clean(dstPath)
 	if dstPath == "." || dstPath == "/" {
