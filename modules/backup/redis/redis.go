@@ -252,7 +252,7 @@ func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtNam
 
 	if tgt.gzip {
 		if err := targz.GZip(tmpBackupRdb, tmpBackupFile, j.diskRateLimit); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Unable to archivate tmp backup: %s", err)
+			logCh <- logger.Log(j.name, "").Errorf("Unable to gzip tmp backup: %s", err)
 			return err
 		}
 		_ = os.RemoveAll(tmpBackupRdb)

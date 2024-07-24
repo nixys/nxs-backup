@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/nixys/nxs-backup/modules/backend/targz"
 	"os"
 	"os/exec"
 	"time"
@@ -15,28 +16,32 @@ import (
 )
 
 type job struct {
+	needToMakeBackup bool
+	gzip             bool
+	safetyBackup     bool
+	skipBackupRotate bool // deprecated
+	diskRateLimit    int64
 	name             string
+	appMetrics       *metrics.Data
 	dumpCmd          string
 	args             []string
 	envs             map[string]string
-	needToMakeBackup bool
-	safetyBackup     bool
-	skipBackupRotate bool // deprecated
 	storages         interfaces.Storages
 	dumpedObjects    map[string]interfaces.DumpObject
-	appMetrics       *metrics.Data
 }
 
 type JobParams struct {
+	NeedToMakeBackup bool
+	Gzip             bool
+	SafetyBackup     bool
+	SkipBackupRotate bool // deprecated
+	DiskRateLimit    int64
 	Name             string
+	Metrics          *metrics.Data
 	DumpCmd          string
 	Args             []string
 	Envs             map[string]string
-	NeedToMakeBackup bool
-	SafetyBackup     bool
-	SkipBackupRotate bool // deprecated
 	Storages         interfaces.Storages
-	Metrics          *metrics.Data
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
@@ -47,8 +52,10 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		args:             jp.Args,
 		envs:             jp.Envs,
 		needToMakeBackup: jp.NeedToMakeBackup,
+		gzip:             jp.Gzip,
 		safetyBackup:     jp.SafetyBackup,
 		skipBackupRotate: jp.SkipBackupRotate,
+		diskRateLimit:    jp.DiskRateLimit,
 		storages:         jp.Storages,
 		dumpedObjects:    make(map[string]interfaces.DumpObject),
 		appMetrics: jp.Metrics.RegisterJob(
@@ -195,11 +202,21 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, _ string) (err error) {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to parse execution result. Error: %s", err)
 		return err
 	}
+	tmpBackupPath := out.FullPath
+	if j.gzip {
+		newTmpBackup := tmpBackupPath + ".gz"
+		if err = targz.GZip(tmpBackupPath, newTmpBackup, j.diskRateLimit); err != nil {
+			logCh <- logger.Log(j.name, "").Errorf("Unable to gzip tmp backup: %s", err)
+			return err
+		}
+		_ = os.RemoveAll(tmpBackupPath)
+		tmpBackupPath = newTmpBackup
+	}
 
-	logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s.", out.FullPath)
+	logCh <- logger.Log(j.name, "").Debugf("Created temp backup %s.", tmpBackupPath)
 
-	j.dumpedObjects[j.name] = interfaces.DumpObject{TmpFile: out.FullPath}
-	fileInfo, _ := os.Stat(out.FullPath)
+	j.dumpedObjects[j.name] = interfaces.DumpObject{TmpFile: tmpBackupPath}
+	fileInfo, _ := os.Stat(tmpBackupPath)
 	j.SetOfsMetrics("", map[string]float64{
 		metrics.BackupSize: float64(fileInfo.Size()),
 	})
