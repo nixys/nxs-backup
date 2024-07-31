@@ -424,6 +424,27 @@ func (s *SFTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	return bytes.NewReader(buf), err
 }
 
+func (s *SFTP) ListBackups(filePath string) (fl []string, err error) {
+	walker := s.client.Walk(path.Join(s.backupPath, filePath))
+
+	next := true
+	for next {
+		next = walker.Step()
+		err = walker.Err()
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				err = fmt.Errorf("%s: %v", walker.Path(), err)
+			}
+			return
+		}
+		if !walker.Stat().IsDir() {
+			fl = append(fl, walker.Path())
+		}
+	}
+
+	return
+}
+
 func (s *SFTP) Close() error {
 	return s.client.Close()
 }

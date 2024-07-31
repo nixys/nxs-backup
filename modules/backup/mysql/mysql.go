@@ -179,6 +179,17 @@ func (j *job) GetDumpObjects() map[string]interfaces.DumpObject {
 	return j.dumpedObjects
 }
 
+func (j *job) ListBackups() interfaces.JobTargets {
+	jt := make(interfaces.JobTargets)
+
+	for tn := range j.targets {
+		jt[tn] = make(interfaces.TargetsOnStorages)
+		jt[tn] = j.storages.ListBackups(tn)
+	}
+
+	return jt
+}
+
 func (j *job) SetDumpObjectDelivered(ofs string) {
 	dumpObj := j.dumpedObjects[ofs]
 	dumpObj.Delivered = true

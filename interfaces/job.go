@@ -5,6 +5,8 @@ import (
 	"github.com/nixys/nxs-backup/modules/logger"
 )
 
+type JobTargets map[string]TargetsOnStorages
+
 type Job interface {
 	SetOfsMetrics(ofs string, metrics map[string]float64)
 	GetName() string
@@ -15,6 +17,7 @@ type Job interface {
 	GetDumpObjects() map[string]DumpObject
 	SetDumpObjectDelivered(ofs string)
 	IsBackupSafety() bool
+	ListBackups() JobTargets
 	NeedToMakeBackup() bool
 	NeedToUpdateIncMeta() bool
 	DoBackup(logCh chan logger.LogRecord, tmpDir string) error

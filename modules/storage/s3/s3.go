@@ -72,7 +72,7 @@ func Init(name string, opts Opts, rl int64) (*S3, error) {
 }
 
 func (s *S3) Configure(p Params) {
-	s.backupPath = p.BackupPath
+	s.backupPath = strings.TrimPrefix(p.BackupPath, "/")
 	s.rateLimit = p.RateLimit
 	s.rotateEnabled = p.RotateEnabled
 	s.Retention = p.Retention
@@ -198,7 +198,7 @@ func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 
 	go func() {
 		defer close(objCh)
-		for period, files := range filesList {
+		for period, s3Files := range filesList {
 			needSort := true
 			retentionCount := 0
 			switch period {
@@ -213,21 +213,21 @@ func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 			}
 
 			if needSort && s.Retention.UseCount {
-				sort.Slice(files, func(i, j int) bool {
-					return files[i].LastModified.Before(files[j].LastModified)
+				sort.Slice(s3Files, func(i, j int) bool {
+					return s3Files[i].LastModified.Before(s3Files[j].LastModified)
 				})
 
 				if !job.IsBackupSafety() {
 					retentionCount--
 				}
-				if retentionCount <= len(files) {
-					files = files[:len(files)-retentionCount]
+				if retentionCount <= len(s3Files) {
+					s3Files = s3Files[:len(s3Files)-retentionCount]
 				} else {
-					files = files[:0]
+					s3Files = s3Files[:0]
 				}
 			}
 
-			for _, file := range files {
+			for _, file := range s3Files {
 				logCh <- logger.Log(job.GetName(), s.name).Infof("File '%s' going to be deleted", file.Key)
 				objCh <- file
 			}
@@ -264,6 +264,19 @@ func (s *S3) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(buf), err
+}
+
+func (s *S3) ListBackups(ofsPath string) ([]string, error) {
+	var fList []string
+	backupDir := path.Join(s.backupPath, ofsPath)
+
+	for object := range s.client.ListObjects(context.Background(), s.bucketName, minio.ListObjectsOptions{Recursive: true, Prefix: backupDir}) {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+		fList = append(fList, object.Key)
+	}
+	return fList, nil
 }
 
 func (s *S3) Close() error {

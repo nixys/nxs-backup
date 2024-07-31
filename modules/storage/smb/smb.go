@@ -84,7 +84,7 @@ func Init(sName string, params Opts, rl int64) (s *SMB, err error) {
 }
 
 func (s *SMB) Configure(p Params) {
-	s.backupPath = p.BackupPath
+	s.backupPath = strings.TrimPrefix(p.BackupPath, "/")
 	s.rateLimit = p.RateLimit
 	s.rotateEnabled = p.RotateEnabled
 	s.Retention = p.Retention
@@ -198,7 +198,7 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 		}
 
 		bakDir := path.Join(s.backupPath, ofsPart, p.String())
-		files, err := s.share.ReadDir(bakDir)
+		smbFiles, err := s.share.ReadDir(bakDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -207,7 +207,7 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 			return err
 		}
 
-		for _, file := range files {
+		for _, file := range smbFiles {
 			fPath := path.Join(bakDir, file.Name())
 			if file.Mode()&fs.ModeSymlink != 0 {
 				link, err := s.share.Readlink(fPath)
@@ -233,30 +233,30 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 		}
 
 		if s.Retention.UseCount {
-			sort.Slice(files, func(i, j int) bool {
-				return files[i].ModTime().Before(files[j].ModTime())
+			sort.Slice(smbFiles, func(i, j int) bool {
+				return smbFiles[i].ModTime().Before(smbFiles[j].ModTime())
 			})
 
 			if !safety {
 				retentionCount--
 			}
-			if retentionCount <= len(files) {
-				files = files[:len(files)-retentionCount]
+			if retentionCount <= len(smbFiles) {
+				smbFiles = smbFiles[:len(smbFiles)-retentionCount]
 			} else {
-				files = files[:0]
+				smbFiles = smbFiles[:0]
 			}
 		} else {
 			i := 0
-			for _, file := range files {
+			for _, file := range smbFiles {
 				if file.ModTime().Before(retentionDate) {
-					files[i] = file
+					smbFiles[i] = file
 					i++
 				}
 			}
-			files = files[:i]
+			smbFiles = smbFiles[:i]
 		}
 
-		for _, file := range files {
+		for _, file := range smbFiles {
 			if file.Name() == ".." || file.Name() == "." {
 				continue
 			}
@@ -387,6 +387,54 @@ func (s *SMB) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(buf), err
+}
+
+func (s *SMB) ListBackups(ofsPath string) ([]string, error) {
+	bPath := path.Join(s.backupPath, ofsPath)
+
+	fl, err := s.listFiles(bPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.listPaths(bPath, fl)
+}
+
+func (s *SMB) listFiles(dstPath string) ([]fs.FileInfo, error) {
+
+	smbEntries, err := s.share.ReadDir(dstPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = fmt.Errorf("%s: %v", dstPath, fs.ErrNotExist)
+		}
+		return nil, err
+	}
+
+	return smbEntries, nil
+}
+
+func (s *SMB) listPaths(base string, fList []fs.FileInfo) ([]string, error) {
+	var paths []string
+
+	for _, file := range fList {
+		if !file.IsDir() {
+			fp := path.Join(base, file.Name())
+			paths = append(paths, fp)
+		} else {
+			subDir := path.Join(base, file.Name())
+			subDirFiles, err := s.listFiles(subDir)
+			if err != nil {
+				return nil, err
+			}
+			subPaths, err := s.listPaths(subDir, subDirFiles)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, subPaths...)
+		}
+	}
+
+	return paths, nil
 }
 
 func (s *SMB) Close() error {

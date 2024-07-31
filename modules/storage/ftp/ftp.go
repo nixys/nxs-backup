@@ -143,7 +143,7 @@ func (f *FTP) copy(logCh chan logger.LogRecord, job, dst, src string) error {
 	}
 	err = f.conn.Stor(dst, srcFile)
 	if err != nil {
-		logCh <- logger.Log(job, f.name).Errorf("Unable to upload file '%s'. %s", dst, err)
+		logCh <- logger.Log(job, f.name).Errorf("Unable to upload file '%s'. Err: %s", dst, err)
 		return err
 	}
 
@@ -334,7 +334,8 @@ func (f *FTP) GetFileReader(ofsPath string) (io.Reader, error) {
 
 	// return fs.ErrNotExist if entry not available
 	if _, err := f.conn.GetEntry(path.Join(f.backupPath, ofsPath)); err != nil {
-		protoErr := err.(*textproto.Error)
+		var protoErr *textproto.Error
+		errors.As(err, &protoErr)
 		if protoErr.Code == 550 {
 			return nil, fs.ErrNotExist
 		} else {
@@ -358,6 +359,69 @@ func (f *FTP) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(buf), nil
+}
+
+func (f *FTP) ListBackups(ofsPath string) ([]string, error) {
+	bPath := path.Join(f.backupPath, ofsPath)
+
+	fl, err := f.listFiles(bPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.listPaths(bPath, fl)
+}
+
+func (f *FTP) listFiles(dstPath string) ([]*ftp.Entry, error) {
+	var (
+		protoErr *textproto.Error
+		ftpFiles []*ftp.Entry
+	)
+
+	if err := f.updateConn(); err != nil {
+		return nil, err
+	}
+	ftpEntries, err := f.conn.List(dstPath)
+	if err != nil {
+		errors.As(err, &protoErr)
+		if protoErr.Code == 550 {
+			err = fmt.Errorf("%s: %v", dstPath, fs.ErrNotExist)
+		}
+		return nil, err
+	}
+
+	for _, entry := range ftpEntries {
+		if entry.Name == ".." || entry.Name == "." {
+			continue
+		}
+
+		ftpFiles = append(ftpFiles, entry)
+	}
+	return ftpFiles, nil
+}
+
+func (f *FTP) listPaths(base string, fList []*ftp.Entry) ([]string, error) {
+	var paths []string
+
+	for _, file := range fList {
+		if file.Type != ftp.EntryTypeFolder {
+			fp := path.Join(base, file.Name)
+			paths = append(paths, fp)
+		} else {
+			subDir := path.Join(base, file.Name)
+			subDirFiles, err := f.listFiles(subDir)
+			if err != nil {
+				return nil, err
+			}
+			subPaths, err := f.listPaths(subDir, subDirFiles)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, subPaths...)
+		}
+	}
+
+	return paths, nil
 }
 
 func (f *FTP) Close() error {

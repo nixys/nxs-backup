@@ -62,7 +62,7 @@ func Init(name string, params Opts, rl int64) (*WebDav, error) {
 }
 
 func (wd *WebDav) Configure(p Params) {
-	wd.backupPath = p.BackupPath
+	wd.backupPath = path.Join("/", p.BackupPath)
 	wd.rateLimit = p.RateLimit
 	wd.rotateEnabled = p.RotateEnabled
 	wd.Retention = p.Retention
@@ -165,7 +165,7 @@ func (wd *WebDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 		}
 
 		bakDir := path.Join(wd.backupPath, ofsPart, p.String())
-		files, err := wd.client.Ls(bakDir)
+		wdFiles, err := wd.client.Ls(bakDir)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				continue
@@ -175,34 +175,30 @@ func (wd *WebDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 		}
 
 		if wd.Retention.UseCount {
-			sort.Slice(files, func(i, j int) bool {
-				return files[i].ModTime().Before(files[j].ModTime())
+			sort.Slice(wdFiles, func(i, j int) bool {
+				return wdFiles[i].ModTime().Before(wdFiles[j].ModTime())
 			})
 
 			if !safety {
 				retentionCount--
 			}
-			if retentionCount <= len(files) {
-				files = files[:len(files)-retentionCount]
+			if retentionCount <= len(wdFiles) {
+				wdFiles = wdFiles[:len(wdFiles)-retentionCount]
 			} else {
-				files = files[:0]
+				wdFiles = wdFiles[:0]
 			}
 		} else {
 			i := 0
-			for _, file := range files {
+			for _, file := range wdFiles {
 				if file.ModTime().Before(retentionDate) {
-					files[i] = file
+					wdFiles[i] = file
 					i++
 				}
 			}
-			files = files[:i]
+			wdFiles = wdFiles[:i]
 		}
 
-		for _, file := range files {
-			if file.Name() == ".." || file.Name() == "." {
-				continue
-			}
-
+		for _, file := range wdFiles {
 			err = wd.client.Rm(path.Join(bakDir, file.Name()))
 			if err != nil {
 				logCh <- logger.Log(jobName, wd.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
@@ -303,12 +299,12 @@ func (wd *WebDav) getInfo(dstPath string) (os.FileInfo, error) {
 	dir := path.Dir(dstPath)
 	base := path.Base(dstPath)
 
-	files, err := wd.client.Ls(dir)
+	wdfl, err := wd.client.Ls(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, file := range files {
+	for _, file := range wdfl {
 		if file.Name() == base {
 			return file, nil
 		}
@@ -330,6 +326,41 @@ func (wd *WebDav) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(buf), err
+}
+
+func (wd *WebDav) ListBackups(ofsPath string) ([]string, error) {
+	bPath := path.Join(wd.backupPath, ofsPath)
+
+	fl, err := wd.client.Ls(bPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return wd.listPaths(bPath, fl)
+}
+
+func (wd *WebDav) listPaths(base string, fList []fs.FileInfo) ([]string, error) {
+	var paths []string
+
+	for _, file := range fList {
+		if !file.IsDir() {
+			fp := path.Join(base, file.Name())
+			paths = append(paths, fp)
+		} else {
+			subDir := path.Join(base, file.Name())
+			subDirFiles, err := wd.client.Ls(subDir)
+			if err != nil {
+				return nil, err
+			}
+			subPaths, err := wd.listPaths(subDir, subDirFiles)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, subPaths...)
+		}
+	}
+
+	return paths, nil
 }
 
 func (wd *WebDav) Close() error {

@@ -175,44 +175,54 @@ func (n *NFS) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 		}
 
 		bakDir := path.Join(n.backupPath, ofsPart, p.String())
-		files, err := n.target.ReadDirPlus(bakDir)
+		nfsFilesPlus, err := n.target.ReadDirPlus(bakDir)
 		if err != nil {
 			if os.IsNotExist(err) {
+				logCh <- logger.Log(jobName, n.name).Debugf("Directory '%s' not exist. Skipping rotate.", bakDir)
 				continue
 			}
 			logCh <- logger.Log(jobName, n.name).Errorf("Failed to read files in remote directory '%s' with next error: %s", bakDir, err)
 			return err
 		}
 
+		nfsFiles := make([]fs.FileInfo, 0, len(nfsFilesPlus))
+		for _, file := range nfsFilesPlus {
+			if file.Name() == ".." || file.Name() == "." {
+				continue
+			}
+			f, _, err := n.target.Lookup(path.Join(bakDir, file.Name()))
+			if err != nil {
+				logCh <- logger.Log(jobName, n.name).Errorf("Failed to read file '%s' with next error: %s", file.Name(), err)
+				return err
+			}
+			nfsFiles = append(nfsFiles, f)
+		}
+
 		if n.Retention.UseCount {
-			sort.Slice(files, func(i, j int) bool {
-				return files[i].ModTime().Before(files[j].ModTime())
+			sort.Slice(nfsFiles, func(i, j int) bool {
+				return nfsFiles[i].ModTime().Before(nfsFiles[j].ModTime())
 			})
 
 			if !safety {
 				retentionCount--
 			}
-			if retentionCount <= len(files) {
-				files = files[:len(files)-retentionCount]
+			if retentionCount <= len(nfsFiles) {
+				nfsFiles = nfsFiles[:len(nfsFiles)-retentionCount]
 			} else {
-				files = files[:0]
+				nfsFiles = nfsFiles[:0]
 			}
 		} else {
 			i := 0
-			for _, file := range files {
+			for _, file := range nfsFiles {
 				if file.ModTime().Before(retentionDate) {
-					files[i] = file
+					nfsFiles[i] = file
 					i++
 				}
 			}
-			files = files[:i]
+			nfsFiles = nfsFiles[:i]
 		}
 
-		for _, file := range files {
-			if file.Name() == ".." || file.Name() == "." {
-				continue
-			}
-
+		for _, file := range nfsFiles {
 			err = n.target.Remove(path.Join(bakDir, file.Name()))
 			if err != nil {
 				logCh <- logger.Log(jobName, n.name).Errorf("Failed to delete file '%s' in remote directory '%s' with next error: %s",
@@ -286,7 +296,7 @@ func (n *NFS) mkDir(dstPath string) error {
 	if dstPath == "." || dstPath == "/" {
 		return nil
 	}
-	fi, err := n.getInfo(dstPath)
+	fi, _, err := n.target.Lookup(dstPath)
 	if err == nil {
 		if fi.IsDir() {
 			return nil
@@ -309,24 +319,6 @@ func (n *NFS) mkDir(dstPath string) error {
 	return nil
 }
 
-func (n *NFS) getInfo(dstPath string) (os.FileInfo, error) {
-
-	dir := path.Dir(dstPath)
-	base := path.Base(dstPath)
-
-	files, err := n.target.ReadDirPlus(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range files {
-		if file.Name() == base {
-			return file, nil
-		}
-	}
-	return nil, fs.ErrNotExist
-}
-
 func (n *NFS) GetFileReader(ofsPath string) (io.Reader, error) {
 
 	file, err := n.target.Open(path.Join(n.backupPath, ofsPath))
@@ -342,6 +334,66 @@ func (n *NFS) GetFileReader(ofsPath string) (io.Reader, error) {
 	}
 
 	return bytes.NewReader(buf), err
+}
+
+func (n *NFS) ListBackups(fPath string) ([]string, error) {
+	bPath := path.Join(n.backupPath, fPath)
+	nfsFiles, err := n.listFiles(bPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return n.listPaths(bPath, nfsFiles)
+}
+
+func (n *NFS) listFiles(dstPath string) ([]*nfs.EntryPlus, error) {
+	var nfsFiles []*nfs.EntryPlus
+	nfsEntries, err := n.target.ReadDirPlus(dstPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = fmt.Errorf("%s: %v", dstPath, err)
+		}
+		return nil, err
+	}
+
+	for _, entry := range nfsEntries {
+		if entry.Name() == ".." || entry.Name() == "." {
+			continue
+		}
+		f, _, err := n.target.Lookup(path.Join(dstPath, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		entry.Attr = nfs.PostOpAttr{
+			IsSet: true,
+			Attr:  *f.(*nfs.Fattr),
+		}
+		nfsFiles = append(nfsFiles, entry)
+	}
+	return nfsFiles, nil
+}
+
+func (n *NFS) listPaths(base string, fList []*nfs.EntryPlus) ([]string, error) {
+	var paths []string
+
+	for _, file := range fList {
+		if !file.IsDir() {
+			paths = append(paths, path.Join(base, file.Name()))
+		} else {
+			subDir := path.Join(base, file.Name())
+			subDirFiles, err := n.listFiles(subDir)
+			if err != nil {
+				return nil, err
+			}
+			subPaths, err := n.listPaths(subDir, subDirFiles)
+			if err != nil {
+				return nil, err
+			}
+			paths = append(paths, subPaths...)
+		}
+	}
+
+	return paths, nil
 }
 
 func (n *NFS) Close() error {

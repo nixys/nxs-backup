@@ -2,6 +2,7 @@ package ctx
 
 import (
 	"fmt"
+	"github.com/nixys/nxs-backup/modules/cmd_handler/list_backups"
 	"os"
 	"path"
 	"strconv"
@@ -62,14 +63,14 @@ func AppCtxInit() (any, error) {
 	c.Log = l
 
 	switch ra.Cmd {
-	case "update":
+	case update:
 		c.Cmd = self_update.Init(
 			self_update.Opts{
 				Version: ra.CmdParams.(*UpdateCmd).Version,
 				Done:    c.Done,
 			},
 		)
-	case "generate":
+	case generate:
 		if _, err = readConfig(ra.ConfigPath); err != nil {
 			printInitError("Failed to read configuration file: %v\n", err)
 			return nil, err
@@ -85,7 +86,7 @@ func AppCtxInit() (any, error) {
 				Storages: cp.Storages,
 			},
 		)
-	case "testCfg":
+	case testCfg:
 		a, err := appInit(c, ra.ConfigPath)
 		if err != nil {
 			return nil, err
@@ -99,7 +100,23 @@ func AppCtxInit() (any, error) {
 				ExtJobs:  a.extJobs,
 			},
 		)
-	case "start":
+	case lsBackups:
+		a, err := appInit(c, ra.ConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		c.Cmd = list_backups.Init(
+			list_backups.Opts{
+				InitErr:  a.initErrs.ErrorOrNil(),
+				Done:     c.Done,
+				JobName:  ra.CmdParams.(*StartCmd).JobName,
+				FileJobs: a.fileJobs,
+				DBJobs:   a.dbJobs,
+				ExtJobs:  a.extJobs,
+				Jobs:     a.jobs,
+			},
+		)
+	case start:
 		a, err := appInit(c, ra.ConfigPath)
 		if err != nil {
 			return nil, err
@@ -118,7 +135,7 @@ func AppCtxInit() (any, error) {
 				MetricsData: a.metricsData,
 			},
 		)
-	case "server":
+	case server:
 		a, err := appInit(c, ra.ConfigPath)
 		if err != nil {
 			return nil, err
@@ -139,6 +156,10 @@ func AppCtxInit() (any, error) {
 		if err != nil {
 			return nil, err
 		}
+	default:
+		err = fmt.Errorf("unknown command: %s", ra.Cmd)
+		printInitError("Init err:\n%s", err)
+		return nil, err
 	}
 
 	return c, nil
