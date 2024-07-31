@@ -133,8 +133,8 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Name:        src.Name,
 					Targets:     src.Targets,
 					Excludes:    src.Excludes,
-					Gzip:        src.Gzip,
 					SaveAbsPath: src.SaveAbsPath,
+					Gzip:        isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -158,8 +158,8 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Name:        src.Name,
 					Targets:     src.Targets,
 					Excludes:    src.Excludes,
-					Gzip:        src.Gzip,
 					SaveAbsPath: src.SaveAbsPath,
+					Gzip:        isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -195,9 +195,9 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Name:      src.Name,
 					TargetDBs: src.TargetDBs,
 					Excludes:  src.Excludes,
-					Gzip:      src.Gzip,
 					IsSlave:   src.IsSlave,
 					ExtraKeys: extraKeys,
+					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -234,10 +234,10 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Name:      src.Name,
 					TargetDBs: src.TargetDBs,
 					Excludes:  src.Excludes,
-					Gzip:      src.Gzip,
 					IsSlave:   src.IsSlave,
 					Prepare:   src.PrepareXtrabackup,
 					ExtraKeys: extraKeys,
+					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -276,9 +276,9 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Name:      src.Name,
 					TargetDBs: src.TargetDBs,
 					Excludes:  src.Excludes,
-					Gzip:      src.Gzip,
 					IsSlave:   src.IsSlave,
 					ExtraKeys: extraKeys,
+					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -315,9 +315,9 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 						SSLCrl:      src.Connect.PsqlSSlCrl,
 					},
 					Name:      src.Name,
-					Gzip:      src.Gzip,
 					IsSlave:   src.IsSlave,
 					ExtraKeys: extraKeys,
+					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -354,12 +354,12 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 						AuthDB:    src.Connect.MongoAuthDB,
 					},
 					Name:               src.Name,
-					Gzip:               src.Gzip,
 					ExtraKeys:          extraKeys,
 					TargetDBs:          src.TargetDBs,
 					TargetCollections:  src.TargetCollections,
 					ExcludeDBs:         src.ExcludeDBs,
 					ExcludeCollections: src.ExcludeCollections,
+					Gzip:               isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -387,7 +387,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 						Socket: src.Connect.Socket,
 					},
 					Name: src.Name,
-					Gzip: src.Gzip,
+					Gzip: isGzip(src.Gzip, j.Gzip),
 				})
 			}
 
@@ -413,8 +413,10 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				SkipBackupRotate: j.SkipBackupRotate,
+				DiskRateLimit:    diskRate,
 				Storages:         jobStorages,
 				Metrics:          o.metricsData,
+				Gzip:             j.Gzip,
 			})
 
 		default:
@@ -431,4 +433,12 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 	}
 
 	return jobs, errs.ErrorOrNil()
+}
+
+func isGzip(sgz *bool, jgz bool) bool {
+	if sgz != nil {
+		return *sgz
+	} else {
+		return jgz
+	}
 }
