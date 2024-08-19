@@ -15,7 +15,7 @@ GNU/Linux distributions.
     - Incremental files backups
   - Database backups:
     - Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
-    - Xtrabackup (2.4/8.0) of MySQL/Mariadb/Percona (5.7/8.0/all versions)
+    - Xtrabackup (2.4/8.0) of MySQL/Percona (5.7/8.0/all versions)
     - Regular backups of PostgreSQL (9/10/11/12/13/14/15/16/_all versions_)
     - Basebackups of PostgreSQL (9/10/11/12/13/14/15/_all versions_)
     - Backups of MongoDB (3.0/3.2/3.4/3.6/4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
