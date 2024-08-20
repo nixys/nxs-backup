@@ -45,10 +45,17 @@ type Opts struct {
 }
 
 func Init(name string, opts Opts, rl int64) (*S3, error) {
+	endpoint := opts.Endpoint
+	bucketLookup := minio.BucketLookupAuto
+	if strings.HasPrefix(endpoint, opts.BucketName+".") {
+		bucketLookup = minio.BucketLookupDNS
+		endpoint = strings.TrimPrefix(endpoint, opts.BucketName+".")
+	}
 
-	s3Client, err := minio.New(opts.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(opts.AccessKeyID, opts.SecretKey, ""),
-		Secure: opts.Secure,
+	s3Client, err := minio.New(endpoint, &minio.Options{
+		Creds:        credentials.NewStaticV4(opts.AccessKeyID, opts.SecretKey, ""),
+		Secure:       opts.Secure,
+		BucketLookup: bucketLookup,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to init '%s' S3 storage. Error: %v ", name, err)
