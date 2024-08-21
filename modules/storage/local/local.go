@@ -251,6 +251,10 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 		}
 
 		for _, file := range lFiles {
+			if file.IsDir() {
+				logCh <- logger.Log(jobName, l.GetName()).Warnf("`%s` is directory in %s. Please check and remove it.", file.Name(), bakDir)
+				continue
+			}
 			fPath := path.Join(bakDir, file.Name())
 			filesToDeleteMap[fPath] = filesMap[fPath]
 		}
