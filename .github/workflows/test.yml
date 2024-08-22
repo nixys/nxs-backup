@@ -9,20 +9,38 @@ on:
 jobs:
 
   check-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            TARGET: arm
+
+          - os: ubuntu-latest
+            TARGET: arm64
+
+          - os: ubuntu-latest
+            TARGET: amd64
+
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.20'
+        go-version: '1.22.6'
 
     - name: Set version
       run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
 
     - name: Build
-      run: CGO_ENABLED=0 go build -v
+      run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w" -v -o nxs-backup-${{ matrix.TARGET }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: nxs-backup-${{ matrix.TARGET }}
+        path: nxs-backup-${{ matrix.TARGET }}
+        retention-days: 7
 
     - name: Test
       run: go test -v ./...

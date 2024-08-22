@@ -17,8 +17,8 @@
 
 # Supported tags and respective `Dockerfile` links
 
-- [`3.5.0`, `3.5`, `3`, `latest`, `3.5.0-debian`, `3.0-debian`, `3-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
-- [`3.5.0-alpine`, `3.5-alpine`, `3-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
+- [`3.10.0`, `3.10`, `3`, `latest`, `3.10.0-debian`, `3.10-debian`, `3-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
+- [`3.10.0-alpine`, `3.10-alpine`, `3-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
 
 # What is nxs-backup?
 
