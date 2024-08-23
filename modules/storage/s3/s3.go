@@ -129,10 +129,13 @@ func (s *S3) DeliveryBackup(logCh chan logger.LogRecord, jobName, tmpBackupFile,
 	}
 
 	for _, bucketPath := range bakRemPaths {
+		if _, err = source.Seek(0, io.SeekStart); err != nil {
+			logCh <- logger.Log(jobName, s.name).Errorf("Failed to reset file reader to start. Error: %v", err)
+			return err
+		}
 		res, err := s.client.PutObject(context.Background(), s.bucketName, bucketPath, source, sourceStat.Size(), minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		if err != nil {
-			logCh <- logger.Log(jobName, s.name).Errorf("Failed to uploaded object '%s' to bucket %s", bucketPath, s.bucketName)
-			logCh <- logger.Log(jobName, s.name).Errorf("Error: %s", err)
+			logCh <- logger.Log(jobName, s.name).Errorf("Failed to upload object '%s' to bucket %s. Error: %v", bucketPath, s.bucketName, err)
 			logCh <- logger.Log(jobName, s.name).Debugf("Response: %+v\n", res)
 			return err
 		}
