@@ -16,9 +16,10 @@ type limitedWriteCloser struct {
 	c io.Closer
 }
 
-type limitedReadCloser struct {
+type LimitedReadCloser struct {
 	r io.Reader
 	c io.Closer
+	s io.Seeker
 }
 
 func (lwc *limitedWriteCloser) Write(p []byte) (int, error) {
@@ -29,12 +30,16 @@ func (lwc *limitedWriteCloser) Close() error {
 	return lwc.c.Close()
 }
 
-func (lrc *limitedReadCloser) Read(p []byte) (int, error) {
+func (lrc *LimitedReadCloser) Read(p []byte) (int, error) {
 	return lrc.r.Read(p)
 }
 
-func (lrc *limitedReadCloser) Close() error {
+func (lrc *LimitedReadCloser) Close() error {
 	return lrc.c.Close()
+}
+
+func (lrc *LimitedReadCloser) Seek(offset int64, whence int) (int64, error) {
+	return lrc.s.Seek(offset, whence)
 }
 
 func CreateTmpMysqlAuthFile(af *ini.File) (authFile string, err error) {
@@ -74,14 +79,15 @@ func GetLimitedFileWriter(filePath string, rateLim int64) (io.WriteCloser, error
 	return lwc, nil
 }
 
-func GetLimitedFileReader(filePath string, rateLim int64) (io.ReadCloser, error) {
+func GetLimitedFileReader(filePath string, rateLim int64) (*LimitedReadCloser, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	lrc := &limitedReadCloser{
+	lrc := &LimitedReadCloser{
 		c: file,
+		s: file,
 	}
 	if rateLim != 0 {
 		bucket := ratelimit.NewBucketWithRate(float64(rateLim), rateLim*2)
