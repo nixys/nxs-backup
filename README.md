@@ -1,6 +1,8 @@
-![nxs-backup](https://github.com/nixys/nxs-backup/assets/28505813/20d0da34-eb6e-4ae4-a5c9-24845407400f)
-
 # nxs-backup
+
+[![Telegram News][tg-news-badge]][tg-news-url] [![Telegram Chat][tg-chat-badge]][tg-chat-url]
+
+![nxs-backup](https://github.com/nixys/nxs-backup/assets/28505813/20d0da34-eb6e-4ae4-a5c9-24845407400f)
 
 nxs-backup is a tool for creating and delivery backups, rotating it locally and on remote storages, compatible with
 GNU/Linux distributions.
@@ -139,3 +141,8 @@ For news and discussions subscribe the channels:
 ## License
 
 nxs-backup is released under the [Apache-2.0 license](LICENSE).
+
+[tg-news-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fnxs_backup
+[tg-chat-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fnxs_backup_chat
+[tg-news-url]: https://t.me/nxs_backup
+[tg-chat-url]: https://t.me/nxs_backup_chat
