@@ -190,6 +190,10 @@ func (wd *WebDav) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart
 		} else {
 			i := 0
 			for _, file := range wdFiles {
+				if file.ModTime().Location() != retentionDate.Location() {
+					retentionDate = retentionDate.In(file.ModTime().Location())
+				}
+
 				if file.ModTime().Before(retentionDate) {
 					wdFiles[i] = file
 					i++

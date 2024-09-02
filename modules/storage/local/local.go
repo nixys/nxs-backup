@@ -242,6 +242,10 @@ func (l *Local) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart s
 			i := 0
 			for _, file := range lFiles {
 				fileInfo, _ := file.Info()
+				if fileInfo.ModTime().Location() != retentionDate.Location() {
+					retentionDate = retentionDate.In(fileInfo.ModTime().Location())
+				}
+
 				if fileInfo.ModTime().Before(retentionDate) {
 					lFiles[i] = file
 					i++

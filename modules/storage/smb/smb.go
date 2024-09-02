@@ -248,6 +248,10 @@ func (s *SMB) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 		} else {
 			i := 0
 			for _, file := range smbFiles {
+				if file.ModTime().Location() != retentionDate.Location() {
+					retentionDate = retentionDate.In(file.ModTime().Location())
+				}
+
 				if file.ModTime().Before(retentionDate) {
 					smbFiles[i] = file
 					i++

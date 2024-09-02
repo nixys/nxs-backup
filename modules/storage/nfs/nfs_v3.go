@@ -214,6 +214,10 @@ func (n *NFS) deleteDescBackup(logCh chan logger.LogRecord, jobName, ofsPart str
 		} else {
 			i := 0
 			for _, file := range nfsFiles {
+				if file.ModTime().Location() != retentionDate.Location() {
+					retentionDate = retentionDate.In(file.ModTime().Location())
+				}
+
 				if file.ModTime().Before(retentionDate) {
 					nfsFiles[i] = file
 					i++

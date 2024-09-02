@@ -61,7 +61,7 @@ func GetRetention(p retentionPeriod, r Retention) (retentionCount int, retention
 			return
 		}
 		retentionCount = r.Months
-		retentionDate = curDate.AddDate(0, -r.Months, +1)
+		retentionDate = curDate.AddDate(0, -r.Months, 1)
 	}
 	return
 }
