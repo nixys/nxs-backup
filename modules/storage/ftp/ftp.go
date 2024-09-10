@@ -207,6 +207,10 @@ func (f *FTP) deleteDescBackup(logCh chan logger.LogRecord, job, ofsPart string,
 		} else {
 			i := 0
 			for _, file := range fptFiles {
+				if file.Time.Location() != retentionDate.Location() {
+					retentionDate = retentionDate.In(file.Time.Location())
+				}
+
 				if file.Time.Before(retentionDate) {
 					fptFiles[i] = file
 					i++

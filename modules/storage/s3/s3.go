@@ -190,16 +190,20 @@ func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 				}
 			}
 		} else {
+			if object.LastModified.Location() != curDate.Location() {
+				curDate = curDate.In(object.LastModified.Location())
+			}
+
 			if strings.Contains(object.Key, Daily.String()) && s.Retention.Days > 0 {
-				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Days)) {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Days+1)) {
 					filesList["daily"] = append(filesList["daily"], object)
 				}
 			} else if strings.Contains(object.Key, Weekly.String()) && s.Retention.Weeks > 0 && misc.GetDateTimeNow("dow") == misc.WeeklyBackupDay {
-				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Weeks*7)) {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, 0, -s.Retention.Weeks*7+1)) {
 					filesList["weekly"] = append(filesList["weekly"], object)
 				}
 			} else if strings.Contains(object.Key, Monthly.String()) && s.Retention.Weeks > 0 && misc.GetDateTimeNow("dom") == misc.MonthlyBackupDay {
-				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, -s.Retention.Months, 0)) {
+				if s.Retention.UseCount || object.LastModified.Before(curDate.AddDate(0, -s.Retention.Months, 1)) {
 					filesList["monthly"] = append(filesList["monthly"], object)
 				}
 			}

@@ -31,7 +31,7 @@ jobs:
         go-version: '1.22.6'
 
     - name: Set version
-      run: V=${{ github.ref_name }} && VT="${V#v}" && sed "s@APP_VERSION@$VT@" misc/version.go.in > misc/version.go
+      run: V="3-test-build-${{ github.event.pull_request.head.sha }}" && sed "s@APP_VERSION@$V@" misc/version.go.in > misc/version.go
 
     - name: Build
       run: GOOS=linux GOARCH=${{ matrix.TARGET }} CGO_ENABLED=0 go build -ldflags="-s -w" -v -o nxs-backup-${{ matrix.TARGET }}
