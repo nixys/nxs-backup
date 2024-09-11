@@ -228,11 +228,11 @@ func (gc *generateConfig) Run() {
 				ExtraKeys: "--opt --add-drop-database --routines --comments --create-options --quote-names --order-by-primary --hex-blob --single-transaction",
 			},
 		}
-	case misc.MysqlXtrabackup:
+	case misc.MysqlXtrabackup, misc.MariadbBackup:
 		job.StoragesOptions = genStorageOpts(gc.storages, false)
 		job.Sources = []sourceYaml{
 			{
-				Name: "mysql_xtrabackup",
+				Name: string(gc.jobType),
 				Gzip: true,
 				Connect: srcConnectYaml{
 					DBHost:     "mysql",
@@ -247,7 +247,7 @@ func (gc *generateConfig) Run() {
 					"bd_name.table_to_exclude",
 				},
 				PrepareXtrabackup: true,
-				ExtraKeys:         "--datadir=/path/to/mysql/data",
+				ExtraKeys:         "--datadir=/var/lib/mysql",
 			},
 		}
 	case misc.Postgresql:

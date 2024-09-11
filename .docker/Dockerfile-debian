@@ -8,6 +8,7 @@ RUN apt update \
       wget \
       gnupg \
       default-mysql-client \
+      mariadb-backup \
       postgresql-client \
       redis
 
@@ -30,5 +31,8 @@ RUN apt update \
 #    && make install
 
 COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
+
+VOLUME /etc/nxs-backup
+VOLUME /var/nxs-backup
 
 CMD nxs-backup start

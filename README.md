@@ -16,11 +16,13 @@ GNU/Linux distributions.
     - Discrete files backups
     - Incremental files backups
   - Database backups:
-    - Regular backups of MySQL/Mariadb/Percona (5.7/8.0/_all versions_)
-    - Xtrabackup (2.4/8.0) of MySQL/Percona (5.7/8.0/all versions)
-    - Regular backups of PostgreSQL (9/10/11/12/13/14/15/16/_all versions_)
-    - Basebackups of PostgreSQL (9/10/11/12/13/14/15/_all versions_)
-    - Backups of MongoDB (3.0/3.2/3.4/3.6/4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
+    - Logical backups of MySQL/Percona (5.7/8.0/_all versions_)
+    - Logical backups of MariaDB (10/11/_all versions_)
+    - Physical backups by Xtrabackup (2.4/8.0) of MySQL/Percona (5.7/8.0/_all versions_)
+    - Physical backups by MariaDB-backup of MariaDB (10/11/_all versions_)
+    - Logical backups of PostgreSQL (9/10/11/12/13/14/15/16/_all versions_)
+    - Physical backups by Basebackups of PostgreSQL (9/10/11/12/13/14/15/16/_all versions_)
+    - Backups of MongoDB (4.0/4.2/4.4/5.0/6.0/7.0/_all versions_)
     - Backups of Redis (_all versions_)
   - Support of user-defined scripts that extend functionality
 - Upload and manage backups to the remote storages:
@@ -32,10 +34,11 @@ GNU/Linux distributions.
   - WebDAV
 - Fine-tune the database backup process with additional options for optimization purposes
 - Notifications about events of the backup process via email and webhooks
-- Built-in generator of the configuration files to expedite initial setup
-- Easy to read and maintain configuration files with clear transparent structure
-- Possibility to restore backups by standard file/database tools (nxs-backup is not required)
-- Support of Environment variables in configuration files
+- Collect, export, and save metrics in Prometheus-compatible format
+- Limiting resource consumption:
+  - CPU usage
+  - local disk rate
+  - remote storage rate
 
 ### Who can use the tool?
 
@@ -65,14 +68,14 @@ GNU/Linux distributions.
   sudo chown root:root /usr/sbin/nxs-backup
   ```
 > [!NOTE]
-> nxs-backup is built for the following processor architectures: amd64 (x86_64), arm (armv7/armv8), arm64 (aarch64).
+> nxs-backup is built for the following processor architectures: amd64 (x86_64), arm (armv8), arm64 (aarch64).
 > If you need specific version of nxs-backup, or different architecture, you can find it on [release page](https://github.com/nixys/nxs-backup/releases).
 - Check that installation successful:
   ```sh
   sudo nxs-backup --version
   ```
-- Generate configuration files like described [here](docs/USEFUL_INFO.md#generate-configuration-files) or update
-  provided `nxs-backup.conf` and jobs configs in `cond.d` dir with your parameters (see [Settings](/docs/settings/README.md) for details)
+- Generate configuration files like described [here](https://nxs-backup.io/documentation/stable/2-3-1-on-premise/) or update
+  provided `nxs-backup.conf` and jobs configs in `cond.d` dir with your parameters (see [docs](https://nxs-backup.io/documentation/stable/3-1-preparing-of-the-main-config/) for details)
 - For starting nxs-backup process run:
   ```sh
   sudo nxs-backup start
@@ -84,7 +87,7 @@ GNU/Linux distributions.
   ```sh
   cd nxs-backup/.deploy/docker-compose/
   ```
-- Update provided `nxs-backup.conf` file with your parameters (see [Settings](/docs/settings/README.md) for details)
+- Update provided `nxs-backup.conf` file with your parameters (see [docs](https://nxs-backup.io/documentation/stable/3-1-preparing-of-the-main-config/) for details)
 - Launch the nxs-backup with command:
   ```sh
   docker compose up -d --pull
@@ -101,7 +104,7 @@ GNU/Linux distributions.
   helm repo add nixys https://registry.nixys.io/chartrepo/public
   ```
 - Find examples of `helm values` [here](/docs/example/kubernetes/README.md)
-- Fill up your `values.yaml` with correct nxs-backup [Settings](/docs/settings/README.md)
+- Fill up your `values.yaml` with correct nxs-backup [configs](https://nxs-backup.io/documentation/stable/3-1-preparing-of-the-main-config/)
 - Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml

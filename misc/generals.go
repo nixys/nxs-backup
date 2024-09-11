@@ -30,6 +30,7 @@ const (
 	IncFiles             BackupType = "inc_files"
 	Mysql                BackupType = "mysql"
 	MysqlXtrabackup      BackupType = "mysql_xtrabackup"
+	MariadbBackup        BackupType = "mariadb_backup"
 	Postgresql           BackupType = "postgresql"
 	PostgresqlBasebackup BackupType = "postgresql_basebackup"
 	MongoDB              BackupType = "mongodb"
@@ -46,6 +47,7 @@ func AllowedBackupTypesList() []string {
 		string(IncFiles),
 		string(Mysql),
 		string(MysqlXtrabackup),
+		string(MariadbBackup),
 		string(Postgresql),
 		string(PostgresqlBasebackup),
 		string(MongoDB),

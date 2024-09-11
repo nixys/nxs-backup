@@ -17,10 +17,10 @@ import (
 	"github.com/nixys/nxs-backup/modules/backup/external"
 	"github.com/nixys/nxs-backup/modules/backup/inc_files"
 	"github.com/nixys/nxs-backup/modules/backup/mongodump"
-	"github.com/nixys/nxs-backup/modules/backup/mysql"
-	"github.com/nixys/nxs-backup/modules/backup/mysql_xtrabackup"
-	"github.com/nixys/nxs-backup/modules/backup/psql"
-	"github.com/nixys/nxs-backup/modules/backup/psql_basebackup"
+	"github.com/nixys/nxs-backup/modules/backup/mysql_logical"
+	"github.com/nixys/nxs-backup/modules/backup/mysql_physical"
+	"github.com/nixys/nxs-backup/modules/backup/psql_logical"
+	"github.com/nixys/nxs-backup/modules/backup/psql_physical"
 	"github.com/nixys/nxs-backup/modules/backup/redis"
 	"github.com/nixys/nxs-backup/modules/metrics"
 	"github.com/nixys/nxs-backup/modules/storage"
@@ -175,7 +175,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			})
 
 		case misc.Mysql:
-			var sources []mysql.SourceParams
+			var sources []mysql_logical.SourceParams
 
 			for _, src := range j.Sources {
 				var extraKeys []string
@@ -183,7 +183,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					extraKeys = strings.Split(src.ExtraKeys, " ")
 				}
 
-				sources = append(sources, mysql.SourceParams{
+				sources = append(sources, mysql_logical.SourceParams{
 					ConnectParams: mysql_connect.Params{
 						AuthFile: src.Connect.MySQLAuthFile,
 						User:     src.Connect.DBUser,
@@ -201,7 +201,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err = mysql.Init(mysql.JobParams{
+			job, err = mysql_logical.Init(mysql_logical.JobParams{
 				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
@@ -213,8 +213,8 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				Metrics:          o.metricsData,
 			})
 
-		case misc.MysqlXtrabackup:
-			var sources []mysql_xtrabackup.SourceParams
+		case misc.MysqlXtrabackup, misc.MariadbBackup:
+			var sources []mysql_physical.SourceParams
 
 			for _, src := range j.Sources {
 				var extraKeys []string
@@ -222,7 +222,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					extraKeys = strings.Split(src.ExtraKeys, " ")
 				}
 
-				sources = append(sources, mysql_xtrabackup.SourceParams{
+				sources = append(sources, mysql_physical.SourceParams{
 					ConnectParams: mysql_connect.Params{
 						AuthFile: src.Connect.MySQLAuthFile,
 						User:     src.Connect.DBUser,
@@ -241,20 +241,21 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err = mysql_xtrabackup.Init(mysql_xtrabackup.JobParams{
+			job, err = mysql_physical.Init(mysql_physical.JobParams{
 				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
 				SafetyBackup:     j.SafetyBackup,
 				DeferredCopying:  j.DeferredCopying,
 				DiskRateLimit:    diskRate,
+				BackupType:       j.Type,
 				Storages:         jobStorages,
 				Sources:          sources,
 				Metrics:          o.metricsData,
 			})
 
 		case misc.Postgresql:
-			var sources []psql.SourceParams
+			var sources []psql_logical.SourceParams
 
 			for _, src := range j.Sources {
 				var extraKeys []string
@@ -262,7 +263,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					extraKeys = strings.Split(src.ExtraKeys, " ")
 				}
 
-				sources = append(sources, psql.SourceParams{
+				sources = append(sources, psql_logical.SourceParams{
 					ConnectParams: psql_connect.Params{
 						User:        src.Connect.DBUser,
 						Passwd:      src.Connect.DBPassword,
@@ -282,7 +283,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err = psql.Init(psql.JobParams{
+			job, err = psql_logical.Init(psql_logical.JobParams{
 				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
@@ -295,7 +296,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			})
 
 		case misc.PostgresqlBasebackup:
-			var sources []psql_basebackup.SourceParams
+			var sources []psql_physical.SourceParams
 
 			for _, src := range j.Sources {
 				var extraKeys []string
@@ -303,7 +304,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					extraKeys = strings.Split(src.ExtraKeys, " ")
 				}
 
-				sources = append(sources, psql_basebackup.SourceParams{
+				sources = append(sources, psql_physical.SourceParams{
 					ConnectParams: psql_connect.Params{
 						User:        src.Connect.DBUser,
 						Passwd:      src.Connect.DBPassword,
@@ -321,7 +322,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 				})
 			}
 
-			job, err = psql_basebackup.Init(psql_basebackup.JobParams{
+			job, err = psql_physical.Init(psql_physical.JobParams{
 				Name:             j.Name,
 				TmpDir:           j.TmpDir,
 				NeedToMakeBackup: needToMakeBackup,
