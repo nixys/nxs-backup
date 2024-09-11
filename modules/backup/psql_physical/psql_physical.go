@@ -1,24 +1,24 @@
-package mysql_xtrabackup
+package psql_physical
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/go-multierror"
-	"gopkg.in/ini.v1"
 
-	"github.com/nixys/nxs-backup/ds/mysql_connect"
+	"github.com/nixys/nxs-backup/ds/psql_connect"
 	"github.com/nixys/nxs-backup/interfaces"
 	"github.com/nixys/nxs-backup/misc"
 	"github.com/nixys/nxs-backup/modules/backend/exec_cmd"
-	"github.com/nixys/nxs-backup/modules/backend/files"
 	"github.com/nixys/nxs-backup/modules/backend/targz"
 	"github.com/nixys/nxs-backup/modules/logger"
 	"github.com/nixys/nxs-backup/modules/metrics"
@@ -38,12 +38,9 @@ type job struct {
 }
 
 type target struct {
-	extraKeys       []string
-	authFile        *ini.File
-	ignoreDatabases string
-	gzip            bool
-	isSlave         bool
-	prepare         bool
+	connUrl   *url.URL
+	extraKeys []string
+	gzip      bool
 }
 
 type JobParams struct {
@@ -60,20 +57,17 @@ type JobParams struct {
 
 type SourceParams struct {
 	Name          string
-	ConnectParams mysql_connect.Params
-	TargetDBs     []string
-	Excludes      []string
+	ConnectParams psql_connect.Params
 	ExtraKeys     []string
 	Gzip          bool
 	IsSlave       bool
-	Prepare       bool
 }
 
 func Init(jp JobParams) (interfaces.Job, error) {
 
-	// check if xtrabackup available
-	if _, err := exec_cmd.Exec("xtrabackup", "--version"); err != nil {
-		return nil, fmt.Errorf("Job `%s` init failed. Can't to check `xtrabackup` version. Please install `xtrabackup`. Error: %s ", jp.Name, err)
+	// check if mysqldump available
+	if _, err := exec_cmd.Exec("pg_basebackup", "--version"); err != nil {
+		return nil, fmt.Errorf("Job `%s` init failed. Can't check `pg_basebackup` version. Please install `pg_basebackup`. Error: %s ", jp.Name, err)
 	}
 	// check if tar and gzip available
 	if _, err := exec_cmd.Exec("tar", "--version"); err != nil {
@@ -93,7 +87,7 @@ func Init(jp JobParams) (interfaces.Job, error) {
 		appMetrics: jp.Metrics.RegisterJob(
 			metrics.JobData{
 				JobName:       jp.Name,
-				JobType:       misc.MysqlXtrabackup,
+				JobType:       misc.PostgresqlBasebackup,
 				TargetMetrics: make(map[string]metrics.TargetData),
 			},
 		),
@@ -101,27 +95,33 @@ func Init(jp JobParams) (interfaces.Job, error) {
 
 	for _, src := range jp.Sources {
 
-		_, authFile, err := mysql_connect.GetConnectAndCnfFile(src.ConnectParams, "xtrabackup")
-		if err != nil {
-			return nil, err
-		}
-
-		var ignoreDBs string
-		if len(src.Excludes) > 0 {
-			ignoreDBs = "--databases-exclude="
-			for _, excl := range src.Excludes {
-				ignoreDBs += excl + " "
+		for _, key := range src.ExtraKeys {
+			if matched, _ := regexp.MatchString(`(-D|--pgdata=)`, key); matched {
+				return nil, fmt.Errorf("Job `%s` init failed. Forbidden usage \"--pgdata|-D\" parameter as extra_keys for `postgresql_basebackup` jobs type ", jp.Name)
 			}
 		}
-		ignoreDBs = strings.TrimSuffix(ignoreDBs, " ")
+
+		cp := src.ConnectParams
+		udb := strings.Split(src.ConnectParams.User, "@")
+		if len(udb) > 1 {
+			cp.Database = udb[1]
+			cp.User = udb[0]
+		}
+
+		connUrl := psql_connect.GetConnUrl(cp)
+		conn, err := psql_connect.GetConnect(connUrl)
+		if err != nil {
+			return nil, fmt.Errorf("Job `%s` init failed. PSQL connect error: %s ", jp.Name, err)
+		}
+		if err = conn.Ping(); err != nil {
+			return nil, fmt.Errorf("Job `%s` init failed. PSQL ping check error: %s ", jp.Name, err)
+		}
+		_ = conn.Close()
 
 		j.targets[src.Name] = target{
-			authFile:        authFile,
-			ignoreDatabases: ignoreDBs,
-			extraKeys:       src.ExtraKeys,
-			gzip:            src.Gzip,
-			isSlave:         src.IsSlave,
-			prepare:         src.Prepare,
+			extraKeys: src.ExtraKeys,
+			gzip:      src.Gzip,
+			connUrl:   connUrl,
 		}
 		j.appMetrics.Job[j.name].TargetMetrics[src.Name] = metrics.TargetData{
 			Source: src.Name,
@@ -148,7 +148,7 @@ func (j *job) GetTempDir() string {
 }
 
 func (j *job) GetType() misc.BackupType {
-	return misc.MysqlXtrabackup
+	return misc.PostgresqlBasebackup
 }
 
 func (j *job) GetTargetOfsList() (ofsList []string) {
@@ -262,127 +262,72 @@ func (j *job) DoBackup(logCh chan logger.LogRecord, tmpDir string) error {
 	return errs.ErrorOrNil()
 }
 
-func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, target target) error {
+func (j *job) createTmpBackup(logCh chan logger.LogRecord, tmpBackupFile, tgtName string, tgt target) error {
 
-	var (
-		stderr, stdout          bytes.Buffer
-		backupArgs, prepareArgs []string
-	)
+	var stderr, stdout bytes.Buffer
 
-	tmpXtrabackupPath := path.Join(path.Dir(tmpBackupFile), "xtrabackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
+	tmpBasebackupPath := path.Join(path.Dir(tmpBackupFile), "pg_basebackup_"+tgtName+"_"+misc.GetDateTimeNow(""))
 
-	authFile, err := files.CreateTmpMysqlAuthFile(target.authFile)
-	if err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Failed to create tmp auth file. Error: %s", err)
-		return err
+	var args []string
+	// define command args
+	// add extra dump cmd options
+	if len(tgt.extraKeys) > 0 {
+		args = append(args, tgt.extraKeys...)
 	}
-	defer func() {
-		if err = files.DeleteTmpMysqlAuthFile(authFile); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Failed to delete tmp auth file. Error: %s", err)
+	// add db connect
+	args = append(args, "--dbname="+tgt.connUrl.String())
+	// add data catalog path
+	args = append(args, "--pgdata="+tmpBasebackupPath)
+	args = append(args, "--format=plain")
+	if j.diskRateLimit > 0 {
+		maxRate := j.diskRateLimit / units.KB
+		if maxRate < 32 {
+			maxRate = 32
+		} else if maxRate > 1024*units.KB {
+			maxRate = 1024 * units.KB
 		}
-	}()
-
-	// define commands args with auth options
-	backupArgs = append(backupArgs, "--defaults-extra-file="+authFile)
-	prepareArgs = backupArgs
-	// add backup options
-	backupArgs = append(backupArgs, "--backup", "--target-dir="+tmpXtrabackupPath)
-	if target.ignoreDatabases != "" {
-		backupArgs = append(backupArgs, target.ignoreDatabases)
-	}
-	if target.isSlave {
-		backupArgs = append(backupArgs, "--safe-slave-backup")
-	}
-	if j.diskRateLimit != 0 {
-		rateLim := j.diskRateLimit / units.MB
-		if rateLim < 1 {
-			rateLim = 1
-		}
-		// This option limits the number of chunks copied per second. The chunk size is 10 MB.
-		backupArgs = append(backupArgs, "--throttle="+strconv.FormatInt(rateLim, 10))
-	}
-	// add extra backup options
-	if len(target.extraKeys) > 0 {
-		backupArgs = append(backupArgs, target.extraKeys...)
+		args = append(args, fmt.Sprintf("--max-rate=%d", maxRate))
 	}
 
-	cmd := exec.Command("xtrabackup", backupArgs...)
+	cmd := exec.Command("pg_basebackup", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	logCh <- logger.Log(j.name, "").Debugf("Dump cmd: %s", cmd.String())
 
 	if err := cmd.Start(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to start xtrabackup. Error: %s", err)
+		logCh <- logger.Log(j.name, "").Errorf("Unable to start pg_basebackup. Error: %s", err)
 		return err
 	}
-	logCh <- logger.Log(j.name, "").Infof("Starting `%s` dump", tgtName)
+	logCh <- logger.Log(j.name, "").Infof("Starting to dump `%s` source", tgtName)
 
 	if err := cmd.Wait(); err != nil {
-		logCh <- logger.Log(j.name, "").Errorf("Unable to dump `%s`. Error: %s", tgtName, err)
-		logCh <- logger.Log(j.name, "").Error(stderr.String())
+		logCh <- logger.Log(j.name, "").Errorf("Unable to make dump `%s`. Error: %s", tgtName, stderr.String())
 		return err
 	}
+	logCh <- logger.Log(j.name, "").Debug("Got psql data. Compressing...")
 
-	logCh <- logger.Log(j.name, "").Debugf("Exit code: %d", cmd.ProcessState.ExitCode())
-	logCh <- logger.Log(j.name, "").Debugf("STDERR:\n%s", stderr.String())
-
-	if cmd.ProcessState.ExitCode() != 0 {
-		err := xtrabackupStatusErr(stderr.String())
-		logCh <- logger.Log(j.name, "").Error(err)
-		return err
-	}
-
-	stdout.Reset()
-	stderr.Reset()
-
-	if target.prepare {
-		// add prepare options
-		prepareArgs = append(prepareArgs, "--prepare", "--target-dir="+tmpXtrabackupPath)
-		cmd = exec.Command("xtrabackup", prepareArgs...)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		if err := cmd.Run(); err != nil {
-			logCh <- logger.Log(j.name, "").Errorf("Unable to prepare xtrabackup. Error: %s", err)
-			logCh <- logger.Log(j.name, "").Error(stderr.String())
-			return err
-		}
-
-		logCh <- logger.Log(j.name, "").Debugf("Exit code: %d", cmd.ProcessState.ExitCode())
-		logCh <- logger.Log(j.name, "").Debugf("STDERR:\n%s", stderr.String())
-
-		if cmd.ProcessState.ExitCode() != 0 {
-			err := xtrabackupStatusErr(stderr.String())
-			logCh <- logger.Log(j.name, "").Error(err)
-			return err
-		}
-	}
-
-	if err = targz.Tar(targz.TarOpts{
-		Src:         tmpXtrabackupPath,
+	if err := targz.Tar(targz.TarOpts{
+		Src:         tmpBasebackupPath,
 		Dst:         tmpBackupFile,
 		Incremental: false,
-		Gzip:        target.gzip,
+		Gzip:        tgt.gzip,
 		SaveAbsPath: false,
 		RateLim:     j.diskRateLimit,
 		Excludes:    nil,
 	}); err != nil {
 		logCh <- logger.Log(j.name, "").Errorf("Unable to make tar: %s", err)
-		if serr, ok := err.(targz.Error); ok {
+		var serr targz.Error
+		if errors.As(err, &serr) {
 			logCh <- logger.Log(j.name, "").Debugf("STDERR: %s", serr.Stderr)
 		}
 		return err
 	}
-	_ = os.RemoveAll(tmpXtrabackupPath)
+	_ = os.RemoveAll(tmpBasebackupPath)
 
-	logCh <- logger.Log(j.name, "").Infof("Dump of `%s` completed", tgtName)
+	logCh <- logger.Log(j.name, "").Infof("Dumping of source `%s` completed", tgtName)
 
 	return nil
-}
-
-func xtrabackupStatusErr(out string) error {
-	return fmt.Errorf("xtrabackup finished not success. Please check result:\n%s", out)
 }
 
 func (j *job) Close() error {

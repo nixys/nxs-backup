@@ -17,8 +17,8 @@
 
 # Supported tags and respective `Dockerfile` links
 
-- [`3.10.0`, `3.10`, `3`, `latest`, `3.10.0-debian`, `3.10-debian`, `3-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
-- [`3.10.0-alpine`, `3.10-alpine`, `3-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
+- [`3.11.0`, `3.11`, `3`, `latest`, `3.11.0-debian`, `3.11-debian`, `3-debian`, `debian`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-debian)
+- [`3.11.0-alpine`, `3.11-alpine`, `3-alpine`, `apline`](https://github.com/nixys/nxs-backup/blob/main/.docker/Dockerfile-alpine)
 
 # What is nxs-backup?
 
@@ -44,7 +44,7 @@ Do the following steps:
   ```sh
   cd nxs-backup/.deploy/docker-compose/
   ```
-- Update provided `nxs-backup.conf` file with your parameters (see [Settings](https://github.com/nixys/nxs-backup/blob/main/docs/settings/README.md) for details)
+- Update provided `nxs-backup.conf` file with your parameters (see [docs](https://nxs-backup.io/documentation/stable/3-1-preparing-of-the-main-config/) for details)
 - Launch the nxs-backup with command:
   ```sh
   docker compose up -d --pull
@@ -63,7 +63,7 @@ Do the following steps:
   helm repo add nixys https://registry.nixys.io/chartrepo/public
   ```
 - Find examples of `helm values` [here](https://github.com/nixys/nxs-backup/blob/main/docs/example/kubernetes/README.md)
-- Fill up your `values.yaml` with correct nxs-backup [Settings](https://github.com/nixys/nxs-backup/blob/main/docs/settings/README.md)
+- Fill up your `values.yaml` with correct nxs-backup [configs](https://nxs-backup.io/documentation/stable/3-1-preparing-of-the-main-config/)
 - Launch nxs-backup with command:
   ```sh
   helm -n $NAMESPACE_SERVICE_NAME install nxs-backup nixys/nxs-universal-chart -f values.yaml

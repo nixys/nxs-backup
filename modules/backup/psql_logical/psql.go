@@ -1,4 +1,4 @@
-package psql
+package psql_logical
 
 import (
 	"bytes"

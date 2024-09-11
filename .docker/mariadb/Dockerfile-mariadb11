@@ -1,8 +1,7 @@
 FROM nixyslab/nxs-backup-bin AS bin
 
-FROM alpine:3
+FROM mariadb:11
 
-RUN apk update --no-cache && apk add --no-cache tar mysql-client mariadb-backup postgresql-client mongodb-tools redis
 COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
 
 VOLUME /etc/nxs-backup
