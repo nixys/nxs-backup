@@ -126,8 +126,6 @@ Following features are already in backlog for our development team and will be r
 - Proprietary startup scheduler
 - New backup types (Clickhouse, Elastic, lvm, etc.)
 - Programmatic implementation of backup creation instead of calling external utilities
-- Ability to set limits on resources utilization
-- Update help info
 
 ## Feedback
 
