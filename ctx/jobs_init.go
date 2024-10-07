@@ -178,11 +178,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			var sources []mysql_logical.SourceParams
 
 			for _, src := range j.Sources {
-				var extraKeys []string
-				if len(src.ExtraKeys) > 0 {
-					extraKeys = strings.Split(src.ExtraKeys, " ")
-				}
-
 				sources = append(sources, mysql_logical.SourceParams{
 					ConnectParams: mysql_connect.Params{
 						AuthFile: src.Connect.MySQLAuthFile,
@@ -196,7 +191,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					TargetDBs: src.TargetDBs,
 					Excludes:  src.Excludes,
 					IsSlave:   src.IsSlave,
-					ExtraKeys: extraKeys,
+					ExtraKeys: getExtraKeys(src.ExtraKeys),
 					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
@@ -217,11 +212,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			var sources []mysql_physical.SourceParams
 
 			for _, src := range j.Sources {
-				var extraKeys []string
-				if len(src.ExtraKeys) > 0 {
-					extraKeys = strings.Split(src.ExtraKeys, " ")
-				}
-
 				sources = append(sources, mysql_physical.SourceParams{
 					ConnectParams: mysql_connect.Params{
 						AuthFile: src.Connect.MySQLAuthFile,
@@ -236,7 +226,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					Excludes:  src.Excludes,
 					IsSlave:   src.IsSlave,
 					Prepare:   src.PrepareXtrabackup,
-					ExtraKeys: extraKeys,
+					ExtraKeys: getExtraKeys(src.ExtraKeys),
 					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
@@ -258,11 +248,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			var sources []psql_logical.SourceParams
 
 			for _, src := range j.Sources {
-				var extraKeys []string
-				if len(src.ExtraKeys) > 0 {
-					extraKeys = strings.Split(src.ExtraKeys, " ")
-				}
-
 				sources = append(sources, psql_logical.SourceParams{
 					ConnectParams: psql_connect.Params{
 						User:        src.Connect.DBUser,
@@ -278,7 +263,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					TargetDBs: src.TargetDBs,
 					Excludes:  src.Excludes,
 					IsSlave:   src.IsSlave,
-					ExtraKeys: extraKeys,
+					ExtraKeys: getExtraKeys(src.ExtraKeys),
 					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
@@ -299,11 +284,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			var sources []psql_physical.SourceParams
 
 			for _, src := range j.Sources {
-				var extraKeys []string
-				if len(src.ExtraKeys) > 0 {
-					extraKeys = strings.Split(src.ExtraKeys, " ")
-				}
-
 				sources = append(sources, psql_physical.SourceParams{
 					ConnectParams: psql_connect.Params{
 						User:        src.Connect.DBUser,
@@ -317,7 +297,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 					},
 					Name:      src.Name,
 					IsSlave:   src.IsSlave,
-					ExtraKeys: extraKeys,
+					ExtraKeys: getExtraKeys(src.ExtraKeys),
 					Gzip:      isGzip(src.Gzip, j.Gzip),
 				})
 			}
@@ -338,11 +318,6 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 			var sources []mongodump.SourceParams
 
 			for _, src := range j.Sources {
-				var extraKeys []string
-				if len(src.ExtraKeys) > 0 {
-					extraKeys = strings.Split(src.ExtraKeys, " ")
-				}
-
 				sources = append(sources, mongodump.SourceParams{
 					ConnectParams: mongo_connect.Params{
 						User:      src.Connect.DBUser,
@@ -355,7 +330,7 @@ func jobsInit(o jobsOpts) ([]interfaces.Job, error) {
 						AuthDB:    src.Connect.MongoAuthDB,
 					},
 					Name:               src.Name,
-					ExtraKeys:          extraKeys,
+					ExtraKeys:          getExtraKeys(src.ExtraKeys),
 					TargetDBs:          src.TargetDBs,
 					TargetCollections:  src.TargetCollections,
 					ExcludeDBs:         src.ExcludeDBs,
@@ -442,4 +417,20 @@ func isGzip(sgz *bool, jgz bool) bool {
 	} else {
 		return jgz
 	}
+}
+
+func getExtraKeys(keys string) (eks []string) {
+	var tmpKeys []string
+
+	if len(keys) > 0 {
+		tmpKeys = strings.Split(keys, " ")
+	}
+
+	for _, str := range tmpKeys {
+		if str != "" {
+			eks = append(eks, str)
+		}
+	}
+
+	return
 }
