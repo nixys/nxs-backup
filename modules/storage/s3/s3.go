@@ -3,8 +3,11 @@ package s3
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/http"
 	"os"
 	"path"
 	"regexp"
@@ -265,6 +268,17 @@ func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 }
 
 func (s *S3) GetFileReader(ofsPath string) (io.Reader, error) {
+	_, err := s.client.StatObject(context.Background(), s.bucketName, path.Join(s.backupPath, ofsPath), minio.StatObjectOptions{})
+	if err != nil {
+		var rErr minio.ErrorResponse
+		if errors.As(err, &rErr) {
+			if rErr.StatusCode == http.StatusNotFound {
+				err = fs.ErrNotExist
+			}
+		}
+		return nil, err
+	}
+
 	o, err := s.client.GetObject(context.Background(), s.bucketName, path.Join(s.backupPath, ofsPath), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
