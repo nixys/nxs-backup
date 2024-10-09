@@ -110,6 +110,9 @@ type sourceConnectConf struct {
 	Socket          string `conf:"socket"`
 	DBUser          string `conf:"db_user"`
 	DBPassword      string `conf:"db_password"`
+	SSLCA           string `conf:"ssl_ca"`
+	SSLCert         string `conf:"ssl_cert"`
+	SSLKey          string `conf:"ssl_key"`
 	MySQLAuthFile   string `conf:"mysql_auth_file"`
 	PsqlSSLMode     string `conf:"psql_ssl_mode" conf_extraopts:"default=require"`
 	PsqlSSlRootCert string `conf:"psql_ssl_root_cert"`

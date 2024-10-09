@@ -1,11 +1,13 @@
 package mysql_connect
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/ini.v1"
+	"os"
 )
 
 type Params struct {
@@ -15,9 +17,13 @@ type Params struct {
 	Host     string // Network host
 	Port     string // Network port
 	Socket   string // Socket path
+	SSLCA    string
+	SSLCert  string
+	SSLKey   string
 }
 
 func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, *ini.File, error) {
+	var withTls bool
 
 	dumpAuthCfg := ini.Empty()
 	_ = dumpAuthCfg.NewSections(sectionName)
@@ -53,6 +59,18 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, *ini.File,
 				conn.Port = port
 				_, _ = dumpAuthCfg.Section(sectionName).NewKey("port", port)
 			}
+			if ca := s.Key("ssl-ca").MustString(""); ca != "" {
+				conn.SSLCA = ca
+				_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-ca", ca)
+			}
+			if cert := s.Key("ssl-cert").MustString(""); cert != "" {
+				conn.SSLCert = cert
+				_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-cert", cert)
+			}
+			if key := s.Key("ssl-key").MustString(""); key != "" {
+				conn.SSLKey = key
+				_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-key", key)
+			}
 			break
 		}
 	} else {
@@ -71,6 +89,44 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, *ini.File,
 		if conn.Port != "" {
 			_, _ = dumpAuthCfg.Section(sectionName).NewKey("port", conn.Port)
 		}
+		if conn.SSLCA != "" {
+			_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-ca", conn.SSLCA)
+		}
+		if conn.SSLCert != "" {
+			_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-cert", conn.SSLCert)
+		}
+		if conn.SSLKey != "" {
+			_, _ = dumpAuthCfg.Section(sectionName).NewKey("ssl-key", conn.SSLKey)
+		}
+	}
+
+	if conn.SSLCert != "" && conn.SSLKey != "" {
+		var caCertPool *x509.CertPool
+
+		if conn.SSLCA != "" {
+			caCertPool = x509.NewCertPool()
+			caCert, err := os.ReadFile(conn.SSLCA)
+			if err != nil {
+				return nil, dumpAuthCfg, err
+			}
+			if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+				return nil, dumpAuthCfg, fmt.Errorf("failed to append ca certs")
+			}
+			//insecure = false
+		}
+		cert, err := tls.LoadX509KeyPair(conn.SSLCert, conn.SSLKey)
+		if err != nil {
+			return nil, dumpAuthCfg, err
+		}
+
+		if err = mysql.RegisterTLSConfig("custom", &tls.Config{
+			RootCAs:            caCertPool,
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}); err != nil {
+			return nil, dumpAuthCfg, err
+		}
+		withTls = true
 	}
 
 	cfg := mysql.NewConfig()
@@ -82,6 +138,9 @@ func GetConnectAndCnfFile(conn Params, sectionName string) (*sqlx.DB, *ini.File,
 	} else {
 		cfg.Net = "tcp"
 		cfg.Addr = fmt.Sprintf("%s:%s", conn.Host, conn.Port)
+	}
+	if withTls {
+		cfg.TLSConfig = "custom"
 	}
 
 	db, err := sqlx.Connect("mysql", cfg.FormatDSN())
