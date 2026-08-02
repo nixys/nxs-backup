@@ -42,11 +42,16 @@ func GetConnectAndDSN(params Params) (rdb *redis.Client, dsn string, err error) 
 	if err != nil {
 		return
 	}
+	opt.Password = params.Passwd
 	rdb = redis.NewClient(opt)
 
 	err = rdb.Ping(context.Background()).Err()
 
-	// this is not a bug, this is strange behavior of redis-cli uri usage
+	// redis-cli treats a single userinfo segment (no colon) as a legacy,
+	// version-agnostic `AUTH <password>`, whereas a `user:password` segment
+	// makes it send a 2-arg `AUTH user password` that pre-6.0 Redis (no ACL
+	// support) rejects. So the DSN below intentionally differs from how
+	// opt.Password above is set for the go-redis client.
 	if params.Passwd != "" {
 		connUrl.User = url.User(params.Passwd)
 	}
