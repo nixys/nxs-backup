@@ -7,10 +7,15 @@ RUN apt update \
       lsb-release \
       wget \
       gnupg \
+      ca-certificates \
       default-mysql-client \
       mariadb-backup \
-      postgresql-client \
-      redis
+      redis \
+    && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt update \
+    && apt install -yq \
+      postgresql-client-18
 
 # TODO Install Percona Xtrabackup and MongoDB-tools
 #RUN apt install -yq git \
