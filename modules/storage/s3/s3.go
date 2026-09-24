@@ -252,13 +252,13 @@ func (s *S3) DeleteOldBackups(logCh chan logger.LogRecord, ofs string, job inter
 	}()
 
 	if s.batchDeletion {
-		for err := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{GovernanceBypass: true}) {
+		for err := range s.client.RemoveObjects(context.Background(), s.bucketName, objCh, minio.RemoveObjectsOptions{}) {
 			logCh <- logger.Log(job.GetName(), s.name).Errorf("Error detected during multiple objects deletion: '%s'", err)
 			return err.Err
 		}
 	} else {
 		for object := range objCh {
-			if err := s.client.RemoveObject(context.Background(), s.bucketName, object.Key, minio.RemoveObjectOptions{GovernanceBypass: true}); err != nil {
+			if err := s.client.RemoveObject(context.Background(), s.bucketName, object.Key, minio.RemoveObjectOptions{}); err != nil {
 				logCh <- logger.Log(job.GetName(), s.name).Errorf("Error detected during single object deletion: '%s'", err)
 				return err
 			}
