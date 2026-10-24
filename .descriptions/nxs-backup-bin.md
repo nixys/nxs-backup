@@ -37,7 +37,11 @@ FROM nixyslab/nxs-backup-bin AS bin
 FROM debian:12-slim
 
 RUN apt update \
-    && apt install -yq postgresql-client \
+    && apt install -yq wget lsb-release gnupg ca-certificates \
+    && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt update \
+    && apt install -yq postgresql-client-18 \
     && apt clean
 
 COPY --from=bin /nxs-backup /usr/local/bin/nxs-backup
